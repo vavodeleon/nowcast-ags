@@ -123,10 +123,25 @@
     </div>
     <div class="chartbox"><canvas id="chart-presion"></canvas></div>
     <div class="datos" id="datos-presion"></div>
-    <p class="nota">
-      La línea punteada marca dónde empieza el nivel de riesgo. La zona
-      sombreada a la derecha es pronóstico, no algo que ya haya pasado.
+    <p class="nota" id="nota-presion">
+      La línea gris es lo que marcaría un barómetro. La azul es la misma
+      presión pero sin el vaivén que se repite todos los días, y es sobre esa
+      que se decide si hay riesgo. A partir del punteado es pronóstico.
     </p>
+    <details>
+      <summary>¿Por qué hay dos líneas?</summary>
+      <p class="nota">
+        En Aguascalientes la presión sube y baja unos <b id="amp-ciclo">6</b> hPa
+        <i>todos los días</i>, con pico hacia las 8 de la mañana y las 10 de la
+        noche, y valle a media tarde. Es la marea atmosférica sumada al
+        calentamiento del día, y no tiene nada que ver con el clima.
+      </p>
+      <p class="nota">
+        Ese vaivén es más grande que el umbral de riesgo, así que si se midiera
+        la presión en crudo habría alerta todas las tardes. La línea azul le
+        quita ese ciclo y deja solo los cambios que sí vienen del tiempo.
+      </p>
+    </details>
     <details>
       <summary>¿Por qué importa la presión?</summary>
       <p class="nota">
@@ -229,6 +244,9 @@ function pintarPresion(p){
     ["Últimas 24 h", hay(p.change_24h) ? `${p.change_24h > 0 ? "+" : ""}${p.change_24h.toFixed(1)}` : "—"],
     ["Tendencia", p.trend || "—"],
   ];
+  if (hay(p.ciclo_diario) && p.ciclo_diario > 0)
+    q("#amp-ciclo").textContent = p.ciclo_diario.toFixed(1);
+
   q("#datos-presion").innerHTML = campos.map(([k, v]) =>
     `<div class="dato"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
 
@@ -236,19 +254,24 @@ function pintarPresion(p){
   if (!serie.length || typeof Chart === "undefined") return;
 
   const primeroFuturo = serie.findIndex(s => s.futuro);
+  const punteado = c => c.p0DataIndex >= primeroFuturo - 1 && primeroFuturo >= 0
+    ? [5, 4] : undefined;
+
   new Chart(q("#chart-presion"), {
     type: "line",
     data: {
       labels: serie.map(s => s.t),
-      datasets: [{
-        data: serie.map(s => s.msl),
-        borderColor: "#2b6fd4", backgroundColor: "rgba(43,111,212,.10)",
-        fill: true, pointRadius: 0, borderWidth: 2.5, tension: .35,
-        segment: {
-          borderDash: c => c.p0DataIndex >= primeroFuturo - 1 && primeroFuturo >= 0
-            ? [5, 4] : undefined
-        }
-      }]
+      datasets: [
+        { label: "Medida",
+          data: serie.map(s => s.msl),
+          borderColor: "#b9c4d4", pointRadius: 0, borderWidth: 1.5,
+          tension: .35, fill: false, segment: {borderDash: punteado} },
+        { label: "Sin el vaivén diario",
+          data: serie.map(s => s.limpia ?? s.msl),
+          borderColor: "#2b6fd4", backgroundColor: "rgba(43,111,212,.10)",
+          fill: true, pointRadius: 0, borderWidth: 2.8, tension: .35,
+          segment: {borderDash: punteado} }
+      ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -260,8 +283,9 @@ function pintarPresion(p){
             grid: {display: false}}
       },
       plugins: {
-        legend: {display: false},
-        tooltip: {callbacks: {label: c => `${c.parsed.y} hPa`}}
+        legend: {display: true, labels: {boxWidth: 14, font: {size: 11},
+                 color: "#697790", usePointStyle: true}},
+        tooltip: {callbacks: {label: c => `${c.dataset.label}: ${c.parsed.y} hPa`}}
       }
     }
   });

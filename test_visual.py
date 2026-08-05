@@ -111,5 +111,49 @@ if bounds:
     centro = im[im.shape[0]//2, im.shape[1]//2, 3]
     chk("la celda quedo centrada donde va", centro > 200, f"alfa {centro}")
 
+
+# ---------------- ciclo diario (marea atmosferica)
+print("\nF. Filtrado del ciclo diario")
+from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+from nowcast import pressure as _pr, http as _http, config as _cfg
+import numpy as _np
+
+def _serie(sinoptico=lambda k: 0.0):
+    now = _dt.now(_tz.utc).replace(minute=0, second=0, microsecond=0)
+    t, v = [], []
+    for k in range(-30, 49):
+        tt = now + _td(hours=k)
+        loc = tt.astimezone(_cfg.TZ)
+        h = loc.hour + loc.minute / 60
+        # marea de ~7 hPa pico a pico, como la real de Aguascalientes
+        marea = 2.2*_np.cos(2*_np.pi*(h-10)/24) + 1.6*_np.cos(2*_np.pi*(h-10)/12)
+        t.append(tt.strftime("%Y-%m-%dT%H:%M"))
+        v.append(1015.0 + marea + sinoptico(k))
+    return t, v
+
+t1, v1 = _serie()
+_http.get_json = lambda *a, **kw: {"hourly": {"time": t1, "pressure_msl": v1,
+                                              "surface_pressure": [x-208 for x in v1]}}
+st = _pr.fetch()
+print(f"     oscilacion diaria medida: {st.daily_cycle_amplitude:.1f} hPa")
+chk("mide la amplitud del ciclo", st.daily_cycle_amplitude > 4,
+    f"{st.daily_cycle_amplitude}")
+chk("NO confunde la marea con caida en curso", not st.is_falling_now,
+    f"cambio 3h = {st.change_3h}")
+chk("NO marca riesgo por la marea", not st.is_risky_soon, f"{st.forecast_drop}")
+chk("nivel tranquilo pese al vaiven", st.level == "tranquilo", st.level)
+chk("cambio 24h casi nulo", abs(st.change_24h or 0) < 1.0, f"{st.change_24h}")
+
+# marea + caida sinoptica real de 8 hPa: debe detectarla igual
+t2, v2 = _serie(lambda k: 0.0 if k <= 6 else -8.0*min(1.0, (k-6)/18.0))
+_http.get_json = lambda *a, **kw: {"hourly": {"time": t2, "pressure_msl": v2,
+                                              "surface_pressure": [x-208 for x in v2]}}
+st2 = _pr.fetch()
+chk("SI detecta la caida real bajo la marea", st2.is_risky_soon,
+    f"caida prevista {st2.forecast_drop}")
+chk("nivel alto o muy alto", st2.level in ("alto", "muy alto"), st2.level)
+chk("la serie guarda medida y limpia",
+    all("msl" in s and "limpia" in s for s in st2.series))
+
 print("\n" + ("TODO EN ORDEN" if ok else "HAY FALLOS"))
 sys.exit(0 if ok else 1)

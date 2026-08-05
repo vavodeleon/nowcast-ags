@@ -40,6 +40,7 @@ class PressureState:
     forecast_drop_at: str | None = None
     forecast_drop_in_h: float | None = None
     level: str = "sin datos"          # sin datos | tranquilo | vigilancia | alto | muy alto
+    daily_cycle_amplitude: float = 0.0   # cuanto oscila la presion cada dia por si sola
     trend: str = "sin datos"          # bajando | subiendo | estable
     series: list = field(default_factory=list)
 
@@ -52,6 +53,47 @@ class PressureState:
     def is_risky_soon(self) -> bool:
         return (self.forecast_drop is not None
                 and self.forecast_drop >= config.PRESSURE_DROP_24H)
+
+
+def remove_daily_cycle(parsed: list[datetime],
+                       values: list[float]) -> tuple[np.ndarray, np.ndarray]:
+    """Quita la marea atmosferica y el ciclo termico diario.
+
+    Sin esto el sistema seria inservible. En los datos reales de
+    Aguascalientes la presion oscila ~7 hPa TODOS los dias: pico hacia las
+    08:00, valle hacia las 16:00, pico otra vez a las 22:00. Es la marea
+    atmosferica sumada al calentamiento diurno sobre el altiplano, y no
+    tiene nada que ver con el tiempo.
+
+    Con un umbral de 2.5 hPa en 3 h, ese ciclo disparaba una alerta cada
+    tarde. Un aviso que suena siempre a la misma hora se ignora en tres
+    dias, y entonces tampoco sirve el dia que de verdad importa.
+
+    Se ajustan por minimos cuadrados un armonico de 24 h y otro de 12 h
+    (mas media y tendencia lineal) y se resta SOLO la parte ciclica. La
+    tendencia sinoptica -la que si interesa- se conserva intacta.
+    """
+    v = np.asarray(values, dtype=float)
+    if len(v) < 12:
+        return v, np.zeros_like(v)
+
+    horas = np.array([(p - parsed[0]).total_seconds() / 3600.0 for p in parsed])
+    # hora local del dia: es la fase que gobierna la marea
+    hod = np.array([p.astimezone(config.TZ).hour
+                    + p.astimezone(config.TZ).minute / 60.0 for p in parsed])
+
+    A = np.column_stack([
+        np.ones_like(horas), horas,                       # media y tendencia
+        np.cos(2 * np.pi * hod / 24), np.sin(2 * np.pi * hod / 24),   # diurno
+        np.cos(2 * np.pi * hod / 12), np.sin(2 * np.pi * hod / 12),   # semidiurno
+    ])
+    try:
+        coef, *_ = np.linalg.lstsq(A, v, rcond=None)
+    except np.linalg.LinAlgError:
+        return v, np.zeros_like(v)
+
+    ciclo = A[:, 2:] @ coef[2:]
+    return v - ciclo, ciclo
 
 
 def _level_for(drop_24h: float | None) -> str:
@@ -107,22 +149,31 @@ def fetch() -> PressureState:
         return state
 
     now = datetime.now(timezone.utc)
-    arr = np.array(values)
 
-    def at(target: datetime) -> float | None:
+    # Todos los cambios se miden sobre la serie SIN el ciclo diario; si no,
+    # la marea atmosferica se confunde con un frente.
+    limpia, ciclo = remove_daily_cycle(parsed, values)
+    state.daily_cycle_amplitude = round(float(np.ptp(ciclo)), 1) if len(ciclo) else 0.0
+
+    def at(target: datetime, serie=None) -> float | None:
         """Valor mas cercano al instante pedido, si esta a menos de 90 min."""
+        serie = values if serie is None else serie
         gaps = [abs((p - target).total_seconds()) for p in parsed]
         k = int(np.argmin(gaps))
-        return values[k] if gaps[k] <= 5400 else None
+        return float(serie[k]) if gaps[k] <= 5400 else None
+
+    def limpio(target: datetime) -> float | None:
+        return at(target, limpia)
 
     state.now_msl = at(now)
     idx_now = int(np.argmin([abs((p - now).total_seconds()) for p in parsed]))
     state.now_surface = surface[idx_now] if idx_now < len(surface) else None
 
+    ahora_limpio = limpio(now)
     for hours, attr in ((3, "change_3h"), (6, "change_6h"), (24, "change_24h")):
-        past = at(now - timedelta(hours=hours))
-        if state.now_msl is not None and past is not None:
-            setattr(state, attr, round(state.now_msl - past, 1))
+        past = limpio(now - timedelta(hours=hours))
+        if ahora_limpio is not None and past is not None:
+            setattr(state, attr, round(ahora_limpio - past, 1))
 
     # ---- peor caida de 24 h en lo que viene
     # Para cada hora futura, cuanto habra bajado respecto a 24 h antes.
@@ -131,10 +182,10 @@ def fetch() -> PressureState:
     for i, t in enumerate(parsed):
         if t <= now or (t - now) > timedelta(hours=config.PRESSURE_LOOKAHEAD_H):
             continue
-        ref = at(t - timedelta(hours=24))
+        ref = limpio(t - timedelta(hours=24))
         if ref is None:
             continue
-        drop = ref - values[i]          # positivo = la presion baja
+        drop = ref - float(limpia[i])   # positivo = la presion baja
         if drop > worst:
             worst, worst_at = drop, t
 
@@ -157,12 +208,15 @@ def fetch() -> PressureState:
             state.trend = "estable"
 
     # ---- serie para la grafica: de -24 h a +48 h
-    for t, v in zip(parsed, values):
+    # Se guardan ambas: la medida (lo que marca un barometro) y la limpia
+    # (sin el ciclo diario), que es sobre la que se decide.
+    for t, v, lim in zip(parsed, values, limpia):
         if -24 <= (t - now).total_seconds() / 3600 <= 48:
             state.series.append({
                 "t": t.astimezone(config.TZ).strftime("%d %H:%M"),
                 "iso": t.isoformat(),
                 "msl": round(v, 1),
+                "limpia": round(float(lim), 1),
                 "futuro": t > now,
             })
 
@@ -186,4 +240,5 @@ def to_dict(state: PressureState) -> dict:
         "trend": state.trend,
         "series": state.series,
         "umbral_24h": config.PRESSURE_DROP_24H,
+        "ciclo_diario": state.daily_cycle_amplitude,
     }
