@@ -1,20 +1,20 @@
 {
-  "issued_utc": "2026-08-05T02:44:09+00:00",
-  "issued_local": "2026-08-04 20:44",
+  "issued_utc": "2026-08-05T02:59:15+00:00",
+  "issued_local": "2026-08-04 20:59",
   "probabilities": {
     "15": 0.231,
     "30": 0.231,
-    "45": 0.231,
+    "45": 0.229,
     "60": 0.229,
     "90": 0.229,
     "120": 0.205,
     "180": 0.158
   },
   "raining_now": 0.0,
-  "motion_speed_kmh": 3.7,
-  "motion_from": "sur",
-  "motion_confidence": 0.416,
-  "growth": 0.82,
+  "motion_speed_kmh": 1.9,
+  "motion_from": "sin movimiento definido",
+  "motion_confidence": 0.454,
+  "growth": 0.752,
   "cell_eta_min": null,
   "cell_km": null,
   "cape": 620.0,
@@ -39,7 +39,7 @@
     "gem_seamless": 0.6
   },
   "confidence": "buena",
-  "calibration_n": 27,
+  "calibration_n": 31,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -52,7 +52,7 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 358.7,
+  "motion_bearing": null,
   "pressure": {
     "now_msl": 1016.4,
     "now_surface": 818.6,
@@ -61,7 +61,7 @@
     "change_24h": 0.4,
     "forecast_drop": 3.4,
     "forecast_drop_at": "Wed 05, 20:00",
-    "forecast_drop_in_h": 23.3,
+    "forecast_drop_in_h": 23.0,
     "level": "vigilancia",
     "trend": "estable",
     "series": [
@@ -568,8 +568,8 @@
   },
   "performance": {
     "15": {
-      "n": 5,
-      "brier": 0.5688,
+      "n": 6,
+      "brier": 0.5725,
       "skill_vs_climatologia": null,
       "acierto_binario": 0.0,
       "frecuencia_lluvia": 1.0
