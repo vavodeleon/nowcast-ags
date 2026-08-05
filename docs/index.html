@@ -327,10 +327,13 @@ function pintarMapa(d){
                      d.lon + dist * Math.sin(rad) / Math.cos(d.lat * Math.PI / 180)];
     L.polyline([[d.lat, d.lon], destino], {color:"#16202e", weight:2.5,
       opacity:.55, dashArray:"7 7"}).addTo(mapa);
-    L.marker(destino, {icon: L.divIcon({className:"", html:
-      `<div style="background:#16202e;color:#fff;padding:3px 9px;border-radius:99px;
+    // iconSize [0,0] es necesario: por omisión divIcon mide 12x12 px y
+    // recorta el texto de la etiqueta
+    L.marker(destino, {interactive:false, icon: L.divIcon({
+      className:"", iconSize:[0,0], iconAnchor:[0,0], html:
+      `<div style="background:#16202e;color:#fff;padding:3px 10px;border-radius:99px;
         font:600 11px -apple-system,sans-serif;white-space:nowrap;
-        transform:translate(-50%,-50%)">vienen del ${d.motion_from}</div>`
+        position:absolute;transform:translate(-50%,-50%)">vienen del ${d.motion_from}</div>`
     })}).addTo(mapa);
   }
 
