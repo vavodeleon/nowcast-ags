@@ -2,14 +2,19 @@
   "weights": {
     "15": {
       "radar": 0.1513,
-      "ir": 0.5572,
-      "models": 0.2915
+      "ir": 0.5562,
+      "models": 0.2925
+    },
+    "30": {
+      "radar": 0.1512,
+      "ir": 0.557,
+      "models": 0.2918
     }
   },
   "curves": {
     "15": {
       "x": [
-        0.0488,
+        0.0417,
         0.0488,
         0.0488,
         0.0488,
@@ -27,7 +32,7 @@
         0.0562,
         0.0642,
         0.137,
-        0.1848,
+        0.137,
         0.1848,
         0.2062,
         0.2062,
@@ -53,8 +58,64 @@
         0.0,
         0.0,
         0.0,
-        0.0,
+        0.5,
+        0.5,
         1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "30": {
+      "x": [
+        0.0488,
+        0.0488,
+        0.0488,
+        0.0488,
+        0.0488,
+        0.0488,
+        0.0488,
+        0.0488,
+        0.0488,
+        0.0488,
+        0.0488,
+        0.0488,
+        0.0488,
+        0.0488,
+        0.0488,
+        0.0562,
+        0.0562,
+        0.137,
+        0.137,
+        0.1848,
+        0.2062,
+        0.2098,
+        0.229,
+        0.2312,
+        0.4625
+      ],
+      "y": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.3333,
+        0.3333,
         1.0,
         1.0,
         1.0,
@@ -66,83 +127,83 @@
   },
   "skill": {
     "15": {
-      "n": 41,
+      "n": 42,
       "brier": {
-        "radar": 0.2911,
-        "ir": 0.2589,
-        "models": 0.0722
+        "radar": 0.2842,
+        "ir": 0.2528,
+        "models": 0.0705
       },
-      "brier_final": 0.179,
-      "brier_climatology": 0.2064,
-      "skill_score": 0.133
+      "brier_final": 0.1747,
+      "brier_climatology": 0.2034,
+      "skill_score": 0.141
     },
     "30": {
-      "n": 39,
+      "n": 41,
       "brier": {
-        "radar": 0.2806,
-        "ir": 0.25,
-        "models": 0.0688
+        "radar": 0.2668,
+        "ir": 0.2379,
+        "models": 0.0654
       },
-      "brier_final": 0.1706,
-      "brier_climatology": 0.2018,
-      "skill_score": 0.155
+      "brier_final": 0.1624,
+      "brier_climatology": 0.1956,
+      "skill_score": 0.17
     },
     "45": {
-      "n": 38,
+      "n": 39,
       "brier": {
-        "radar": 0.2617,
-        "ir": 0.2338,
-        "models": 0.063
+        "radar": 0.255,
+        "ir": 0.2279,
+        "models": 0.0613
       },
-      "brier_final": 0.156,
-      "brier_climatology": 0.1932,
-      "skill_score": 0.193
+      "brier_final": 0.152,
+      "brier_climatology": 0.19,
+      "skill_score": 0.2
     },
     "60": {
-      "n": 37,
+      "n": 38,
       "brier": {
-        "radar": 0.2419,
-        "ir": 0.2168,
-        "models": 0.0521
+        "radar": 0.2355,
+        "ir": 0.2112,
+        "models": 0.0507
       },
-      "brier_final": 0.1404,
-      "brier_climatology": 0.1834,
-      "skill_score": 0.234
+      "brier_final": 0.1367,
+      "brier_climatology": 0.18,
+      "skill_score": 0.241
     },
     "90": {
-      "n": 35,
+      "n": 36,
       "brier": {
-        "radar": 0.2558,
-        "ir": 0.229,
-        "models": 0.0533
+        "radar": 0.2487,
+        "ir": 0.2227,
+        "models": 0.0518
       },
-      "brier_final": 0.1489,
-      "brier_climatology": 0.1904,
-      "skill_score": 0.218
+      "brier_final": 0.1449,
+      "brier_climatology": 0.1868,
+      "skill_score": 0.224
     },
     "120": {
-      "n": 33,
+      "n": 34,
       "brier": {
-        "radar": 0.2714,
-        "ir": 0.2427,
-        "models": 0.0552
+        "radar": 0.2634,
+        "ir": 0.2356,
+        "models": 0.0535
       },
-      "brier_final": 0.1579,
-      "brier_climatology": 0.1977,
-      "skill_score": 0.201
+      "brier_final": 0.1533,
+      "brier_climatology": 0.194,
+      "skill_score": 0.21
     },
     "180": {
-      "n": 29,
+      "n": 30,
       "brier": {
-        "radar": 0.309,
-        "ir": 0.2756,
-        "models": 0.083
+        "radar": 0.2987,
+        "ir": 0.2666,
+        "models": 0.0802
       },
-      "brier_final": 0.1878,
-      "brier_climatology": 0.2135,
-      "skill_score": 0.12
+      "brier_final": 0.1816,
+      "brier_climatology": 0.2095,
+      "skill_score": 0.133
     }
   },
-  "n": 252,
-  "updated": "2026-08-05T18:57:27+00:00"
+  "n": 260,
+  "updated": "2026-08-05T19:12:34+00:00"
 }
