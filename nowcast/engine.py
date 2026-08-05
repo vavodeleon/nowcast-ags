@@ -373,7 +373,12 @@ def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
         if best is None or eta < best[0]:
             best = (eta, dist_km, intensity)
 
-    if best:
+    # Un ETA mas alla del horizonte util no es informacion, es aritmetica.
+    # Una celda a 180 km moviendose a 10 km/h "llega en 18 horas": para
+    # entonces se habra disipado y nacido otras tres. Reportarlo seria
+    # exactamente el tipo de precision falsa que hace inutiles a las apps.
+    max_eta = max(config.LEAD_TIMES_MIN) * 1.5
+    if best and best[0] <= max_eta:
         nc.nearest_cell_eta_min = round(best[0], 1)
         nc.nearest_cell_km = round(best[1], 1)
         nc.nearest_cell_intensity = round(best[2], 3)

@@ -113,6 +113,18 @@ def test_departing_cell() -> None:
           f"{nc.score_at(60):.3f}")
 
 
+def test_eta_horizon() -> None:
+    print("\n4b. ETA absurdamente lejano")
+    # celda muy lejos avanzando muy despacio: llegaria en ~15 h
+    frames = synthetic_sequence(0.0, 0.09, n=5, size=256,
+                                start_offset=(0, -80))
+    nc = engine.run_nowcast(frames)
+    speed = nc.motion.speed_kmh
+    check("movimiento lento detectado", speed < 12, f"{speed:.1f} km/h")
+    check("no reporta ETA fuera del horizonte util",
+          nc.nearest_cell_eta_min is None, str(nc.nearest_cell_eta_min))
+
+
 def test_glancing_cell() -> None:
     print("\n4. Celda que pasa de largo")
     # celda muy al norte moviendose al este: no cruza por casa
@@ -386,6 +398,7 @@ def main() -> int:
     print("Autoprueba del motor de nowcasting")
     print("=" * 55)
     for fn in (test_motion_recovery, test_impact_timing, test_departing_cell,
+               test_eta_horizon,
                test_glancing_cell, test_direct_hit_now, test_clear_sky,
                test_growth_detection, test_geostationary_projection,
                test_goes_unpacking,
