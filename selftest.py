@@ -207,6 +207,93 @@ def test_geostationary_projection() -> None:
           f"{km:.2f} vs {km_nadir:.2f} km")
 
 
+def test_goes_unpacking() -> None:
+    """Un archivo GOES sintetico, empaquetado igual que los reales.
+
+    Los datos vienen como enteros con scale_factor/add_offset. h5py NO los
+    desempaqueta solo. Esta prueba existe porque olvidarlo hizo que el
+    sistema devolviera cero cuadros de infrarrojo en produccion, sin error
+    visible: simplemente se caia de vuelta a los modelos numericos.
+    """
+    print("\n7c. Desempaquetado de archivos GOES")
+    import io as _io
+    import h5py
+
+    from nowcast import config, goes
+
+    NX, NY = 500, 300
+    x_scale, x_off = 5.6e-5, -0.101332
+    y_scale, y_off = -5.6e-5, 0.128212
+    # escala coherente con uint16: 89.62 K + 65535 pasos llega a ~352 K,
+    # que cubre todo el rango fisico de la banda 13
+    bt_scale, bt_off = 0.004, 89.62
+
+    buf = _io.BytesIO()
+    with h5py.File(buf, "w") as fh:
+        proj = fh.create_dataset("goes_imager_projection", data=0)
+        proj.attrs["semi_major_axis"] = np.float64(6378137.0)
+        proj.attrs["semi_minor_axis"] = np.float64(6356752.31414)
+        proj.attrs["perspective_point_height"] = np.float64(35786023.0)
+        proj.attrs["longitude_of_projection_origin"] = np.float64(-75.2)
+
+        dx = fh.create_dataset("x", data=np.arange(NX, dtype=np.int16))
+        dx.attrs["scale_factor"] = np.float32(x_scale)
+        dx.attrs["add_offset"] = np.float32(x_off)
+        dy = fh.create_dataset("y", data=np.arange(NY, dtype=np.int16))
+        dy.attrs["scale_factor"] = np.float32(y_scale)
+        dy.attrs["add_offset"] = np.float32(y_off)
+
+        # 280 K de fondo con una celda fria de 200 K, en enteros empaquetados
+        bt = np.full((NY, NX), 280.0)
+        yy, xx = np.mgrid[0:NY, 0:NX]
+        bt -= 80.0 * np.exp(-((yy - 150) ** 2 + (xx - 250) ** 2) / (2 * 20.0 ** 2))
+        packed = np.round((bt - bt_off) / bt_scale).astype(np.uint16)
+        cmi = fh.create_dataset("CMI", data=packed)
+        cmi.attrs["scale_factor"] = np.float32(bt_scale)
+        cmi.attrs["add_offset"] = np.float32(bt_off)
+        cmi.attrs["_FillValue"] = np.uint16(65535)
+
+    payload = buf.getvalue()
+
+    # el desempaquetado debe devolver Kelvin, no enteros crudos
+    with h5py.File(_io.BytesIO(payload), "r") as fh:
+        vals = goes.unpack(fh["CMI"], np.s_[150, 250])
+        crudo = float(np.asarray(fh["CMI"][150, 250]))
+    check("recupera Kelvin del tope frio", abs(float(vals) - 200.0) < 1.0,
+          f"{float(vals):.1f} K (crudo: {crudo:.0f})")
+    check("el crudo NO son Kelvin", crudo > 1000, f"{crudo:.0f}")
+
+    # la ventana debe centrarse donde toca y traer temperaturas plausibles
+    saved = (config.LAT, config.LON)
+    with h5py.File(_io.BytesIO(payload), "r") as fh:
+        gx = goes.FixedGrid({"semi_major_axis": 6378137.0,
+                             "semi_minor_axis": 6356752.31414,
+                             "perspective_point_height": 35786023.0,
+                             "longitude_of_projection_origin": -75.2})
+        target = gx.scan_to_lonlat(x_off + 250 * x_scale, y_off + 150 * y_scale)
+    config.LAT, config.LON = target
+
+    got = goes._read_window(payload, 60)
+    check("lee la ventana", got is not None)
+    if got is not None:
+        window, km_per_px = got
+        centro = float(window[60, 60])
+        check("centrada en la celda fria", abs(centro - 200.0) < 2.0,
+              f"{centro:.1f} K")
+        check("bordes calidos", abs(float(window[0, 0]) - 280.0) < 2.0,
+              f"{float(window[0, 0]):.1f} K")
+        # el punto sintetico cae cerca del borde norte del sector, donde el
+        # angulo de vision estira mucho el pixel; el rango es mas ancho que
+        # el 2.44 km real sobre Aguascalientes
+        check("km/pixel plausible", 2.0 < km_per_px < 8.0, f"{km_per_px:.2f} km")
+
+    # fuera del sector debe rendirse, no devolver basura
+    config.LAT, config.LON = -40.0, -70.0
+    check("descarta si cae fuera del sector",
+          goes._read_window(payload, 60) is None)
+    config.LAT, config.LON = saved
+
+
 def test_field_of_view() -> None:
     print("\n8. Limite del campo de vision")
     # a 0.8 px/min, +180 min = 144 px: el origen queda fuera de la imagen
@@ -301,6 +388,7 @@ def main() -> int:
     for fn in (test_motion_recovery, test_impact_timing, test_departing_cell,
                test_glancing_cell, test_direct_hit_now, test_clear_sky,
                test_growth_detection, test_geostationary_projection,
+               test_goes_unpacking,
                test_field_of_view, test_isotonic,
                test_weights, test_signal_normalisation):
         try:

@@ -151,6 +151,40 @@ def _haversine_km(a: tuple[float, float], b: tuple[float, float]) -> float:
 
 # ------------------------------------------------------------------ lectura
 
+def _attr(dset, name):
+    """Lee un atributo HDF5 como escalar, o None si no existe."""
+    if name not in dset.attrs:
+        return None
+    value = dset.attrs[name]
+    return float(np.ravel(value)[0])
+
+
+def unpack(dset, sl=None) -> np.ndarray:
+    """Lee un dataset aplicando scale_factor / add_offset / _FillValue.
+
+    Los archivos de GOES guardan 'x', 'y' y 'CMI' como enteros empaquetados
+    con factor de escala y desplazamiento. La libreria netCDF los desempaqueta
+    sola; h5py NO: devuelve los enteros crudos. Olvidarlo hace que las
+    coordenadas de barrido salgan como numeros sin sentido y que la
+    ubicacion parezca caer fuera de la imagen.
+    """
+    raw = np.asarray(dset[()] if sl is None else dset[sl])
+
+    fill = _attr(dset, "_FillValue")
+    mask = (raw == fill) if fill is not None else None
+
+    out = raw.astype(np.float64)
+    scale = _attr(dset, "scale_factor")
+    offset = _attr(dset, "add_offset")
+    if scale is not None:
+        out *= scale
+    if offset is not None:
+        out += offset
+    if mask is not None:
+        out[mask] = np.nan
+    return out
+
+
 def _read_window(raw: bytes, half_px: int) -> tuple[np.ndarray, float] | None:
     """Extrae una ventana centrada en la ubicacion y su escala en km/pixel.
 
@@ -162,7 +196,7 @@ def _read_window(raw: bytes, half_px: int) -> tuple[np.ndarray, float] | None:
             return None
 
         proj = fh["goes_imager_projection"]
-        grid = FixedGrid({k: proj.attrs[k][0] if np.ndim(proj.attrs[k]) else proj.attrs[k]
+        grid = FixedGrid({k: _attr(proj, k)
                           for k in ("semi_major_axis", "semi_minor_axis",
                                     "perspective_point_height",
                                     "longitude_of_projection_origin")})
@@ -174,29 +208,36 @@ def _read_window(raw: bytes, half_px: int) -> tuple[np.ndarray, float] | None:
         tx, ty = scan
 
         xs, ys = fh["x"], fh["y"]
-        # los ejes son 1-D y regulares: basta con dos valores para la escala
-        x0, x1 = float(xs[0]), float(xs[1])
-        y0, y1 = float(ys[0]), float(ys[1])
-        dx, dy = x1 - x0, y1 - y0
         nx, ny = xs.shape[0], ys.shape[0]
+        # la rejilla fija es exactamente regular: dos valores dan la escala
+        x0, x1 = unpack(xs, slice(0, 2))
+        y0, y1 = unpack(ys, slice(0, 2))
+        dx, dy = x1 - x0, y1 - y0
+        if not (dx and dy):
+            log.warning("ejes de la rejilla degenerados")
+            return None
 
         i = int(round((tx - x0) / dx))
         j = int(round((ty - y0) / dy))
         if not (half_px <= i < nx - half_px and half_px <= j < ny - half_px):
-            log.info("la ubicacion cae fuera de este sector (i=%s j=%s)", i, j)
+            log.info("la ubicacion cae fuera de este sector (i=%s j=%s de %sx%s)",
+                     i, j, nx, ny)
             return None
 
-        cmi = fh["CMI"]
-        window = cmi[j - half_px: j + half_px, i - half_px: i + half_px]
-        window = np.asarray(window, dtype=np.float32)
+        window = unpack(fh["CMI"],
+                        np.s_[j - half_px: j + half_px,
+                              i - half_px: i + half_px]).astype(np.float32)
 
-        # el relleno se marca como invalido
-        fill = cmi.attrs.get("_FillValue")
-        if fill is not None:
-            fill_v = float(np.ravel(fill)[0])
-            window[window == fill_v] = np.nan
-        # CMI de la banda 13 ya viene en Kelvin; descartamos valores absurdos
+        # banda 13 en Kelvin; fuera de este rango no es una medicion valida
         window[(window < 150.0) | (window > 350.0)] = np.nan
+        valid = np.isfinite(window)
+        if valid.mean() < 0.5:
+            log.warning("ventana mayormente invalida (%.0f%% util)",
+                        valid.mean() * 100)
+            return None
+        log.info("IR leido: %.1f-%.1f K, %.0f%% de pixeles validos",
+                 float(np.nanmin(window)), float(np.nanmax(window)),
+                 valid.mean() * 100)
 
         # escala real del pixel en el suelo, medida sobre la propia rejilla
         p_a = grid.scan_to_lonlat(x0 + i * dx, y0 + j * dy)
