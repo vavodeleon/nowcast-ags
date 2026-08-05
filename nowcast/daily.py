@@ -113,6 +113,31 @@ def build_report() -> str:
     return "\n".join(lines)
 
 
+def build_pressure_report() -> tuple[str, str] | None:
+    """Resumen diario de presion para su canal. None si no hay nada que decir."""
+    from . import pressure
+
+    st = pressure.fetch()
+    if st.now_msl is None:
+        return None
+
+    lineas = [f"Presion ahora: {st.now_msl:.0f} hPa (nivel del mar)"]
+    if st.change_24h is not None:
+        lineas.append(f"Ultimas 24 h: {st.change_24h:+.1f} hPa")
+
+    if st.forecast_drop and st.forecast_drop >= config.PRESSURE_DROP_WATCH:
+        lineas.append("")
+        lineas.append(f"Se espera una bajada de {st.forecast_drop:.0f} hPa "
+                      f"hacia el {st.forecast_drop_at}.")
+    else:
+        lineas.append("")
+        lineas.append("Sin bajadas notables previstas para hoy.")
+
+    lineas.append("")
+    lineas.append(f"Nivel: {st.level}")
+    return f"Presion — {datetime.now(config.TZ).strftime('%a %d %b')}", "\n".join(lineas)
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -121,6 +146,18 @@ def main() -> None:
     notify.send(f"Clima Aguascalientes — {fecha}", body,
                 priority="low", tags="sunny")
     print(body)
+
+    # resumen de presion a su canal, si esta configurado
+    if config.NTFY_TOPIC_SALUD:
+        try:
+            got = build_pressure_report()
+            if got:
+                titulo, cuerpo = got
+                notify.send(titulo, cuerpo, priority="low",
+                            tags="bar_chart", topic=config.NTFY_TOPIC_SALUD)
+                print("\n" + cuerpo)
+        except Exception as exc:
+            log.error("reporte de presion fallo: %s", exc)
 
 
 if __name__ == "__main__":

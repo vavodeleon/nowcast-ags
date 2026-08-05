@@ -8,7 +8,8 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
-from . import calibrate, config, engine, notify, sources, store, verify
+from . import (calibrate, config, engine, notify, pressure, render, sources,
+               store, verify)
 
 log = logging.getLogger(__name__)
 
@@ -109,6 +110,25 @@ def build_forecast() -> dict:
 
     model_data = sources.fetch_models()
     model_probs, per_model, cape = _model_probabilities(model_data)
+
+    # presion atmosferica (seguimiento aparte, para las migranas)
+    try:
+        pres = pressure.fetch()
+    except Exception as exc:
+        log.error("seguimiento de presion fallo: %s", exc)
+        pres = pressure.PressureState()
+
+    # imagen del satelite reproyectada, para el mapa
+    map_bounds = None
+    if ir_frames:
+        try:
+            import os
+            os.makedirs(os.path.dirname(config.LATEST_JSON), exist_ok=True)
+            map_bounds = render.render(
+                ir_frames[-1],
+                os.path.join(os.path.dirname(config.LATEST_JSON), "satelite.png"))
+        except Exception as exc:
+            log.error("no se pudo generar la imagen del satelite: %s", exc)
 
     # el movimiento que reportamos es el de la fuente mas confiable
     motion = None
@@ -215,8 +235,15 @@ def build_forecast() -> dict:
         "model_probs_1h": per_model,
         "confidence": _confidence_label(radar_nc, ir_nc, cov),
         "calibration_n": cal.get("n", 0),
+        "lat": config.LAT,
+        "lon": config.LON,
+        "map_bounds": map_bounds,
+        "motion_bearing": (round(motion.bearing_deg, 1)
+                           if motion.bearing_deg is not None else None),
+        "pressure": pressure.to_dict(pres),
     }
     result["_rows"] = rows
+    result["_pressure"] = pres
     return result
 
 
@@ -280,6 +307,7 @@ def main() -> None:
     # 3. nuevo pronostico
     result = build_forecast()
     store.append_predictions(result.pop("_rows"))
+    pres = result.pop("_pressure", None)
     store.prune()
     publish(result)
 
@@ -291,6 +319,11 @@ def main() -> None:
     # 4. avisar si toca
     if not args.no_alert:
         notify.maybe_alert(result)
+        if pres is not None:
+            try:
+                notify.maybe_pressure_alert(pres)
+            except Exception as exc:
+                log.error("alerta de presion fallo: %s", exc)
 
 
 if __name__ == "__main__":

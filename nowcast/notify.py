@@ -9,9 +9,10 @@ log = logging.getLogger(__name__)
 
 
 def send(title: str, message: str, *, priority: str = "default",
-         tags: str = "") -> bool:
-    if not config.NTFY_TOPIC:
-        log.warning("NTFY_TOPIC no configurado; no se envia nada")
+         tags: str = "", topic: str | None = None) -> bool:
+    topic = topic if topic is not None else config.NTFY_TOPIC
+    if not topic:
+        log.warning("canal ntfy no configurado; no se envia nada")
         return False
     headers = {
         "Title": title.encode("utf-8").decode("latin-1", errors="replace"),
@@ -19,14 +20,72 @@ def send(title: str, message: str, *, priority: str = "default",
     }
     if tags:
         headers["Tags"] = tags
-    url = f"{config.NTFY_SERVER.rstrip('/')}/{config.NTFY_TOPIC}"
+    url = f"{config.NTFY_SERVER.rstrip('/')}/{topic}"
     ok = http.post(url, message.encode("utf-8"), headers)
     if ok:
         log.info("notificacion enviada: %s", title)
     return ok
 
 
-def _cooldown_ok(key: str) -> bool:
+def _cooldown_ok_hours(key: str, hours: float) -> bool:
+    return _cooldown_ok(key, minutes=hours * 60.0)
+
+
+def maybe_pressure_alert(state) -> bool:
+    """Avisa a su canal si viene o esta ocurriendo una caida de presion.
+
+    El tono es deliberadamente sereno y concreto. Una alerta de salud que
+    suena alarmante genera ansiedad sin aportar nada; lo util es el dato y
+    el margen de tiempo para actuar.
+    """
+    if not config.NTFY_TOPIC_SALUD:
+        return False
+
+    sent = False
+
+    # ---- aviso anticipado, a partir del pronostico
+    if state.is_risky_soon and _cooldown_ok_hours(
+            "presion_previo", config.PRESSURE_ALERT_COOLDOWN_H):
+        cuando = state.forecast_drop_at or "en las proximas horas"
+        horas = state.forecast_drop_in_h
+        margen = f" (en ~{horas:.0f} h)" if horas else ""
+        cuerpo = [
+            f"Se espera una caida de {state.forecast_drop:.0f} hPa "
+            f"en 24 horas, con el punto mas bajo el {cuando}{margen}.",
+            "",
+            f"Nivel: {state.level}.",
+        ]
+        if state.now_msl:
+            cuerpo.append(f"Ahora: {state.now_msl:.0f} hPa a nivel del mar.")
+        cuerpo.append("")
+        cuerpo.append("Buen momento para tener a la mano lo que te funcione.")
+        if send("Presion en descenso mañana", "\n".join(cuerpo),
+                priority="default", tags="chart_with_downwards_trend",
+                topic=config.NTFY_TOPIC_SALUD):
+            _mark("presion_previo")
+            sent = True
+
+    # ---- confirmacion cuando la caida ya esta ocurriendo
+    if state.is_falling_now and _cooldown_ok_hours(
+            "presion_ahora", config.PRESSURE_LIVE_COOLDOWN_H):
+        cuerpo = [
+            f"La presion bajo {abs(state.change_3h):.1f} hPa en las ultimas "
+            "3 horas.",
+        ]
+        if state.change_24h is not None:
+            cuerpo.append(f"En 24 horas: {state.change_24h:+.1f} hPa.")
+        if state.now_msl:
+            cuerpo.append(f"Ahora: {state.now_msl:.0f} hPa a nivel del mar.")
+        if send("La presion esta bajando ahora", "\n".join(cuerpo),
+                priority="high", tags="arrow_down_small",
+                topic=config.NTFY_TOPIC_SALUD):
+            _mark("presion_ahora")
+            sent = True
+
+    return sent
+
+
+def _cooldown_ok(key: str, minutes: float | None = None) -> bool:
     state = store.load_json(config.STATE_JSON, {})
     last = state.get(f"alert_{key}")
     if not last:
@@ -37,7 +96,8 @@ def _cooldown_ok(key: str) -> bool:
     except ValueError:
         return True
     age_min = (store.now_utc() - prev).total_seconds() / 60.0
-    return age_min >= config.ALERT_COOLDOWN_MIN
+    return age_min >= (minutes if minutes is not None
+                       else config.ALERT_COOLDOWN_MIN)
 
 
 def _mark(key: str) -> None:

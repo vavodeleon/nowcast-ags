@@ -3,228 +3,377 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nowcast Aguascalientes</title>
+<title>¿Va a llover? · Aguascalientes</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
 <style>
   :root{
-    --bg:#0e1116; --panel:#161b22; --line:#252c37;
-    --text:#e6edf3; --muted:#8b949e;
-    --dry:#3fb950; --wet:#58a6ff; --hot:#f85149; --warn:#d29922;
+    color-scheme: light;
+    --bg:#f4f6f9; --card:#fff; --line:#e3e8ef;
+    --ink:#16202e; --muted:#697790;
+    --verde:#1a9c5b; --amarillo:#d99b0b; --naranja:#e2701e;
+    --rojo:#d6392f; --azul:#2b6fd4; --morado:#7b3fa0;
   }
   *{box-sizing:border-box}
-  body{margin:0;padding:20px;background:var(--bg);color:var(--text);
-    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-  .wrap{max-width:880px;margin:0 auto}
-  h1{font-size:20px;margin:0 0 2px;font-weight:600}
-  .sub{color:var(--muted);font-size:13px;margin-bottom:20px}
-  .card{background:var(--panel);border:1px solid var(--line);
-    border-radius:10px;padding:18px;margin-bottom:14px}
-  .hero{text-align:center;padding:26px 18px}
-  .big{font-size:56px;font-weight:700;line-height:1;letter-spacing:-2px}
-  .verdict{font-size:17px;margin-top:8px}
-  .meta{color:var(--muted);font-size:13px;margin-top:10px}
-  .bars{display:flex;gap:6px;align-items:flex-end;height:120px;margin-top:6px}
-  .bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;
-    align-items:center;gap:5px;height:100%}
-  .fill{width:100%;border-radius:4px 4px 0 0;min-height:3px;
-    background:var(--wet);transition:height .3s}
-  .bar span{font-size:11px;color:var(--muted);white-space:nowrap}
-  .pct{font-size:12px;font-weight:600;color:var(--text)}
-  h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;
-    color:var(--muted);margin:0 0 12px;font-weight:600}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}
-  th{color:var(--muted);font-weight:500}
+  body{margin:0;padding:16px;background:var(--bg);color:var(--ink);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:20px;margin-bottom:14px;box-shadow:0 1px 3px rgba(16,32,64,.05)}
+
+  /* ---------- veredicto principal ---------- */
+  .hero{text-align:center;padding:30px 20px}
+  .icono{font-size:64px;line-height:1;margin-bottom:6px}
+  .titular{font-size:30px;font-weight:700;letter-spacing:-.5px;margin:0}
+  .apoyo{font-size:17px;color:var(--muted);margin-top:8px}
+  .sello{display:inline-block;margin-top:14px;padding:4px 12px;border-radius:99px;
+    font-size:13px;background:#eef2f7;color:var(--muted)}
+
+  /* ---------- barras por hora ---------- */
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.9px;
+    color:var(--muted);margin:0 0 16px;font-weight:700}
+  .barras{display:flex;gap:8px;align-items:flex-end;height:130px}
+  .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;
+    align-items:center;gap:6px;height:100%}
+  .relleno{width:100%;border-radius:8px 8px 3px 3px;min-height:5px;
+    transition:height .4s ease}
+  .col small{font-size:11px;color:var(--muted);white-space:nowrap}
+  .col b{font-size:13px;font-weight:700}
+  .sindato{background:repeating-linear-gradient(45deg,#e8edf3,#e8edf3 5px,
+    transparent 5px,transparent 10px);height:100%!important;border-radius:8px}
+
+  /* ---------- mapa ---------- */
+  #mapa{height:340px;border-radius:12px;overflow:hidden;background:#dde4ec}
+  .leyenda{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:13px;
+    color:var(--muted);align-items:center}
+  .chip{display:inline-flex;align-items:center;gap:6px}
+  .swatch{width:15px;height:15px;border-radius:4px;display:inline-block}
+
+  /* ---------- presión ---------- */
+  .nivel{display:flex;align-items:center;gap:16px;margin-bottom:6px}
+  .foco{width:58px;height:58px;border-radius:50%;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    font-size:28px;color:#fff}
+  .nivel-txt{font-size:22px;font-weight:700;line-height:1.2}
+  .nivel-sub{font-size:14px;color:var(--muted)}
+  .chartbox{height:190px;margin-top:18px}
+  .datos{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+    gap:14px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+  .dato .k{font-size:12px;color:var(--muted)}
+  .dato .v{font-size:19px;font-weight:700;margin-top:2px}
+
+  details{margin-top:6px}
+  summary{cursor:pointer;font-size:14px;color:var(--muted);padding:6px 0}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+  th,td{text-align:left;padding:8px 4px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:12px}
   td.num{text-align:right;font-variant-numeric:tabular-nums}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px}
-  .kv .k{color:var(--muted);font-size:12px}
-  .kv .v{font-size:19px;font-weight:600;margin-top:2px}
-  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;
-    background:#1f6feb22;color:var(--wet);border:1px solid #1f6feb44}
-  .pill.low{background:#d2992222;color:var(--warn);border-color:#d2992244}
-  .chartbox{height:200px}
-  footer{color:var(--muted);font-size:12px;text-align:center;margin:24px 0 8px}
-  a{color:var(--wet)}
+  .nota{font-size:13px;color:var(--muted);line-height:1.5;margin-top:12px}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin:22px 0}
+  a{color:var(--azul)}
+  @media(max-width:520px){
+    .titular{font-size:25px} .icono{font-size:54px} #mapa{height:270px}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Nowcast Aguascalientes</h1>
-  <div class="sub">Seguimiento de celdas con GOES-19 banda 13 &middot; la ciudad
-    est&aacute; en un hueco de la red de radar, as&iacute; que manda el sat&eacute;lite</div>
 
   <div class="card hero">
-    <div class="big" id="prob">--</div>
-    <div class="verdict" id="verdict">Cargando...</div>
-    <div class="meta" id="meta"></div>
+    <div class="icono" id="icono">⏳</div>
+    <h1 class="titular" id="titular">Cargando…</h1>
+    <div class="apoyo" id="apoyo"></div>
+    <div class="sello" id="sello"></div>
   </div>
 
   <div class="card">
-    <h2>Proximas 3 horas</h2>
-    <div class="bars" id="bars"></div>
+    <h2>Las próximas 3 horas</h2>
+    <div class="barras" id="barras"></div>
   </div>
 
   <div class="card">
-    <h2>Situacion actual</h2>
-    <div class="grid" id="situacion"></div>
+    <h2>Dónde están las nubes de tormenta</h2>
+    <div id="mapa"></div>
+    <div class="leyenda">
+      <span class="chip"><span class="swatch" style="background:#5abfa0"></span>nube alta</span>
+      <span class="chip"><span class="swatch" style="background:#f5d250"></span>creciendo</span>
+      <span class="chip"><span class="swatch" style="background:#f08232"></span>tormenta</span>
+      <span class="chip"><span class="swatch" style="background:#e13c3c"></span>fuerte</span>
+      <span class="chip"><span class="swatch" style="background:#aa2896"></span>muy fuerte</span>
+    </div>
+    <p class="nota" id="nota-mapa">
+      Imagen del satélite GOES-19. Los colores muestran qué tan fríos están los
+      techos de las nubes: entre más frío, más alta y más cargada está la nube.
+      Los círculos marcan 50, 100 y 150 km alrededor de la ciudad.
+    </p>
   </div>
 
   <div class="card">
-    <h2>Que tan bien esta aprendiendo</h2>
-    <table id="perf"><tbody><tr><td>Sin datos todavia.</td></tr></tbody></table>
+    <h2>Presión atmosférica</h2>
+    <div class="nivel">
+      <div class="foco" id="foco">–</div>
+      <div>
+        <div class="nivel-txt" id="nivel-txt">Cargando…</div>
+        <div class="nivel-sub" id="nivel-sub"></div>
+      </div>
+    </div>
+    <div class="chartbox"><canvas id="chart-presion"></canvas></div>
+    <div class="datos" id="datos-presion"></div>
+    <p class="nota">
+      La línea punteada marca dónde empieza el nivel de riesgo. La zona
+      sombreada a la derecha es pronóstico, no algo que ya haya pasado.
+    </p>
+    <details>
+      <summary>¿Por qué importa la presión?</summary>
+      <p class="nota">
+        En personas susceptibles, las caídas de presión de unos 5 a 10 hPa en
+        12 a 24 horas se asocian con más episodios de migraña. La sensibilidad
+        varía mucho de una persona a otra —hay quienes reaccionan a las subidas
+        y no a las bajadas— y los estudios no son unánimes, así que esto es una
+        señal para poder anticiparse, no un diagnóstico ni un sustituto de lo
+        que indique un médico.
+      </p>
+      <p class="nota">
+        Los valores están en presión reducida a nivel del mar, que es como se
+        reportan en la literatura. La presión real aquí es unos 200 hPa más
+        baja porque la ciudad está a 1,880 metros de altitud.
+      </p>
+    </details>
   </div>
 
   <div class="card">
-    <h2>Predicho vs. observado (48 h, horizonte 60 min)</h2>
-    <div class="chartbox"><canvas id="chart"></canvas></div>
+    <details>
+      <summary>Detalles técnicos y qué tan bien está acertando</summary>
+      <div class="datos" id="datos-tecnicos"></div>
+      <table id="perf"><tbody><tr><td class="nota">Aún sin suficientes casos verificados.</td></tr></tbody></table>
+      <p class="nota" id="nota-tecnica"></p>
+    </details>
   </div>
 
-  <div class="card">
-    <h2>Modelos numericos a 1 hora</h2>
-    <table id="modelos"><tbody><tr><td>Sin datos.</td></tr></tbody></table>
-  </div>
-
-  <footer>Se actualiza cada 15 minutos &middot; <span id="stamp"></span></footer>
+  <footer>Se actualiza cada 15 minutos · <span id="sello-pie"></span></footer>
 </div>
 
 <script>
 const q = s => document.querySelector(s);
-// null significa "no tengo datos para ese horizonte", que no es lo mismo
-// que 0%. Se muestra distinto a proposito.
-const pct = v => v == null ? "—" : Math.round(v * 100) + "%";
-const known = v => v != null && !Number.isNaN(+v);
+const hay = v => v !== null && v !== undefined && !Number.isNaN(Number(v));
+const pct = v => hay(v) ? Math.round(v * 100) + "%" : "—";
 
-function colorFor(p){
-  if (p >= .7) return "var(--hot)";
-  if (p >= .4) return "var(--warn)";
-  return "var(--wet)";
+function colorProb(p){
+  if (p >= .70) return "var(--rojo)";
+  if (p >= .45) return "var(--naranja)";
+  if (p >= .25) return "var(--amarillo)";
+  return "var(--azul)";
 }
 
-function verdictFor(d){
+/* ---------- veredicto en lenguaje llano ---------- */
+function veredicto(d){
   const p60 = d.probabilities?.["60"];
+  const vals = Object.values(d.probabilities || {}).filter(hay).map(Number);
   const eta = d.cell_eta_min;
-  const vals = Object.values(d.probabilities || {}).filter(known).map(Number);
-  if (!vals.length) return "Sin datos: ninguna fuente respondio";
-  if ((d.raining_now ?? 0) > .5) return "Esta lloviendo ahora";
-  if (eta != null && eta <= 90 && known(p60) && p60 >= .5)
-    return `Celda entrando, llega en ~${Math.round(eta)} min`;
-  if (known(p60) && p60 >= .6) return "Lluvia probable en la proxima hora";
-  if (known(p60) && p60 >= .35) return "Riesgo moderado de lluvia";
-  if (Math.max(...vals) >= .4) return "Sin lluvia inmediata, pero hay celdas cerca";
-  return "Sin lluvia a la vista";
+  const lloviendo = (d.raining_now ?? 0) > .5;
+
+  if (!vals.length)
+    return {ic:"🛰️", t:"Sin datos ahora", s:"Ninguna fuente respondió en la última corrida.", c:"var(--muted)"};
+  if (lloviendo)
+    return {ic:"🌧️", t:"Está lloviendo", s:"El satélite ve lluvia sobre la ciudad.", c:"var(--azul)"};
+  if (hay(eta) && eta <= 90 && hay(p60) && p60 >= .45)
+    return {ic:"⛈️", t:`Lluvia en ~${Math.round(eta)} min`,
+            s:`Viene una celda desde el ${d.motion_from}, a ${Math.round(d.motion_speed_kmh)} km/h.`,
+            c:"var(--rojo)"};
+
+  const max = Math.max(...vals);
+  if (hay(p60) && p60 >= .70)
+    return {ic:"🌧️", t:"Va a llover", s:"Alta probabilidad en la próxima hora.", c:"var(--rojo)"};
+  if (hay(p60) && p60 >= .45)
+    return {ic:"🌦️", t:"Puede llover", s:"Conviene llevar paraguas por si acaso.", c:"var(--naranja)"};
+  if (max >= .45)
+    return {ic:"☁️", t:"Sin lluvia por ahora", s:"Pero hay celdas cerca; la cosa puede cambiar.", c:"var(--amarillo)"};
+  if (hay(p60) && p60 >= .25)
+    return {ic:"🌤️", t:"Poco probable", s:"No parece que vaya a llover pronto.", c:"var(--azul)"};
+  return {ic:"☀️", t:"No va a llover", s:"Despejado en las próximas horas.", c:"var(--verde)"};
 }
 
-function render(d){
-  const p60 = d.probabilities?.["60"];
-  q("#prob").textContent = pct(known(p60) ? +p60 : null);
-  q("#prob").style.color = known(p60) ? colorFor(+p60) : "var(--muted)";
-  q("#verdict").textContent = verdictFor(d);
+/* ---------- presión ---------- */
+const NIVELES = {
+  "tranquilo": {ic:"✓", c:"var(--verde)", t:"Presión estable",
+    s:"Sin cambios bruscos a la vista."},
+  "vigilancia": {ic:"~", c:"var(--amarillo)", t:"Cambio moderado",
+    s:"Hay un descenso, pero por debajo del umbral de riesgo."},
+  "alto": {ic:"↓", c:"var(--naranja)", t:"Descenso importante",
+    s:"En el rango que suele asociarse con migraña."},
+  "muy alto": {ic:"↓↓", c:"var(--rojo)", t:"Descenso fuerte",
+    s:"Caída pronunciada. Vale la pena tomar precauciones."},
+  "sin datos": {ic:"–", c:"var(--muted)", t:"Sin datos", s:""},
+};
 
-  const conf = d.confidence || "—";
-  q("#meta").innerHTML =
-    `Emitido ${d.issued_local || "—"} &middot; confianza <span class="pill${
-      conf === "baja" ? " low" : ""}">${conf}</span>`;
+function pintarPresion(p){
+  if (!p) return;
+  const n = NIVELES[p.level] || NIVELES["sin datos"];
+  const foco = q("#foco");
+  foco.textContent = n.ic;
+  foco.style.background = n.c;
+  q("#nivel-txt").textContent = n.t;
 
-  // barras por horizonte
-  const leads = Object.keys(d.probabilities || {}).map(Number).sort((a,b)=>a-b);
-  q("#bars").innerHTML = leads.map(l => {
-    const raw = d.probabilities[l];
-    const label = l >= 60 ? (l % 60 ? `${(l/60).toFixed(1)}h` : `${l/60}h`) : `${l}m`;
-    if (!known(raw)) {
-      // fuera del campo de vision: barra vacia, no una barra en cero
-      return `<div class="bar" title="Fuera del alcance del radar/satelite">
-        <div class="pct" style="color:var(--muted)">?</div>
-        <div class="fill" style="height:100%;background:repeating-linear-gradient(
-          45deg,#252c37,#252c37 4px,transparent 4px,transparent 8px);opacity:.6"></div>
-        <span>${label}</span></div>`;
-    }
-    const p = +raw;
-    return `<div class="bar">
-      <div class="pct">${pct(p)}</div>
-      <div class="fill" style="height:${Math.max(3, p*100)}%;background:${colorFor(p)}"></div>
-      <span>${label}</span></div>`;
-  }).join("");
+  let sub = n.s;
+  if (p.forecast_drop && p.forecast_drop >= (p.umbral_24h || 5) && p.forecast_drop_at)
+    sub = `Baja ${p.forecast_drop.toFixed(0)} hPa hacia el ${p.forecast_drop_at}.`;
+  q("#nivel-sub").textContent = sub;
 
-  // situacion
-  const items = [
-    ["Movimiento", d.motion_speed_kmh != null
-      ? `${Math.round(d.motion_speed_kmh)} km/h` : "—"],
-    ["Viene del", d.motion_from || "—"],
-    ["Celda mas cercana", d.cell_km != null ? `${Math.round(d.cell_km)} km` : "ninguna"],
-    ["Llega en", d.cell_eta_min != null ? `${Math.round(d.cell_eta_min)} min` : "—"],
-    ["CAPE", d.cape != null ? `${Math.round(d.cape)} J/kg` : "—"],
-    ["Tendencia", d.growth == null ? "—"
-      : d.growth > 1.1 ? "creciendo" : d.growth < .9 ? "disipandose" : "estable"],
-    ["Sensor principal", d.primary_sensor || "—"],
-    ["Radar sobre la ciudad", d.radar_coverage == null ? "—"
-      : d.radar_usable ? pct(d.radar_coverage) : "sin cobertura"],
-    ["Casos aprendidos", d.calibration_n ?? 0],
+  const campos = [
+    ["Ahora", hay(p.now_msl) ? `${Math.round(p.now_msl)} hPa` : "—"],
+    ["Últimas 3 h", hay(p.change_3h) ? `${p.change_3h > 0 ? "+" : ""}${p.change_3h.toFixed(1)}` : "—"],
+    ["Últimas 24 h", hay(p.change_24h) ? `${p.change_24h > 0 ? "+" : ""}${p.change_24h.toFixed(1)}` : "—"],
+    ["Tendencia", p.trend || "—"],
   ];
-  q("#situacion").innerHTML = items.map(([k,v]) =>
-    `<div class="kv"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+  q("#datos-presion").innerHTML = campos.map(([k, v]) =>
+    `<div class="dato"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
 
-  // desempeno
-  const perf = d.performance || {};
-  const rows = Object.keys(perf).map(Number).sort((a,b)=>a-b);
-  q("#perf").innerHTML = rows.length ? `
-    <thead><tr><th>Horizonte</th><th class="num">Acierto</th>
-    <th class="num">Brier</th><th class="num">vs. climatologia</th>
-    <th class="num">Casos</th></tr></thead><tbody>` +
-    rows.map(l => {
-      const r = perf[l], s = r.skill_vs_climatologia;
-      return `<tr><td>+${l} min</td>
-        <td class="num">${pct(r.acierto_binario)}</td>
-        <td class="num">${r.brier.toFixed(3)}</td>
-        <td class="num" style="color:${s>0?"var(--dry)":"var(--hot)"}">${
-          s == null ? "—" : (s>0?"+":"") + Math.round(s*100) + "%"}</td>
-        <td class="num">${r.n}</td></tr>`;
-    }).join("") + "</tbody>"
-    : "<tbody><tr><td>Aun sin suficientes casos verificados.</td></tr></tbody>";
+  const serie = p.series || [];
+  if (!serie.length || typeof Chart === "undefined") return;
 
-  // modelos
-  const mp = d.model_probs_1h || {};
-  const keys = Object.keys(mp);
-  q("#modelos").innerHTML = keys.length
-    ? "<tbody>" + keys.map(k =>
-        `<tr><td>${k}</td><td class="num">${pct(mp[k])}</td></tr>`).join("") + "</tbody>"
-    : "<tbody><tr><td>Sin datos.</td></tr></tbody>";
-
-  q("#stamp").textContent = d.issued_local ? `ultima corrida ${d.issued_local}` : "";
-}
-
-function drawChart(h){
-  const s = (h.series || []).filter(p => p.p != null);
-  if (!s.length) return;
-  new Chart(q("#chart"), {
+  const primeroFuturo = serie.findIndex(s => s.futuro);
+  new Chart(q("#chart-presion"), {
     type: "line",
     data: {
-      labels: s.map(p => p.t.slice(5,16).replace("T"," ")),
-      datasets: [
-        { label:"Predicho", data:s.map(p => p.p*100), borderColor:"#58a6ff",
-          backgroundColor:"#58a6ff22", fill:true, pointRadius:0,
-          borderWidth:2, tension:.3 },
-        { label:"Llovio", data:s.map(p => p.y == null ? null : p.y*100),
-          borderColor:"#3fb950", pointRadius:0, borderWidth:2,
-          stepped:true, spanGaps:false }
-      ]
+      labels: serie.map(s => s.t),
+      datasets: [{
+        data: serie.map(s => s.msl),
+        borderColor: "#2b6fd4", backgroundColor: "rgba(43,111,212,.10)",
+        fill: true, pointRadius: 0, borderWidth: 2.5, tension: .35,
+        segment: {
+          borderDash: c => c.p0DataIndex >= primeroFuturo - 1 && primeroFuturo >= 0
+            ? [5, 4] : undefined
+        }
+      }]
     },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      interaction:{mode:"index",intersect:false},
-      scales:{
-        y:{min:0,max:100,ticks:{color:"#8b949e",callback:v=>v+"%"},
-           grid:{color:"#252c37"}},
-        x:{ticks:{color:"#8b949e",maxTicksLimit:8},grid:{display:false}}
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: {mode: "index", intersect: false},
+      scales: {
+        y: {ticks: {color: "#697790", callback: v => v + " hPa"},
+            grid: {color: "#eef2f7"}},
+        x: {ticks: {color: "#697790", maxTicksLimit: 7, maxRotation: 0},
+            grid: {display: false}}
       },
-      plugins:{legend:{labels:{color:"#e6edf3",boxWidth:12}}}
+      plugins: {
+        legend: {display: false},
+        tooltip: {callbacks: {label: c => `${c.parsed.y} hPa`}}
+      }
     }
   });
 }
 
+/* ---------- mapa ---------- */
+let mapa;
+function pintarMapa(d){
+  if (typeof L === "undefined" || !hay(d.lat) || !hay(d.lon)) return;
+  if (mapa) mapa.remove();
+
+  mapa = L.map("mapa", {zoomControl:true, attributionControl:true,
+                        scrollWheelZoom:false}).setView([d.lat, d.lon], 8);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; OpenStreetMap &copy; CARTO · satélite: NOAA GOES-19',
+    maxZoom: 12
+  }).addTo(mapa);
+
+  if (d.map_bounds)
+    L.imageOverlay("satelite.png?t=" + Date.now(), d.map_bounds,
+                   {opacity:.78}).addTo(mapa);
+
+  // anillos de distancia: dan escala sin necesidad de leer números
+  [50000, 100000, 150000].forEach(r => {
+    L.circle([d.lat, d.lon], {radius:r, color:"#16202e", weight:1,
+      opacity:.22, fill:false, dashArray:"4 6"}).addTo(mapa);
+  });
+
+  L.circleMarker([d.lat, d.lon], {radius:7, color:"#fff", weight:2.5,
+    fillColor:"#16202e", fillOpacity:1}).addTo(mapa)
+    .bindTooltip("Aguascalientes", {permanent:false});
+
+  // de dónde vienen las celdas
+  if (hay(d.motion_bearing) && d.motion_speed_kmh > 3){
+    const desde = (d.motion_bearing + 180) % 360;
+    const rad = desde * Math.PI / 180, dist = 1.35;
+    const destino = [d.lat + dist * Math.cos(rad),
+                     d.lon + dist * Math.sin(rad) / Math.cos(d.lat * Math.PI / 180)];
+    L.polyline([[d.lat, d.lon], destino], {color:"#16202e", weight:2.5,
+      opacity:.55, dashArray:"7 7"}).addTo(mapa);
+    L.marker(destino, {icon: L.divIcon({className:"", html:
+      `<div style="background:#16202e;color:#fff;padding:3px 9px;border-radius:99px;
+        font:600 11px -apple-system,sans-serif;white-space:nowrap;
+        transform:translate(-50%,-50%)">vienen del ${d.motion_from}</div>`
+    })}).addTo(mapa);
+  }
+
+  setTimeout(() => mapa.invalidateSize(), 120);
+}
+
+/* ---------- render principal ---------- */
+function render(d){
+  const v = veredicto(d);
+  q("#icono").textContent = v.ic;
+  q("#titular").textContent = v.t;
+  q("#titular").style.color = v.c;
+  q("#apoyo").textContent = v.s;
+  q("#sello").textContent =
+    `Actualizado ${d.issued_local || "—"} · confianza ${d.confidence || "—"}`;
+  q("#sello-pie").textContent = d.issued_local || "";
+
+  const leads = Object.keys(d.probabilities || {}).map(Number).sort((a,b)=>a-b);
+  q("#barras").innerHTML = leads.map(l => {
+    const raw = d.probabilities[l];
+    const et = l >= 60 ? (l % 60 ? `${(l/60).toFixed(1)} h` : `${l/60} h`) : `${l} min`;
+    if (!hay(raw))
+      return `<div class="col" title="Fuera del alcance del satélite">
+        <b style="color:var(--muted)">?</b><div class="sindato"></div><small>${et}</small></div>`;
+    const p = Number(raw);
+    return `<div class="col"><b>${pct(p)}</b>
+      <div class="relleno" style="height:${Math.max(5, p*100)}%;background:${colorProb(p)}"></div>
+      <small>${et}</small></div>`;
+  }).join("");
+
+  pintarMapa(d);
+  pintarPresion(d.pressure);
+
+  // técnicos
+  const t = [
+    ["Sensor principal", d.primary_sensor || "—"],
+    ["Radar en la ciudad", d.radar_usable ? pct(d.radar_coverage) : "sin cobertura"],
+    ["Movimiento", hay(d.motion_speed_kmh) ? `${Math.round(d.motion_speed_kmh)} km/h` : "—"],
+    ["CAPE", hay(d.cape) ? `${Math.round(d.cape)} J/kg` : "—"],
+    ["Píxel satélite", hay(d.sources?.km_per_px) ? `${d.sources.km_per_px} km` : "—"],
+    ["Casos aprendidos", d.calibration_n ?? 0],
+  ];
+  q("#datos-tecnicos").innerHTML = t.map(([k, v2]) =>
+    `<div class="dato"><div class="k">${k}</div><div class="v">${v2}</div></div>`).join("");
+
+  const perf = d.performance || {};
+  const filas = Object.keys(perf).map(Number).sort((a,b)=>a-b);
+  if (filas.length){
+    q("#perf").innerHTML = `<thead><tr><th>Horizonte</th><th class="num">Acierto</th>
+      <th class="num">vs. climatología</th><th class="num">Casos</th></tr></thead><tbody>` +
+      filas.map(l => {
+        const r = perf[l], s = r.skill_vs_climatologia;
+        return `<tr><td>+${l} min</td><td class="num">${pct(r.acierto_binario)}</td>
+          <td class="num" style="color:${s>0?"var(--verde)":"var(--rojo)"}">${
+            s == null ? "—" : (s>0?"+":"") + Math.round(s*100) + "%"}</td>
+          <td class="num">${r.n}</td></tr>`;
+      }).join("") + "</tbody>";
+  }
+  q("#nota-tecnica").textContent =
+    "«vs. climatología» compara contra simplemente decir «llueve el X% de los días». " +
+    "Positivo significa que el sistema aporta información real, no solo repite el promedio.";
+}
+
 const bust = "?t=" + Date.now();
-fetch("latest.json" + bust).then(r => r.json()).then(render)
-  .catch(() => { q("#verdict").textContent = "Aun no hay ninguna corrida."; });
-fetch("history.json" + bust).then(r => r.json()).then(drawChart).catch(() => {});
+fetch("latest.json" + bust).then(r => r.json()).then(render).catch(() => {
+  q("#titular").textContent = "Aún no hay datos";
+  q("#icono").textContent = "🛰️";
+});
 setTimeout(() => location.reload(), 5 * 60 * 1000);
 </script>
 </body>

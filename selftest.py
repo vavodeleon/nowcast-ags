@@ -288,7 +288,9 @@ def test_goes_unpacking() -> None:
     got = goes._read_window(payload, 60)
     check("lee la ventana", got is not None)
     if got is not None:
-        window, km_per_px = got
+        window, km_per_px, meta = got
+        check("devuelve datos de rejilla para el mapa",
+              all(k in meta for k in ("proj", "x0", "dx", "i0", "y0", "dy", "j0")))
         centro = float(window[60, 60])
         check("centrada en la celda fria", abs(centro - 200.0) < 2.0,
               f"{centro:.1f} K")

@@ -140,6 +140,36 @@ class FixedGrid:
         return math.degrees(lat), math.degrees(lon)
 
 
+def scan_grid_vectorized(grid: FixedGrid, lats: np.ndarray,
+                         lons: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Version vectorizada de lonjat_to_scan, para rejillas completas.
+
+    Necesaria para reproyectar la imagen del satelite a coordenadas
+    geograficas: sin esto, superponerla sobre un mapa la deja torcida,
+    porque la rejilla del satelite no es un rectangulo en lat/lon.
+    """
+    lat = np.radians(lats)
+    lon = np.radians(lons)
+    r_eq, r_pol = grid.r_eq, grid.r_pol
+
+    lat_c = np.arctan(((r_pol ** 2) / (r_eq ** 2)) * np.tan(lat))
+    e2 = (r_eq ** 2 - r_pol ** 2) / (r_eq ** 2)
+    r_c = r_pol / np.sqrt(1.0 - e2 * np.cos(lat_c) ** 2)
+
+    sx = grid.H - r_c * np.cos(lat_c) * np.cos(lon - grid.lon0)
+    sy = -r_c * np.cos(lat_c) * np.sin(lon - grid.lon0)
+    sz = r_c * np.sin(lat_c)
+
+    visible = grid.H * (grid.H - sx) >= sy ** 2 + grid._ratio * sz ** 2
+
+    with np.errstate(invalid="ignore", divide="ignore"):
+        y = np.arctan(sz / sx)
+        x = np.arcsin(-sy / np.sqrt(sx ** 2 + sy ** 2 + sz ** 2))
+    y = np.where(visible, y, np.nan)
+    x = np.where(visible, x, np.nan)
+    return x, y
+
+
 def _haversine_km(a: tuple[float, float], b: tuple[float, float]) -> float:
     lat1, lon1 = math.radians(a[0]), math.radians(a[1])
     lat2, lon2 = math.radians(b[0]), math.radians(b[1])
@@ -244,7 +274,17 @@ def _read_window(raw: bytes, half_px: int) -> tuple[np.ndarray, float] | None:
         p_b = grid.scan_to_lonlat(x0 + (i + 1) * dx, y0 + j * dy)
         km_per_px = _haversine_km(p_a, p_b) if (p_a and p_b) else 3.0
 
-    return window, km_per_px
+        # datos de la rejilla para poder reproyectar despues sobre un mapa
+        meta = {
+            "proj": {k: _attr(proj, k)
+                     for k in ("semi_major_axis", "semi_minor_axis",
+                               "perspective_point_height",
+                               "longitude_of_projection_origin")},
+            "x0": x0, "dx": dx, "i0": i - half_px,
+            "y0": y0, "dy": dy, "j0": j - half_px,
+        }
+
+    return window, km_per_px, meta
 
 
 def fetch_ir_frames(n: int = 5):
@@ -270,10 +310,11 @@ def fetch_ir_frames(n: int = 5):
                 continue
             if got is None:
                 break  # la ubicacion no esta en este sector: probar el siguiente
-            data, km_per_px = got
-            frames.append(Frame(time=t, data=data, km_per_px=km_per_px,
-                                center_lat=config.LAT, center_lon=config.LON,
-                                kind="ir"))
+            data, km_per_px, meta = got
+            f = Frame(time=t, data=data, km_per_px=km_per_px,
+                      center_lat=config.LAT, center_lon=config.LON, kind="ir")
+            f.grid_meta = meta
+            frames.append(f)
 
         if len(frames) >= 2:
             log.info("infrarrojo %s: %s cuadros, %.2f km/pixel",

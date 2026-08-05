@@ -65,6 +65,26 @@ ALERT_COOLDOWN_MIN = 45       # no repetir la misma alerta antes de esto
 
 NTFY_SERVER = os.environ.get("NTFY_SERVER", "https://ntfy.sh")
 NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "")
+# Canal aparte para las alertas de presión: así ella recibe solo eso y no
+# las alertas de tormenta.
+NTFY_TOPIC_SALUD = os.environ.get("NTFY_TOPIC_SALUD", "")
+
+# ---------------------------------------------------------------- presión
+# Umbrales en hPa de presión reducida a NIVEL DEL MAR. Ojo: la presión de
+# estación aquí ronda los 805 hPa por los 1,880 m de altitud; los valores de
+# la literatura están en nivel del mar y mezclarlos no tendría sentido.
+#
+# La evidencia asocia caídas de 5–10 hPa en 12–24 h con más ataques de
+# migraña en personas susceptibles, aunque la sensibilidad individual varía
+# mucho y los estudios no son unánimes.
+PRESSURE_DROP_WATCH = 3.0     # vigilancia
+PRESSURE_DROP_24H = 5.0       # riesgo alto: umbral principal
+PRESSURE_DROP_SEVERE = 8.0    # riesgo muy alto
+PRESSURE_DROP_3H = 2.5        # caída rápida en curso
+PRESSURE_LOOKAHEAD_H = 36     # cuánto futuro se revisa buscando caídas
+
+PRESSURE_ALERT_COOLDOWN_H = 20   # aviso anticipado: como mucho uno al día
+PRESSURE_LIVE_COOLDOWN_H = 6     # confirmación en tiempo real
 
 # ---------------------------------------------------------------- modelos numéricos
 # Pesos iniciales por fuente. El IR arranca dominando porque el radar no

@@ -32,6 +32,8 @@ class Frame:
     center_lat: float
     center_lon: float
     kind: str               # "radar" | "ir"
+    # datos de la rejilla del satelite, para reproyectar sobre un mapa
+    grid_meta: dict | None = None
 
     @property
     def center_px(self) -> tuple[float, float]:
