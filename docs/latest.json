@@ -1,20 +1,20 @@
 {
-  "issued_utc": "2026-08-05T22:17:54+00:00",
-  "issued_local": "2026-08-05 16:17",
+  "issued_utc": "2026-08-05T22:33:02+00:00",
+  "issued_local": "2026-08-05 16:33",
   "probabilities": {
     "15": 0.039,
     "30": 0.039,
-    "45": 0.04,
-    "60": 0.04,
+    "45": 0.039,
+    "60": 0.039,
     "90": 0.04,
-    "120": 0.04,
-    "180": 0.044
+    "120": 0.043,
+    "180": 0.055
   },
   "raining_now": 0.0,
-  "motion_speed_kmh": 3.2,
+  "motion_speed_kmh": 2.9,
   "motion_from": "norte",
-  "motion_confidence": 0.491,
-  "growth": 0.984,
+  "motion_confidence": 0.489,
+  "growth": 0.991,
   "cell_eta_min": null,
   "cell_km": null,
   "cape": 160.0,
@@ -39,7 +39,7 @@
     "gem_seamless": 0.0
   },
   "confidence": "buena",
-  "calibration_n": 356,
+  "calibration_n": 363,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -52,16 +52,16 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 167.5,
+  "motion_bearing": 194.0,
   "pressure": {
-    "now_msl": 1009.8,
-    "now_surface": 819.6,
-    "change_3h": -1.3,
-    "change_6h": -0.8,
-    "change_24h": -1.9,
+    "now_msl": 1009.3,
+    "now_surface": 818.8,
+    "change_3h": -1.5,
+    "change_6h": -0.9,
+    "change_24h": -2.4,
     "forecast_drop": 2.6,
     "forecast_drop_at": "Wed 05, 18:00",
-    "forecast_drop_in_h": 1.7,
+    "forecast_drop_in_h": 1.4,
     "level": "tranquilo",
     "trend": "estable",
     "series": [
@@ -568,53 +568,53 @@
   },
   "performance": {
     "15": {
-      "n": 55,
-      "brier": 0.1345,
-      "skill_vs_climatologia": 0.211,
-      "acierto_binario": 0.782,
-      "frecuencia_lluvia": 0.218
+      "n": 56,
+      "brier": 0.1321,
+      "skill_vs_climatologia": 0.215,
+      "acierto_binario": 0.786,
+      "frecuencia_lluvia": 0.214
     },
     "30": {
-      "n": 54,
-      "brier": 0.1243,
-      "skill_vs_climatologia": 0.233,
-      "acierto_binario": 0.796,
-      "frecuencia_lluvia": 0.204
+      "n": 55,
+      "brier": 0.1221,
+      "skill_vs_climatologia": 0.237,
+      "acierto_binario": 0.8,
+      "frecuencia_lluvia": 0.2
     },
     "45": {
-      "n": 53,
-      "brier": 0.1129,
-      "skill_vs_climatologia": 0.262,
-      "acierto_binario": 0.83,
-      "frecuencia_lluvia": 0.189
+      "n": 54,
+      "brier": 0.1109,
+      "skill_vs_climatologia": 0.265,
+      "acierto_binario": 0.833,
+      "frecuencia_lluvia": 0.185
     },
     "60": {
-      "n": 52,
-      "brier": 0.101,
-      "skill_vs_climatologia": 0.294,
-      "acierto_binario": 0.846,
-      "frecuencia_lluvia": 0.173
+      "n": 53,
+      "brier": 0.0991,
+      "skill_vs_climatologia": 0.297,
+      "acierto_binario": 0.849,
+      "frecuencia_lluvia": 0.17
     },
     "90": {
-      "n": 50,
-      "brier": 0.1055,
-      "skill_vs_climatologia": 0.286,
-      "acierto_binario": 0.84,
-      "frecuencia_lluvia": 0.18
+      "n": 51,
+      "brier": 0.1034,
+      "skill_vs_climatologia": 0.288,
+      "acierto_binario": 0.843,
+      "frecuencia_lluvia": 0.176
     },
     "120": {
-      "n": 48,
-      "brier": 0.1099,
-      "skill_vs_climatologia": 0.279,
-      "acierto_binario": 0.833,
-      "frecuencia_lluvia": 0.188
+      "n": 49,
+      "brier": 0.1076,
+      "skill_vs_climatologia": 0.282,
+      "acierto_binario": 0.837,
+      "frecuencia_lluvia": 0.184
     },
     "180": {
-      "n": 44,
-      "brier": 0.1251,
-      "skill_vs_climatologia": 0.231,
-      "acierto_binario": 0.818,
-      "frecuencia_lluvia": 0.205
+      "n": 45,
+      "brier": 0.1224,
+      "skill_vs_climatologia": 0.235,
+      "acierto_binario": 0.822,
+      "frecuencia_lluvia": 0.2
     }
   }
 }
