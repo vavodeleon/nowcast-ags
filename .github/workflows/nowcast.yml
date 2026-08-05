@@ -1,23 +1,35 @@
 name: nowcast
 
-# Cada 15 minutos. GitHub a veces retrasa los cron unos minutos cuando hay
-# carga; para nowcasting eso es tolerable.
+# Un disparo por hora, cuatro pasadas dentro de él.
+#
+# El diseño obvio sería "cron */15". No funciona: GitHub retrasa o directamente
+# se salta los workflows programados cuando hay carga, y los intervalos cortos
+# son los más castigados. Medido en este repo: de cuatro corridas esperadas en
+# una hora, ocurrió una.
+#
+# Los cron horarios sí son fiables, así que pedimos uno y hacemos las cuatro
+# pasadas nosotros, durmiendo 15 minutos entre cada una. El job dura ~46 min.
+# En repos públicos los minutos de Actions son gratis e ilimitados, así que
+# tener el runner ocupado no cuesta nada.
 on:
   schedule:
-    - cron: "*/15 * * * *"
-  workflow_dispatch:        # boton para correrlo a mano
+    # minuto 7 y no en punto: la hora en punto es el pico de carga de GitHub
+    - cron: "7 * * * *"
+  workflow_dispatch:
 
 permissions:
-  contents: write           # necesario para guardar el historial aprendido
+  contents: write
 
 concurrency:
   group: nowcast
-  cancel-in-progress: false
+  # si un disparo llega tarde y se encima con el anterior, gana el nuevo:
+  # es preferible perder la última pasada de la hora vieja que acumular colas
+  cancel-in-progress: true
 
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v4
 
@@ -28,24 +40,30 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Ejecutar nowcast
+      - name: Cuatro pasadas, una cada 15 minutos
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-        run: python -m nowcast.run
-
-      - name: Guardar historial y publicar
+          NTFY_TOPIC_SALUD: ${{ secrets.NTFY_TOPIC_SALUD }}
         run: |
           git config user.name  "nowcast-bot"
           git config user.email "nowcast-bot@users.noreply.github.com"
-          git add data docs
-          if git diff --staged --quiet; then
-            echo "sin cambios"
-          else
-            git commit -m "nowcast $(date -u '+%Y-%m-%d %H:%M UTC')"
-            # otra corrida pudo haber hecho push mientras tanto
-            for i in 1 2 3; do
-              git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && \
-              git push origin "HEAD:${GITHUB_REF_NAME}" && break
-              sleep 5
-            done
-          fi
+
+          for i in 1 2 3 4; do
+            echo "::group::pasada $i de 4 — $(date -u '+%H:%M UTC')"
+            python -m nowcast.run || echo "la pasada falló, seguimos"
+
+            git add data docs
+            if git diff --staged --quiet; then
+              echo "sin cambios que guardar"
+            else
+              git commit -m "nowcast $(date -u '+%Y-%m-%d %H:%M UTC')"
+              for intento in 1 2 3; do
+                git pull --rebase --autostash origin "${GITHUB_REF_NAME}" \
+                  && git push origin "HEAD:${GITHUB_REF_NAME}" && break
+                sleep 5
+              done
+            fi
+            echo "::endgroup::"
+
+            if [ "$i" -lt 4 ]; then sleep 900; fi
+          done

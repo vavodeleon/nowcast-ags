@@ -189,8 +189,15 @@ desaparece con más código: desaparecería con un radar sobre la ciudad.
 celdas nacen y mueren en ese plazo. Para el día siguiente los modelos
 numéricos siguen siendo lo mejor que hay, con toda su imprecisión.
 
-**El cron de GitHub se retrasa.** Con carga alta, una corrida programada puede
-salir 5–10 minutos tarde. Para avisos de 60–90 minutos es tolerable.
+**El cron de GitHub no es puntual, y por eso no se usa cada 15 min.**
+Medido en este repo: con `cron: "*/15"`, de cuatro corridas esperadas en una
+hora ocurrió **una**. GitHub retrasa o se salta los workflows programados
+cuando hay carga, y castiga especialmente los intervalos cortos.
+
+La solución está en `nowcast.yml`: se pide **un disparo por hora** —los cron
+horarios sí se cumplen— y dentro del mismo job se hacen las cuatro pasadas
+durmiendo 15 minutos entre cada una. El runner queda ocupado ~46 min por hora,
+lo cual en un repo público es gratis.
 
 ---
 
