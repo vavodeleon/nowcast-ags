@@ -321,7 +321,8 @@ function pintarMapa(d){
   // de dónde vienen las celdas
   if (hay(d.motion_bearing) && d.motion_speed_kmh > 3){
     const desde = (d.motion_bearing + 180) % 360;
-    const rad = desde * Math.PI / 180, dist = 1.35;
+    // 0.85° ≈ 95 km: dentro del encuadre, para que la etiqueta no se corte
+    const rad = desde * Math.PI / 180, dist = 0.85;
     const destino = [d.lat + dist * Math.cos(rad),
                      d.lon + dist * Math.sin(rad) / Math.cos(d.lat * Math.PI / 180)];
     L.polyline([[d.lat, d.lon], destino], {color:"#16202e", weight:2.5,
