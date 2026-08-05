@@ -325,6 +325,14 @@ def main() -> None:
             except Exception as exc:
                 log.error("alerta de presion fallo: %s", exc)
 
+        # 5. reporte matutino: se comprueba aqui y no con un cron propio,
+        #    porque los cron de GitHub no se cumplen
+        try:
+            from . import daily
+            daily.maybe_send_morning()
+        except Exception as exc:
+            log.error("reporte matutino fallo: %s", exc)
+
 
 if __name__ == "__main__":
     main()

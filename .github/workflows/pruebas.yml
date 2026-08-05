@@ -21,3 +21,6 @@ jobs:
 
       - name: Pruebas de presion, mapa y reproyeccion
         run: python test_visual.py
+
+      - name: Pruebas del reporte matutino
+        run: python test_matutino.py

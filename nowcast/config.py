@@ -86,6 +86,14 @@ PRESSURE_LOOKAHEAD_H = 36     # cuánto futuro se revisa buscando caídas
 PRESSURE_ALERT_COOLDOWN_H = 20   # aviso anticipado: como mucho uno al día
 PRESSURE_LIVE_COOLDOWN_H = 6     # confirmación en tiempo real
 
+# ---------------------------------------------------------------- reporte diario
+# El reporte matutino NO usa un cron propio: los cron de GitHub no se cumplen
+# (medido: el cron diario no disparó ni una vez en su primer día). En su lugar,
+# el ciclo del nowcast comprueba en cada pasada si toca enviarlo.
+MORNING_HOUR = 6
+MORNING_MINUTE = 30
+MORNING_WINDOW_END_HOUR = 10   # si el sistema estuvo caído, aún lo manda
+
 # ---------------------------------------------------------------- modelos numéricos
 # Pesos iniciales por fuente. El IR arranca dominando porque el radar no
 # cubre la ciudad; el sistema los ajusta solo con los aciertos acumulados.

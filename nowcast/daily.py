@@ -138,6 +138,60 @@ def build_pressure_report() -> tuple[str, str] | None:
     return f"Presion — {datetime.now(config.TZ).strftime('%a %d %b')}", "\n".join(lineas)
 
 
+def send_all() -> None:
+    """Manda el reporte de clima y, si esta configurado, el de presion."""
+    body = build_report()
+    fecha = datetime.now(config.TZ).strftime("%a %d %b")
+    notify.send(f"Clima Aguascalientes — {fecha}", body,
+                priority="low", tags="sunny")
+    print(body)
+
+    if config.NTFY_TOPIC_SALUD:
+        try:
+            got = build_pressure_report()
+            if got:
+                titulo, cuerpo = got
+                notify.send(titulo, cuerpo, priority="low",
+                            tags="bar_chart", topic=config.NTFY_TOPIC_SALUD)
+                print("\n" + cuerpo)
+        except Exception as exc:
+            log.error("reporte de presion fallo: %s", exc)
+
+
+def maybe_send_morning() -> bool:
+    """Envia el reporte matutino si toca y no se ha mandado hoy.
+
+    Lo llama el ciclo del nowcast en cada pasada, en vez de depender de un
+    cron propio. Motivo: el cron diario de GitHub no disparo ni una sola vez
+    en el primer dia del sistema. Como el ciclo corre cada 15 minutos, basta
+    con que compruebe la hora.
+
+    La ventana es amplia (6:30 a 10:00) a proposito: si GitHub se retrasa una
+    hora, el reporte igual sale, aunque sea tarde. El registro por fecha en
+    state.json evita que se mande dos veces.
+    """
+    from . import store
+
+    ahora = datetime.now(config.TZ)
+    if ahora.hour > config.MORNING_WINDOW_END_HOUR:
+        return False
+    if ahora.hour < config.MORNING_HOUR:
+        return False
+    if ahora.hour == config.MORNING_HOUR and ahora.minute < config.MORNING_MINUTE:
+        return False
+
+    hoy = ahora.strftime("%Y-%m-%d")
+    state = store.load_json(config.STATE_JSON, {})
+    if state.get("reporte_matutino") == hoy:
+        return False
+
+    log.info("enviando reporte matutino de %s", hoy)
+    send_all()
+    state["reporte_matutino"] = hoy
+    store.save_json(config.STATE_JSON, state)
+    return True
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")

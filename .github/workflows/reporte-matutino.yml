@@ -1,9 +1,14 @@
 name: reporte-matutino
 
+# Sin cron a propósito.
+#
+# El reporte de las 6:30 lo dispara ahora el ciclo del nowcast, que comprueba
+# la hora en cada pasada (ver nowcast/daily.py: maybe_send_morning). El cron
+# diario de GitHub no disparó ni una sola vez en el primer día del sistema,
+# así que depender de él era depender de nada.
+#
+# Este workflow queda solo para mandarlo a mano cuando quieras.
 on:
-  schedule:
-    # 06:30 hora de Aguascalientes (CST, UTC-6) = 12:30 UTC
-    - cron: "30 12 * * *"
   workflow_dispatch:
 
 jobs:
@@ -17,7 +22,8 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Enviar reporte
+      - name: Enviar reporte ahora
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_TOPIC_SALUD: ${{ secrets.NTFY_TOPIC_SALUD }}
         run: python -m nowcast.daily

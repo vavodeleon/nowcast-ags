@@ -1,16 +1,23 @@
 name: nowcast
 
-# Un disparo por hora, cuatro pasadas dentro de él.
+# Un disparo por hora, pero cada corrida dura DOS horas. Se solapan a
+# propósito.
 #
-# El diseño obvio sería "cron */15". No funciona: GitHub retrasa o directamente
-# se salta los workflows programados cuando hay carga, y los intervalos cortos
-# son los más castigados. Medido en este repo: de cuatro corridas esperadas en
-# una hora, ocurrió una.
+# Historia de por qué: el diseño obvio, `cron: "*/15"`, no funciona — GitHub
+# retrasa o se salta los workflows programados. Medido aquí: de 4 corridas
+# esperadas en una hora, ocurrió 1; y el cron diario del reporte matutino no
+# disparó ni una vez en su primer día.
 #
-# Los cron horarios sí son fiables, así que pedimos uno y hacemos las cuatro
-# pasadas nosotros, durmiendo 15 minutos entre cada una. El job dura ~46 min.
-# En repos públicos los minutos de Actions son gratis e ilimitados, así que
-# tener el runner ocupado no cuesta nada.
+# La solución tiene dos partes:
+#
+# 1. Se pide un disparo por hora y las pasadas de 15 min se hacen dentro del
+#    job, durmiendo entre ellas. Un solo cron a cumplir en vez de cuatro.
+#
+# 2. Cada job hace 8 pasadas (~2 h), no 4. En operación normal el disparo de
+#    la hora siguiente cancela al anterior a mitad de camino y no se nota.
+#    Pero si GitHub se salta un disparo, el job viejo SIGUE CORRIENDO y cubre
+#    el hueco él solo. Es redundancia deliberada: el sistema se auto-cubre en
+#    vez de confiar en que el cron llegue.
 on:
   schedule:
     # minuto 7 y no en punto: la hora en punto es el pico de carga de GitHub
@@ -22,14 +29,13 @@ permissions:
 
 concurrency:
   group: nowcast
-  # si un disparo llega tarde y se encima con el anterior, gana el nuevo:
-  # es preferible perder la última pasada de la hora vieja que acumular colas
+  # el disparo nuevo releva al viejo; sin esto se acumularían corridas
   cancel-in-progress: true
 
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 70
+    timeout-minutes: 135
     steps:
       - uses: actions/checkout@v4
 
@@ -40,7 +46,7 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Cuatro pasadas, una cada 15 minutos
+      - name: Pasadas cada 15 minutos durante 2 horas
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           NTFY_TOPIC_SALUD: ${{ secrets.NTFY_TOPIC_SALUD }}
@@ -48,8 +54,9 @@ jobs:
           git config user.name  "nowcast-bot"
           git config user.email "nowcast-bot@users.noreply.github.com"
 
-          for i in 1 2 3 4; do
-            echo "::group::pasada $i de 4 — $(date -u '+%H:%M UTC')"
+          PASADAS=8
+          for i in $(seq 1 $PASADAS); do
+            echo "::group::pasada $i de $PASADAS — $(date -u '+%H:%M UTC')"
             python -m nowcast.run || echo "la pasada falló, seguimos"
 
             git add data docs
@@ -65,5 +72,5 @@ jobs:
             fi
             echo "::endgroup::"
 
-            if [ "$i" -lt 4 ]; then sleep 900; fi
+            if [ "$i" -lt "$PASADAS" ]; then sleep 900; fi
           done
