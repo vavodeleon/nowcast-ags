@@ -1,20 +1,20 @@
 {
-  "issued_utc": "2026-08-06T06:18:01+00:00",
-  "issued_local": "2026-08-06 00:18",
+  "issued_utc": "2026-08-06T06:33:06+00:00",
+  "issued_local": "2026-08-06 00:33",
   "probabilities": {
     "15": 0.04,
     "30": 0.04,
     "45": 0.04,
-    "60": 0.04,
+    "60": 0.037,
     "90": 0.037,
-    "120": 0.037,
+    "120": 0.035,
     "180": 0.036
   },
   "raining_now": 0.0,
-  "motion_speed_kmh": 4.3,
+  "motion_speed_kmh": 3.3,
   "motion_from": "noreste",
-  "motion_confidence": 0.235,
-  "growth": 1.015,
+  "motion_confidence": 0.225,
+  "growth": 0.997,
   "cell_eta_min": null,
   "cell_km": null,
   "cape": 340.0,
@@ -33,13 +33,13 @@
     ]
   },
   "model_probs_1h": {
-    "ecmwf_ifs025": 0.07,
+    "ecmwf_ifs025": 0.03,
     "gfs_seamless": 0.0,
     "icon_seamless": 0.0,
     "gem_seamless": 0.0
   },
   "confidence": "baja",
-  "calibration_n": 587,
+  "calibration_n": 594,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -52,18 +52,18 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 215.2,
+  "motion_bearing": 229.4,
   "pressure": {
-    "now_msl": 1018.9,
+    "now_msl": 1019.5,
     "now_surface": 820.7,
-    "change_3h": 0.7,
-    "change_6h": 0.9,
-    "change_24h": -0.1,
+    "change_3h": 0.9,
+    "change_6h": 1.8,
+    "change_24h": 0.9,
     "forecast_drop": 0.3,
     "forecast_drop_at": "Thu 06, 12:00",
-    "forecast_drop_in_h": 11.7,
+    "forecast_drop_in_h": 11.4,
     "level": "tranquilo",
-    "trend": "estable",
+    "trend": "subiendo",
     "series": [
       {
         "t": "05 01:00",
@@ -567,9 +567,9 @@
     "ciclo_diario": 9.6
   },
   "temperatura": {
-    "ahora": 18.9,
+    "ahora": 18.7,
     "sensacion": 19.2,
-    "humedad": 69,
+    "humedad": 71,
     "maxima": 29.1,
     "minima": 15.4,
     "serie": [
@@ -701,58 +701,58 @@
     ]
   },
   "rayos": {
-    "total_hora": 1455,
+    "total_hora": 1263,
     "bloques": 4
   },
   "performance": {
     "15": {
-      "n": 88,
-      "brier": 0.0848,
-      "skill_vs_climatologia": 0.28,
-      "acierto_binario": 0.864,
-      "frecuencia_lluvia": 0.136
+      "n": 89,
+      "brier": 0.0839,
+      "skill_vs_climatologia": 0.281,
+      "acierto_binario": 0.865,
+      "frecuencia_lluvia": 0.135
     },
     "30": {
-      "n": 87,
-      "brier": 0.0779,
-      "skill_vs_climatologia": 0.294,
-      "acierto_binario": 0.874,
-      "frecuencia_lluvia": 0.126
+      "n": 88,
+      "brier": 0.0771,
+      "skill_vs_climatologia": 0.295,
+      "acierto_binario": 0.875,
+      "frecuencia_lluvia": 0.125
     },
     "45": {
-      "n": 86,
-      "brier": 0.0704,
-      "skill_vs_climatologia": 0.315,
-      "acierto_binario": 0.895,
-      "frecuencia_lluvia": 0.116
+      "n": 87,
+      "brier": 0.0696,
+      "skill_vs_climatologia": 0.316,
+      "acierto_binario": 0.897,
+      "frecuencia_lluvia": 0.115
     },
     "60": {
-      "n": 85,
-      "brier": 0.0626,
-      "skill_vs_climatologia": 0.339,
-      "acierto_binario": 0.906,
-      "frecuencia_lluvia": 0.106
+      "n": 86,
+      "brier": 0.0618,
+      "skill_vs_climatologia": 0.34,
+      "acierto_binario": 0.907,
+      "frecuencia_lluvia": 0.105
     },
     "90": {
-      "n": 83,
-      "brier": 0.0643,
+      "n": 84,
+      "brier": 0.0636,
       "skill_vs_climatologia": 0.335,
-      "acierto_binario": 0.904,
-      "frecuencia_lluvia": 0.108
+      "acierto_binario": 0.905,
+      "frecuencia_lluvia": 0.107
     },
     "120": {
-      "n": 81,
-      "brier": 0.0659,
-      "skill_vs_climatologia": 0.332,
-      "acierto_binario": 0.901,
-      "frecuencia_lluvia": 0.111
+      "n": 82,
+      "brier": 0.0652,
+      "skill_vs_climatologia": 0.333,
+      "acierto_binario": 0.902,
+      "frecuencia_lluvia": 0.11
     },
     "180": {
-      "n": 77,
-      "brier": 0.0725,
-      "skill_vs_climatologia": 0.298,
-      "acierto_binario": 0.896,
-      "frecuencia_lluvia": 0.117
+      "n": 78,
+      "brier": 0.0716,
+      "skill_vs_climatologia": 0.299,
+      "acierto_binario": 0.897,
+      "frecuencia_lluvia": 0.115
     }
   }
 }
