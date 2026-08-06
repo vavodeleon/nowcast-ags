@@ -44,6 +44,11 @@ IR_WINDOW_PX = 200
 # para una ubicación que en realidad tiene cero.
 RADAR_HOME_RADIUS_KM = 25.0
 
+# ---------------------------------------------------------------- rayos
+# GLM: el detector de relámpagos que va a bordo del mismo GOES-19.
+LIGHTNING_RADIUS_DEG = 3.0     # ±3° ≈ ±330 km, igual que la ventana del mapa
+LIGHTNING_HISTORY_MIN = 60     # una hora, en cuatro bloques de 15 min
+
 # ---------------------------------------------------------------- horizontes
 LEAD_TIMES_MIN = [15, 30, 45, 60, 90, 120, 180]
 
@@ -118,6 +123,7 @@ RV_COLORS_CACHE = os.path.join(DATA_DIR, "rainviewer_colors.csv")
 STATE_JSON = os.path.join(DATA_DIR, "state.json")
 LATEST_JSON = os.path.join(ROOT, "docs", "latest.json")
 HISTORY_JSON = os.path.join(ROOT, "docs", "history.json")
+LIGHTNING_JSON = os.path.join(ROOT, "docs", "rayos.json")
 
 HTTP_TIMEOUT = 30
 HTTP_RETRIES = 3

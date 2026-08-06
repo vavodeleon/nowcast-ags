@@ -8,8 +8,8 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
-from . import (calibrate, config, engine, notify, pressure, render, sources,
-               store, verify)
+from . import (calibrate, config, engine, lightning, notify, pressure, render,
+               sources, store, verify)
 
 log = logging.getLogger(__name__)
 
@@ -117,6 +117,22 @@ def build_forecast() -> dict:
     except Exception as exc:
         log.error("seguimiento de presion fallo: %s", exc)
         pres = pressure.PressureState()
+
+    # temperatura (seccion aparte de la pagina)
+    try:
+        temperatura = sources.fetch_temperature()
+    except Exception as exc:
+        log.error("temperatura fallo: %s", exc)
+        temperatura = {}
+
+    # rayos detectados por el GLM
+    try:
+        rayos = lightning.update()
+        rayos_resumen = {"total_hora": rayos.get("total_hora", 0),
+                         "bloques": len(rayos.get("bloques", []))}
+    except Exception as exc:
+        log.error("rayos fallaron: %s", exc)
+        rayos_resumen = {"total_hora": 0, "bloques": 0}
 
     # imagen del satelite reproyectada, para el mapa
     map_bounds = None
@@ -241,6 +257,8 @@ def build_forecast() -> dict:
         "motion_bearing": (round(motion.bearing_deg, 1)
                            if motion.bearing_deg is not None else None),
         "pressure": pressure.to_dict(pres),
+        "temperatura": temperatura,
+        "rayos": rayos_resumen,
     }
     result["_rows"] = rows
     result["_pressure"] = pres

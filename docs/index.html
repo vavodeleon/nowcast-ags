@@ -52,6 +52,15 @@
     color:var(--muted);align-items:center}
   .chip{display:inline-flex;align-items:center;gap:6px}
   .swatch{width:15px;height:15px;border-radius:4px;display:inline-block}
+  .rayo{width:11px;height:11px;border-radius:50%;display:inline-block}
+  .controles{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+  .toggle{display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+    background:#eef2f7;border:1px solid var(--line);border-radius:99px;
+    padding:6px 14px;font-size:14px;user-select:none;transition:background .15s}
+  .toggle:hover{background:#e4eaf2}
+  .toggle input{accent-color:var(--azul);width:15px;height:15px;cursor:pointer}
+  .toggle b{color:var(--muted);font-weight:600}
+  .temp-grande{font-size:52px;font-weight:700;line-height:1;letter-spacing:-2px}
 
   /* ---------- presión ---------- */
   .nivel{display:flex;align-items:center;gap:16px;margin-bottom:6px}
@@ -98,6 +107,12 @@
   <div class="card">
     <h2>Dónde están las nubes de tormenta</h2>
     <div id="mapa"></div>
+    <div class="controles">
+      <label class="toggle"><input type="checkbox" id="cap-satelite" checked>
+        <span>Nubes</span></label>
+      <label class="toggle"><input type="checkbox" id="cap-rayos" checked>
+        <span>Rayos <b id="cuenta-rayos"></b></span></label>
+    </div>
     <div class="leyenda">
       <span class="chip"><span class="swatch" style="background:#5abfa0"></span>nube alta</span>
       <span class="chip"><span class="swatch" style="background:#f5d250"></span>creciendo</span>
@@ -105,10 +120,34 @@
       <span class="chip"><span class="swatch" style="background:#e13c3c"></span>fuerte</span>
       <span class="chip"><span class="swatch" style="background:#aa2896"></span>muy fuerte</span>
     </div>
+    <div class="leyenda" id="leyenda-rayos">
+      <span class="chip"><b>Rayos:</b></span>
+      <span class="chip"><span class="rayo" style="background:#ffd400;opacity:1"></span>ahora</span>
+      <span class="chip"><span class="rayo" style="background:#ffb000;opacity:.72"></span>15 min</span>
+      <span class="chip"><span class="rayo" style="background:#ff8000;opacity:.5"></span>30 min</span>
+      <span class="chip"><span class="rayo" style="background:#e56000;opacity:.32"></span>45 min</span>
+    </div>
     <p class="nota" id="nota-mapa">
       Imagen del satélite GOES-19. Los colores muestran qué tan fríos están los
       techos de las nubes: entre más frío, más alta y más cargada está la nube.
       Los círculos marcan 50, 100 y 150 km alrededor de la ciudad.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Temperatura</h2>
+    <div class="nivel">
+      <div class="temp-grande" id="temp-ahora">–</div>
+      <div>
+        <div class="nivel-sub" id="temp-sensacion"></div>
+        <div class="nivel-sub" id="temp-rango"></div>
+      </div>
+    </div>
+    <div class="chartbox"><canvas id="chart-temp"></canvas></div>
+    <p class="nota">
+      La sensación térmica combina temperatura, humedad, viento y sol: es lo
+      que de verdad sientes al salir, que puede diferir varios grados del
+      número del termómetro.
     </p>
   </div>
 
@@ -291,8 +330,98 @@ function pintarPresion(p){
   });
 }
 
+/* ---------- temperatura ---------- */
+function pintarTemperatura(t){
+  if (!t || !hay(t.ahora)) return;
+  q("#temp-ahora").textContent = `${Math.round(t.ahora)}°`;
+
+  if (hay(t.sensacion)){
+    const dif = t.sensacion - t.ahora;
+    q("#temp-sensacion").textContent = Math.abs(dif) < 1
+      ? `Se siente igual, ${Math.round(t.sensacion)}°`
+      : `Se siente como ${Math.round(t.sensacion)}°`;
+  }
+  if (hay(t.maxima) && hay(t.minima))
+    q("#temp-rango").textContent =
+      `Hoy entre ${Math.round(t.minima)}° y ${Math.round(t.maxima)}°` +
+      (hay(t.humedad) ? ` · humedad ${t.humedad}%` : "");
+
+  const serie = t.serie || [];
+  if (!serie.length || typeof Chart === "undefined") return;
+  new Chart(q("#chart-temp"), {
+    type: "line",
+    data: {
+      labels: serie.map(s => s.t),
+      datasets: [
+        { label:"Temperatura", data:serie.map(s => s.temp),
+          borderColor:"#e2701e", backgroundColor:"rgba(226,112,30,.10)",
+          fill:true, pointRadius:0, borderWidth:2.8, tension:.35 },
+        { label:"Se siente como", data:serie.map(s => s.sensacion),
+          borderColor:"#c9a48c", pointRadius:0, borderWidth:1.6,
+          borderDash:[5,4], tension:.35, fill:false }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:"index",intersect:false},
+      scales:{
+        y:{ticks:{color:"#697790",callback:v => v + "°"},grid:{color:"#eef2f7"}},
+        x:{ticks:{color:"#697790",maxTicksLimit:7,maxRotation:0},grid:{display:false}}
+      },
+      plugins:{
+        legend:{display:true,labels:{boxWidth:14,font:{size:11},
+                color:"#697790",usePointStyle:true}},
+        tooltip:{callbacks:{label:c => `${c.dataset.label}: ${c.parsed.y}°`}}
+      }
+    }
+  });
+}
+
 /* ---------- mapa ---------- */
-let mapa;
+let mapa, capaSatelite, capaRayos;
+
+// Los rayos se colorean por antigüedad: los de ahora amarillo brillante,
+// los de hace 45 min naranja apagado. Así se ve hacia dónde avanza la
+// actividad eléctrica sin necesidad de una animación.
+function estiloRayo(edadMin){
+  const escalones = [
+    {max:15, color:"#ffd400", op:1.0,  r:5.0},
+    {max:30, color:"#ffb000", op:.72, r:4.4},
+    {max:45, color:"#ff8000", op:.50, r:3.8},
+    {max:99, color:"#e56000", op:.32, r:3.2},
+  ];
+  return escalones.find(e => edadMin < e.max) || escalones[3];
+}
+
+async function pintarRayos(){
+  if (!mapa) return;
+  let datos;
+  try {
+    const r = await fetch("rayos.json?t=" + Date.now());
+    datos = await r.json();
+  } catch { return; }
+
+  const bloques = (datos && datos.bloques) || [];
+  const total = (datos && datos.total_hora) || 0;
+  q("#cuenta-rayos").textContent = total ? `(${total})` : "(0)";
+  q("#leyenda-rayos").style.display = total ? "flex" : "none";
+
+  if (capaRayos) capaRayos.remove();
+  capaRayos = L.layerGroup();
+
+  for (const b of bloques){
+    const est = estiloRayo(b.edad_min ?? 0);
+    for (const [lat, lon, n] of (b.puntos || [])){
+      L.circleMarker([lat, lon], {
+        radius: est.r + Math.min(3, Math.log2(n + 1)),
+        color: "#7a3b00", weight: .6, opacity: est.op * .7,
+        fillColor: est.color, fillOpacity: est.op, interactive: false
+      }).addTo(capaRayos);
+    }
+  }
+  if (q("#cap-rayos").checked) capaRayos.addTo(mapa);
+}
+
 function pintarMapa(d){
   if (typeof L === "undefined" || !hay(d.lat) || !hay(d.lon)) return;
   if (mapa) mapa.remove();
@@ -300,13 +429,15 @@ function pintarMapa(d){
   mapa = L.map("mapa", {zoomControl:true, attributionControl:true,
                         scrollWheelZoom:false}).setView([d.lat, d.lon], 8);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-    attribution: '&copy; OpenStreetMap &copy; CARTO · satélite: NOAA GOES-19',
+    attribution: '&copy; OpenStreetMap &copy; CARTO · satélite y rayos: NOAA GOES-19',
     maxZoom: 12
   }).addTo(mapa);
 
-  if (d.map_bounds)
-    L.imageOverlay("satelite.png?t=" + Date.now(), d.map_bounds,
-                   {opacity:.78}).addTo(mapa);
+  if (d.map_bounds){
+    capaSatelite = L.imageOverlay("satelite.png?t=" + Date.now(), d.map_bounds,
+                                  {opacity:.78});
+    if (q("#cap-satelite").checked) capaSatelite.addTo(mapa);
+  }
 
   // anillos de distancia: dan escala sin necesidad de leer números
   [50000, 100000, 150000].forEach(r => {
@@ -338,6 +469,19 @@ function pintarMapa(d){
   }
 
   setTimeout(() => mapa.invalidateSize(), 120);
+  pintarRayos();
+}
+
+/* los interruptores de capa */
+function conectarCapas(){
+  q("#cap-satelite").addEventListener("change", e => {
+    if (!capaSatelite || !mapa) return;
+    e.target.checked ? capaSatelite.addTo(mapa) : capaSatelite.remove();
+  });
+  q("#cap-rayos").addEventListener("change", e => {
+    if (!capaRayos || !mapa) return;
+    e.target.checked ? capaRayos.addTo(mapa) : capaRayos.remove();
+  });
 }
 
 /* ---------- render principal ---------- */
@@ -365,6 +509,7 @@ function render(d){
   }).join("");
 
   pintarMapa(d);
+  pintarTemperatura(d.temperatura);
   pintarPresion(d.pressure);
 
   // técnicos
@@ -397,6 +542,7 @@ function render(d){
     "Positivo significa que el sistema aporta información real, no solo repite el promedio.";
 }
 
+conectarCapas();
 const bust = "?t=" + Date.now();
 fetch("latest.json" + bust).then(r => r.json()).then(render).catch(() => {
   q("#titular").textContent = "Aún no hay datos";

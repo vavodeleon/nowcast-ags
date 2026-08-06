@@ -24,3 +24,6 @@ jobs:
 
       - name: Pruebas del reporte matutino
         run: python test_matutino.py
+
+      - name: Pruebas de rayos y temperatura
+        run: python test_rayos.py

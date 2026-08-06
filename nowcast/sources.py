@@ -251,6 +251,57 @@ def fetch_models() -> dict:
     return data
 
 
+def fetch_temperature() -> dict:
+    """Temperatura actual, sensacion termica y curva de las proximas 24 h."""
+    url = (
+        "https://api.open-meteo.com/v1/forecast"
+        f"?latitude={config.LAT:.4f}&longitude={config.LON:.4f}"
+        "&current=temperature_2m,apparent_temperature,relative_humidity_2m"
+        "&hourly=temperature_2m,apparent_temperature"
+        "&daily=temperature_2m_max,temperature_2m_min"
+        "&forecast_days=2&forecast_hours=25"
+        f"&timezone={config.TZ.key}"
+    )
+    data = http.get_json(url)
+    if not data:
+        log.error("Open-Meteo no respondio (temperatura)")
+        return {}
+
+    cur = data.get("current") or {}
+    hourly = data.get("hourly") or {}
+    daily = data.get("daily") or {}
+
+    serie = []
+    horas = hourly.get("time") or []
+    temps = hourly.get("temperature_2m") or []
+    sens = hourly.get("apparent_temperature") or []
+    for i, ts in enumerate(horas[:25]):
+        if i >= len(temps) or temps[i] is None:
+            continue
+        serie.append({
+            "t": ts[11:16],
+            "temp": round(float(temps[i]), 1),
+            "sensacion": (round(float(sens[i]), 1)
+                          if i < len(sens) and sens[i] is not None else None),
+        })
+
+    def _primero(clave):
+        vals = daily.get(clave) or []
+        return round(float(vals[0]), 1) if vals and vals[0] is not None else None
+
+    return {
+        "ahora": (round(float(cur["temperature_2m"]), 1)
+                  if cur.get("temperature_2m") is not None else None),
+        "sensacion": (round(float(cur["apparent_temperature"]), 1)
+                      if cur.get("apparent_temperature") is not None else None),
+        "humedad": (round(float(cur["relative_humidity_2m"]))
+                    if cur.get("relative_humidity_2m") is not None else None),
+        "maxima": _primero("temperature_2m_max"),
+        "minima": _primero("temperature_2m_min"),
+        "serie": serie,
+    }
+
+
 def fetch_observed_precip(hours_back: int = 6) -> dict:
     """Precipitacion observada reciente (best-match) para la verificacion."""
     url = (
