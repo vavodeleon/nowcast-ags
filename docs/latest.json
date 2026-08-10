@@ -1,22 +1,22 @@
 {
-  "issued_utc": "2026-08-10T03:28:41+00:00",
-  "issued_local": "2026-08-09 21:28",
+  "issued_utc": "2026-08-10T03:43:54+00:00",
+  "issued_local": "2026-08-09 21:43",
   "probabilities": {
-    "15": 0.649,
-    "30": 0.683,
-    "45": 0.648,
-    "60": 0.632,
-    "90": 0.701,
-    "120": 0.61,
-    "180": 0.517
+    "15": 0.806,
+    "30": 0.69,
+    "45": 0.663,
+    "60": 0.587,
+    "90": 0.97,
+    "120": 0.623,
+    "180": 0.526
   },
   "raining_now": 0.0,
-  "motion_speed_kmh": 19.8,
+  "motion_speed_kmh": 22.5,
   "motion_from": "sur",
-  "motion_confidence": 0.309,
-  "growth": 1.154,
-  "cell_eta_min": 259.7,
-  "cell_km": 87.1,
+  "motion_confidence": 0.314,
+  "growth": 1.24,
+  "cell_eta_min": 211.2,
+  "cell_km": 83.5,
   "cape": 1210.0,
   "radar_coverage": 0.0,
   "radar_usable": false,
@@ -33,13 +33,13 @@
     ]
   },
   "model_probs_1h": {
-    "ecmwf_ifs025": 0.83,
+    "ecmwf_ifs025": 0.64,
     "gfs_seamless": 0.86,
-    "icon_seamless": 0.83,
-    "gem_seamless": 0.7
+    "icon_seamless": 0.9,
+    "gem_seamless": 0.67
   },
   "confidence": "baja",
-  "calibration_n": 3051,
+  "calibration_n": 3058,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -52,16 +52,16 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 8.9,
+  "motion_bearing": 7.8,
   "pressure": {
-    "now_msl": 1019.8,
-    "now_surface": 820.4,
-    "change_3h": 0.1,
-    "change_6h": 1.6,
-    "change_24h": 3.9,
+    "now_msl": 1020.3,
+    "now_surface": 820.7,
+    "change_3h": -1.5,
+    "change_6h": 2.6,
+    "change_24h": 2.0,
     "forecast_drop": 0.9,
     "forecast_drop_at": "Mon 10, 06:00",
-    "forecast_drop_in_h": 8.5,
+    "forecast_drop_in_h": 8.3,
     "level": "tranquilo",
     "trend": "subiendo",
     "series": [
@@ -569,7 +569,7 @@
   "temperatura": {
     "ahora": 17.5,
     "sensacion": 19.1,
-    "humedad": 89,
+    "humedad": 90,
     "maxima": 27.5,
     "minima": 14.1,
     "serie": [
@@ -701,58 +701,58 @@
     ]
   },
   "rayos": {
-    "total_hora": 1801,
+    "total_hora": 1722,
     "bloques": 4
   },
   "performance": {
     "15": {
-      "n": 444,
-      "brier": 0.0538,
-      "skill_vs_climatologia": 0.504,
+      "n": 445,
+      "brier": 0.054,
+      "skill_vs_climatologia": 0.509,
       "acierto_binario": 0.928,
-      "frecuencia_lluvia": 0.124
+      "frecuencia_lluvia": 0.126
     },
     "30": {
-      "n": 442,
-      "brier": 0.0494,
-      "skill_vs_climatologia": 0.546,
+      "n": 443,
+      "brier": 0.0496,
+      "skill_vs_climatologia": 0.55,
       "acierto_binario": 0.932,
-      "frecuencia_lluvia": 0.124
+      "frecuencia_lluvia": 0.126
     },
     "45": {
-      "n": 440,
-      "brier": 0.0484,
-      "skill_vs_climatologia": 0.551,
+      "n": 441,
+      "brier": 0.0485,
+      "skill_vs_climatologia": 0.556,
       "acierto_binario": 0.932,
-      "frecuencia_lluvia": 0.123
+      "frecuencia_lluvia": 0.125
     },
     "60": {
-      "n": 438,
-      "brier": 0.0508,
-      "skill_vs_climatologia": 0.522,
+      "n": 439,
+      "brier": 0.0509,
+      "skill_vs_climatologia": 0.529,
       "acierto_binario": 0.929,
-      "frecuencia_lluvia": 0.121
+      "frecuencia_lluvia": 0.123
     },
     "90": {
-      "n": 433,
+      "n": 434,
       "brier": 0.0694,
-      "skill_vs_climatologia": 0.344,
+      "skill_vs_climatologia": 0.353,
       "acierto_binario": 0.894,
-      "frecuencia_lluvia": 0.12
+      "frecuencia_lluvia": 0.122
     },
     "120": {
-      "n": 429,
-      "brier": 0.0765,
-      "skill_vs_climatologia": 0.281,
-      "acierto_binario": 0.876,
-      "frecuencia_lluvia": 0.121
+      "n": 430,
+      "brier": 0.0768,
+      "skill_vs_climatologia": 0.289,
+      "acierto_binario": 0.877,
+      "frecuencia_lluvia": 0.123
     },
     "180": {
-      "n": 425,
-      "brier": 0.076,
-      "skill_vs_climatologia": 0.304,
+      "n": 426,
+      "brier": 0.0759,
+      "skill_vs_climatologia": 0.314,
       "acierto_binario": 0.88,
-      "frecuencia_lluvia": 0.125
+      "frecuencia_lluvia": 0.127
     }
   }
 }
