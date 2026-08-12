@@ -1,20 +1,20 @@
 {
-  "issued_utc": "2026-08-12T04:22:40+00:00",
-  "issued_local": "2026-08-11 22:22",
+  "issued_utc": "2026-08-12T04:37:49+00:00",
+  "issued_local": "2026-08-11 22:37",
   "probabilities": {
-    "15": 0.651,
-    "30": 0.618,
+    "15": 0.636,
+    "30": 0.624,
     "45": 0.69,
-    "60": 0.738,
-    "90": 0.717,
-    "120": 0.658,
-    "180": 0.488
+    "60": 0.556,
+    "90": 0.72,
+    "120": 0.615,
+    "180": 0.428
   },
-  "raining_now": 0.814,
-  "motion_speed_kmh": 18.2,
-  "motion_from": "norte",
-  "motion_confidence": 0.36,
-  "growth": 0.875,
+  "raining_now": 0.671,
+  "motion_speed_kmh": 15.8,
+  "motion_from": "noroeste",
+  "motion_confidence": 0.361,
+  "growth": 0.903,
   "cell_eta_min": null,
   "cell_km": null,
   "cape": 600.0,
@@ -33,13 +33,13 @@
     ]
   },
   "model_probs_1h": {
-    "ecmwf_ifs025": 0.5,
-    "gfs_seamless": 0.42,
-    "icon_seamless": 0.15,
-    "gem_seamless": 0.47
+    "ecmwf_ifs025": 0.49,
+    "gfs_seamless": 0.32,
+    "icon_seamless": 0.08,
+    "gem_seamless": 0.33
   },
   "confidence": "baja",
-  "calibration_n": 4489,
+  "calibration_n": 4496,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -52,16 +52,16 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 163.0,
+  "motion_bearing": 145.5,
   "pressure": {
-    "now_msl": 1020.5,
-    "now_surface": 820.5,
-    "change_3h": -1.2,
-    "change_6h": -1.6,
-    "change_24h": -2.0,
+    "now_msl": 1021.3,
+    "now_surface": 820.9,
+    "change_3h": -0.3,
+    "change_6h": -2.9,
+    "change_24h": -2.2,
     "forecast_drop": 5.4,
     "forecast_drop_at": "Wed 12, 17:00",
-    "forecast_drop_in_h": 18.6,
+    "forecast_drop_in_h": 18.4,
     "level": "alto",
     "trend": "bajando",
     "series": [
@@ -567,9 +567,9 @@
     "ciclo_diario": 8.0
   },
   "temperatura": {
-    "ahora": 16.8,
+    "ahora": 16.6,
     "sensacion": 18.4,
-    "humedad": 95,
+    "humedad": 96,
     "maxima": 25.1,
     "minima": 14.8,
     "serie": [
@@ -701,58 +701,58 @@
     ]
   },
   "rayos": {
-    "total_hora": 594,
+    "total_hora": 575,
     "bloques": 4
   },
   "performance": {
     "15": {
-      "n": 649,
+      "n": 650,
       "brier": 0.0954,
-      "skill_vs_climatologia": 0.427,
+      "skill_vs_climatologia": 0.429,
       "acierto_binario": 0.866,
-      "frecuencia_lluvia": 0.211
-    },
-    "30": {
-      "n": 647,
-      "brier": 0.0903,
-      "skill_vs_climatologia": 0.459,
-      "acierto_binario": 0.87,
       "frecuencia_lluvia": 0.212
     },
+    "30": {
+      "n": 648,
+      "brier": 0.0904,
+      "skill_vs_climatologia": 0.46,
+      "acierto_binario": 0.87,
+      "frecuencia_lluvia": 0.213
+    },
     "45": {
-      "n": 645,
+      "n": 646,
       "brier": 0.0882,
-      "skill_vs_climatologia": 0.467,
-      "acierto_binario": 0.874,
-      "frecuencia_lluvia": 0.209
+      "skill_vs_climatologia": 0.469,
+      "acierto_binario": 0.875,
+      "frecuencia_lluvia": 0.211
     },
     "60": {
-      "n": 643,
+      "n": 644,
       "brier": 0.0901,
-      "skill_vs_climatologia": 0.454,
+      "skill_vs_climatologia": 0.456,
       "acierto_binario": 0.874,
-      "frecuencia_lluvia": 0.208
+      "frecuencia_lluvia": 0.21
     },
     "90": {
-      "n": 639,
-      "brier": 0.1078,
-      "skill_vs_climatologia": 0.346,
+      "n": 640,
+      "brier": 0.1077,
+      "skill_vs_climatologia": 0.349,
       "acierto_binario": 0.845,
-      "frecuencia_lluvia": 0.208
+      "frecuencia_lluvia": 0.209
     },
     "120": {
-      "n": 635,
+      "n": 636,
       "brier": 0.1099,
-      "skill_vs_climatologia": 0.333,
+      "skill_vs_climatologia": 0.335,
       "acierto_binario": 0.83,
-      "frecuencia_lluvia": 0.208
+      "frecuencia_lluvia": 0.209
     },
     "180": {
-      "n": 631,
-      "brier": 0.1224,
-      "skill_vs_climatologia": 0.264,
-      "acierto_binario": 0.784,
-      "frecuencia_lluvia": 0.211
+      "n": 632,
+      "brier": 0.1226,
+      "skill_vs_climatologia": 0.266,
+      "acierto_binario": 0.783,
+      "frecuencia_lluvia": 0.212
     }
   }
 }
