@@ -1,22 +1,22 @@
 {
-  "issued_utc": "2026-08-16T02:22:58+00:00",
-  "issued_local": "2026-08-15 20:22",
+  "issued_utc": "2026-08-16T02:38:04+00:00",
+  "issued_local": "2026-08-15 20:38",
   "probabilities": {
-    "15": 0.251,
+    "15": 0.248,
     "30": 0.206,
-    "45": 0.229,
-    "60": 0.403,
-    "90": 0.414,
-    "120": 0.429,
-    "180": 0.349
+    "45": 0.23,
+    "60": 0.399,
+    "90": 0.41,
+    "120": 0.422,
+    "180": 0.344
   },
   "raining_now": 0.0,
-  "motion_speed_kmh": 38.6,
-  "motion_from": "oeste",
-  "motion_confidence": 0.417,
-  "growth": 0.978,
-  "cell_eta_min": 236.8,
-  "cell_km": 152.1,
+  "motion_speed_kmh": 36.8,
+  "motion_from": "noroeste",
+  "motion_confidence": 0.358,
+  "growth": 0.986,
+  "cell_eta_min": 235.2,
+  "cell_km": 150.6,
   "cape": 980.0,
   "radar_coverage": 0.0,
   "radar_usable": false,
@@ -33,13 +33,13 @@
     ]
   },
   "model_probs_1h": {
-    "ecmwf_ifs025": 0.24,
-    "gfs_seamless": 0.42,
+    "ecmwf_ifs025": 0.2,
+    "gfs_seamless": 0.32,
     "icon_seamless": 0.0,
-    "gem_seamless": 0.38
+    "gem_seamless": 0.27
   },
-  "confidence": "buena",
-  "calibration_n": 7264,
+  "confidence": "baja",
+  "calibration_n": 7272,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -52,16 +52,16 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 102.3,
+  "motion_bearing": 119.0,
   "pressure": {
-    "now_msl": 1017.1,
-    "now_surface": 820.8,
-    "change_3h": 0.2,
-    "change_6h": -0.2,
-    "change_24h": 2.7,
+    "now_msl": 1019.1,
+    "now_surface": 821.0,
+    "change_3h": -0.6,
+    "change_6h": 0.2,
+    "change_24h": 2.8,
     "forecast_drop": 3.4,
     "forecast_drop_at": "Sun 16, 18:00",
-    "forecast_drop_in_h": 21.6,
+    "forecast_drop_in_h": 21.4,
     "level": "vigilancia",
     "trend": "estable",
     "series": [
@@ -567,9 +567,9 @@
     "ciclo_diario": 9.5
   },
   "temperatura": {
-    "ahora": 21.3,
-    "sensacion": 22.7,
-    "humedad": 67,
+    "ahora": 20.6,
+    "sensacion": 21.8,
+    "humedad": 71,
     "maxima": 28.8,
     "minima": 14.7,
     "serie": [
@@ -701,56 +701,56 @@
     ]
   },
   "rayos": {
-    "total_hora": 6030,
+    "total_hora": 5838,
     "bloques": 4
   },
   "performance": {
     "15": {
-      "n": 1046,
+      "n": 1047,
       "brier": 0.0722,
-      "skill_vs_climatologia": 0.416,
+      "skill_vs_climatologia": 0.415,
       "acierto_binario": 0.9,
       "frecuencia_lluvia": 0.144
     },
     "30": {
-      "n": 1044,
-      "brier": 0.0705,
-      "skill_vs_climatologia": 0.43,
+      "n": 1045,
+      "brier": 0.0706,
+      "skill_vs_climatologia": 0.429,
       "acierto_binario": 0.897,
-      "frecuencia_lluvia": 0.145
+      "frecuencia_lluvia": 0.144
     },
     "45": {
-      "n": 1041,
-      "brier": 0.0716,
-      "skill_vs_climatologia": 0.416,
-      "acierto_binario": 0.893,
+      "n": 1043,
+      "brier": 0.072,
+      "skill_vs_climatologia": 0.412,
+      "acierto_binario": 0.892,
       "frecuencia_lluvia": 0.143
     },
     "60": {
-      "n": 1039,
-      "brier": 0.0718,
-      "skill_vs_climatologia": 0.412,
-      "acierto_binario": 0.893,
+      "n": 1040,
+      "brier": 0.072,
+      "skill_vs_climatologia": 0.41,
+      "acierto_binario": 0.892,
       "frecuencia_lluvia": 0.142
     },
     "90": {
-      "n": 1035,
-      "brier": 0.0859,
-      "skill_vs_climatologia": 0.295,
-      "acierto_binario": 0.871,
+      "n": 1036,
+      "brier": 0.0861,
+      "skill_vs_climatologia": 0.293,
+      "acierto_binario": 0.872,
       "frecuencia_lluvia": 0.142
     },
     "120": {
-      "n": 1031,
-      "brier": 0.0867,
-      "skill_vs_climatologia": 0.286,
+      "n": 1032,
+      "brier": 0.0868,
+      "skill_vs_climatologia": 0.285,
       "acierto_binario": 0.869,
-      "frecuencia_lluvia": 0.142
+      "frecuencia_lluvia": 0.141
     },
     "180": {
-      "n": 1028,
+      "n": 1029,
       "brier": 0.093,
-      "skill_vs_climatologia": 0.241,
+      "skill_vs_climatologia": 0.24,
       "acierto_binario": 0.854,
       "frecuencia_lluvia": 0.143
     }
