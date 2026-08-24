@@ -113,6 +113,15 @@ def _parse(ts: str):
 
 def run() -> int:
     rows = observe()
+    # Una observacion manual de Alvaro es alguien mirando por la ventana:
+    # vale mas que el satelite y que Open-Meteo. No se toca.
+    manuales = {r["valid_utc"] for r in store.read_observations()
+                if str(r.get("source", "")).startswith("manual")}
+    if manuales:
+        antes = len(rows)
+        rows = [r for r in rows if r["valid_utc"] not in manuales]
+        if antes != len(rows):
+            log.info("respetadas %s observaciones manuales", antes - len(rows))
     store.append_observations(rows)
     log.info("verificacion: %s bloques observados", len(rows))
     return len(rows)

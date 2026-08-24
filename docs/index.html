@@ -4,11 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>¿Va a llover? · Aguascalientes</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
+<!-- Librerías servidas desde el propio sitio, no desde un CDN externo.
+     Motivo: en datos móviles la página no cargaba. Los <script> de unpkg y
+     jsdelivr iban en el <head> y bloquean el render, así que si la red del
+     celular no los alcanza, la página entera se queda en blanco. Desde wifi
+     se cacheaban y por eso después funcionaba. Sirviéndolas desde GitHub
+     Pages hay una sola conexión que puede fallar en vez de tres. -->
+<link rel="stylesheet" href="vendor/leaflet.css">
+<script src="vendor/leaflet.js" defer></script>
+<script src="vendor/chart.umd.js" defer></script>
 <style>
   :root{
     color-scheme: light;
@@ -61,6 +65,16 @@
   .toggle input{accent-color:var(--azul);width:15px;height:15px;cursor:pointer}
   .toggle b{color:var(--muted);font-weight:600}
   .temp-grande{font-size:52px;font-weight:700;line-height:1;letter-spacing:-2px}
+  .correccion{display:flex;align-items:center;justify-content:center;gap:9px;
+    flex-wrap:wrap;margin-top:20px;padding-top:18px;border-top:1px solid var(--line);
+    font-size:14px;color:var(--muted)}
+  .btn-fb{display:inline-block;padding:7px 16px;border-radius:99px;font-size:14px;
+    font-weight:600;text-decoration:none;border:1px solid var(--line);
+    background:#eef2f7;color:var(--ink);transition:background .15s}
+  .btn-fb:hover{background:#e0e7f0}
+  #btn-si{border-color:#bcd6f5;background:#eaf2fd;color:#1a4d8f}
+  #btn-no{border-color:#cfe6d5;background:#edf7f0;color:#166b3f}
+  .nota-fb{font-size:12px;color:var(--muted);margin-top:9px;line-height:1.45}
 
   /* ---------- presión ---------- */
   .nivel{display:flex;align-items:center;gap:16px;margin-bottom:6px}
@@ -97,6 +111,16 @@
     <h1 class="titular" id="titular">Cargando…</h1>
     <div class="apoyo" id="apoyo"></div>
     <div class="sello" id="sello"></div>
+
+    <div class="correccion">
+      <span>¿Le atinó?</span>
+      <a id="btn-si" class="btn-fb" target="_blank" rel="noopener">Sí llueve</a>
+      <a id="btn-no" class="btn-fb" target="_blank" rel="noopener">No llueve</a>
+    </div>
+    <div class="nota-fb">
+      Tu respuesta pesa más que el satélite: entra directo en la calibración
+      como verdad de referencia.
+    </div>
   </div>
 
   <div class="card">
@@ -228,12 +252,21 @@ function veredicto(d){
   const p60 = d.probabilities?.["60"];
   const vals = Object.values(d.probabilities || {}).filter(hay).map(Number);
   const eta = d.cell_eta_min;
-  const lloviendo = (d.raining_now ?? 0) > .5;
+  const a = d.ahora || {};
 
   if (!vals.length)
     return {ic:"🛰️", t:"Sin datos ahora", s:"Ninguna fuente respondió en la última corrida.", c:"var(--muted)"};
-  if (lloviendo)
-    return {ic:"🌧️", t:"Está lloviendo", s:"El satélite ve lluvia sobre la ciudad.", c:"var(--azul)"};
+
+  // "Está lloviendo" solo con corroboración independiente. El infrarrojo por
+  // sí solo no distingue una celda que llueve del yunque de una tormenta
+  // lejana: los dos están igual de fríos.
+  if (a.lloviendo)
+    return {ic:"🌧️", t:"Está lloviendo",
+            s:`Confirmado por ${a.corroborado_por}.`, c:"var(--azul)"};
+  if (a.forma === "yunque")
+    return {ic:"☁️", t:"Nublado, no lloviendo",
+            s:"Es nube alta extendida desde una tormenta lejana. No moja.",
+            c:"var(--muted)"};
   if (hay(eta) && eta <= 90 && hay(p60) && p60 >= .45)
     return {ic:"⛈️", t:`Lluvia en ~${Math.round(eta)} min`,
             s:`Viene una celda desde el ${d.motion_from}, a ${Math.round(d.motion_speed_kmh)} km/h.`,
@@ -508,6 +541,7 @@ function render(d){
       <small>${et}</small></div>`;
   }).join("");
 
+  conectarCorreccion(d);
   pintarMapa(d);
   pintarTemperatura(d.temperatura);
   pintarPresion(d.pressure);
@@ -542,13 +576,39 @@ function render(d){
     "Positivo significa que el sistema aporta información real, no solo repite el promedio.";
 }
 
-conectarCapas();
-const bust = "?t=" + Date.now();
-fetch("latest.json" + bust).then(r => r.json()).then(render).catch(() => {
-  q("#titular").textContent = "Aún no hay datos";
-  q("#icono").textContent = "🛰️";
+/* ---------- botones de corrección ---------- */
+// Abren un issue de GitHub ya rellenado. Es la vía honesta para un sitio
+// estático: no hay servidor, y poner una clave de escritura en un repo
+// público dejaría que cualquiera inyectara observaciones falsas.
+const REPO = "vavodeleon/nowcast-ags";
+function conectarCorreccion(d){
+  const ahora = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+  const visto = (d && d.ahora && d.ahora.estado) || "—";
+  for (const [id, resp] of [["#btn-si","si"], ["#btn-no","no"]]){
+    const cuerpo =
+      `lluvia: ${resp} @ ${ahora}\n\n` +
+      `El sistema decía: ${visto}\n` +
+      `Probabilidad a 60 min: ${pct(d?.probabilities?.["60"])}\n` +
+      `(No borres la primera línea: es la que se lee automáticamente.)`;
+    q(id).href = `https://github.com/${REPO}/issues/new`
+      + `?labels=observacion`
+      + `&title=${encodeURIComponent((resp === "si" ? "Sí llueve" : "No llueve") + " — " + ahora.slice(11,16))}`
+      + `&body=${encodeURIComponent(cuerpo)}`;
+  }
+}
+
+// Las librerías van con `defer`, así que se ejecutan justo antes de
+// DOMContentLoaded. Arrancar ahí garantiza que L y Chart ya existen, y que
+// la página se dibuja aunque alguna no llegue a cargar.
+document.addEventListener("DOMContentLoaded", () => {
+  conectarCapas();
+  const bust = "?t=" + Date.now();
+  fetch("latest.json" + bust).then(r => r.json()).then(render).catch(() => {
+    q("#titular").textContent = "Aún no hay datos";
+    q("#icono").textContent = "🛰️";
+  });
+  setTimeout(() => location.reload(), 5 * 60 * 1000);
 });
-setTimeout(() => location.reload(), 5 * 60 * 1000);
 </script>
 </body>
 </html>

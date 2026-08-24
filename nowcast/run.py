@@ -8,8 +8,8 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
-from . import (calibrate, config, engine, lightning, notify, pressure, render,
-               sources, store, verify)
+from . import (calibrate, config, engine, feedback, lightning, notify, overhead,
+               pressure, render, sources, store, verify)
 
 log = logging.getLogger(__name__)
 
@@ -126,13 +126,29 @@ def build_forecast() -> dict:
         temperatura = {}
 
     # rayos detectados por el GLM
+    bloques_rayos = []
     try:
         rayos = lightning.update()
+        bloques_rayos = rayos.get("bloques", [])
         rayos_resumen = {"total_hora": rayos.get("total_hora", 0),
-                         "bloques": len(rayos.get("bloques", []))}
+                         "bloques": len(bloques_rayos)}
     except Exception as exc:
         log.error("rayos fallaron: %s", exc)
         rayos_resumen = {"total_hora": 0, "bloques": 0}
+
+    # ¿Que pasa AHORA sobre la ciudad? Requiere corroboracion: el infrarrojo
+    # solo no distingue una celda que llueve del yunque de una tormenta lejana.
+    precip_obs = None
+    try:
+        obs = sources.fetch_observed_precip(hours_back=1)
+        serie = (obs.get("hourly") or {}).get("precipitation") or []
+        vals = [float(v) for v in serie if v is not None]
+        precip_obs = max(vals) if vals else None
+    except Exception as exc:
+        log.debug("sin precipitacion observada: %s", exc)
+
+    ahora = overhead.assess(ir_frames[-1] if ir_frames else None,
+                            bloques_rayos, precip_obs)
 
     # imagen del satelite reproyectada, para el mapa
     map_bounds = None
@@ -232,6 +248,7 @@ def build_forecast() -> dict:
         "issued_local": issued.astimezone(config.TZ).strftime("%Y-%m-%d %H:%M"),
         "probabilities": probabilities,
         "raining_now": round(primary.current_score, 3) if primary else 0.0,
+        "ahora": ahora.to_dict(),
         "motion_speed_kmh": round(motion.speed_kmh, 1),
         "motion_from": motion.from_direction,
         "motion_confidence": round(motion.confidence, 3),
@@ -306,6 +323,12 @@ def main() -> None:
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
+    # 0. incorporar tus correcciones desde la pagina
+    try:
+        feedback.procesar()
+    except Exception as exc:
+        log.error("no se pudo procesar el feedback: %s", exc)
 
     # 1. verificar lo que ya paso (esto alimenta el aprendizaje)
     try:
