@@ -1,16 +1,118 @@
-# Mudarse a un servidor propio (Oracle Cloud, gratis)
+# Mudarse a una máquina propia
 
-GitHub Actions no sirve para esto y ya lo comprobamos con datos: descarta la
-mayoría de los disparos programados, y los que acepta se quedan hasta **50
-minutos en cola** antes de arrancar. El trabajo dura un minuto. Un nowcast
-que se actualiza cada hora no es un nowcast.
+Dos caminos, el mismo instalador para ambos:
 
-Un servidor propio con `systemd` sí cumple horarios. La capa gratuita de
-Oracle es permanente —no una prueba— y basta de sobra.
+- **[Raspberry Pi](#raspberry-pi)** — si ya tienes uno encendido en casa.
+- **[Oracle Cloud](#oracle-cloud-gratis-para-siempre)** — gratis y siempre
+  encendido, pero hay que crear cuenta.
 
 ---
 
-## 1. Crear la cuenta
+## Raspberry Pi
+
+Un Pi 3 basta. El trabajo pesado son una FFT sobre matrices de 200×200 y una
+reproyección de 700×700: unos 10–15 segundos en un Pi 3. La memoria pico
+ronda los 400 MB.
+
+**Lo que sí hay que tener en cuenta:**
+
+| | por corrida | al mes |
+|---|---|---|
+| GOES banda 13 (5 × 13 MB) | 65 MB | |
+| GLM, rayos (45 × 360 KB) | 16 MB | |
+| **Total descargado** | **~81 MB** | **~230 GB** |
+
+Sin límite de datos eso da igual, pero conviene saberlo antes.
+
+**La tarjeta SD.** El sistema hace unos 96 commits de git al día. Las SD
+mueren por desgaste de escritura; si el Pi va a estar años con esto, arranca
+desde un SSD por USB.
+
+**Sistema de 64 bits.** En Raspberry Pi OS de 32 bits, `scipy` y `h5py` se
+compilan desde cero y tardan una eternidad. En 64 bits llegan precompilados.
+El instalador lo detecta y avisa.
+
+**Convivencia con LoRa.** El servicio se instala con prioridad baja de CPU
+(`Nice=10`), disco en modo `idle` y un tope duro de 700 MB de memoria. Un
+nowcast puede tardar dos minutos más sin que nadie lo note; un gateway LoRa
+que pierde su ventana de recepción pierde el paquete para siempre. Por eso
+el nowcast siempre cede el paso.
+
+### Arrancar de la SD, escribir en un disco externo
+
+Es lo recomendable, y **no hace falta arrancar desde USB**. La SD se
+desgasta por escrituras, y el sistema operativo casi solo lee una vez
+arrancado. Quien escribe 96 veces al día es el repositorio. Moviendo solo
+eso al disco externo, la SD queda prácticamente en modo lectura.
+
+El disco externo solo necesita unos **8 GB**; cualquier SSD o memoria
+servirá de sobra por tamaño. Para durabilidad, un SSD SATA con adaptador USB
+aguanta mucho mejor las escrituras diarias que una memoria USB.
+
+**El disco tiene que estar en ext4.** Una memoria de fábrica viene en exFAT
+o FAT32, que no guardan permisos ni enlaces simbólicos: git se corrompe de
+formas raras y difíciles de diagnosticar. El instalador se detiene si
+detecta un sistema de archivos inadecuado.
+
+Con el disco conectado, identifica cuál es:
+
+```bash
+lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT
+```
+
+Suponiendo que sea `/dev/sda1` — **verifica bien, esto borra el disco**:
+
+```bash
+sudo umount /dev/sda1 2>/dev/null
+sudo mkfs.ext4 -L datos /dev/sda1
+sudo mkdir -p /mnt/datos
+```
+
+Para que se monte solo al arrancar, por UUID (los nombres tipo `/dev/sda1`
+cambian de orden entre reinicios):
+
+```bash
+sudo blkid /dev/sda1        # copia el UUID que aparece
+sudo nano /etc/fstab
+```
+
+Añade al final, con tu UUID:
+
+```
+UUID=EL-UUID-QUE-COPIASTE  /mnt/datos  ext4  defaults,noatime,nofail  0  2
+```
+
+`noatime` evita escrituras cada vez que se lee un archivo. `nofail` hace que
+el Pi arranque igual aunque el disco no esté conectado.
+
+```bash
+sudo mount -a
+sudo chown -R $USER:$USER /mnt/datos
+```
+
+### Instalación
+
+```bash
+git clone https://github.com/vavodeleon/nowcast-ags.git
+DESTINO=/mnt/datos/nowcast-ags bash nowcast-ags/deploy/instalar.sh
+```
+
+Esa variable `DESTINO` es la que manda todo al disco externo: el
+repositorio, el entorno de Python y el archivo de swap. El servicio queda
+configurado para **no arrancar si el disco no está montado**, en vez de
+escribir en el punto de montaje vacío —que estaría en la SD— y acabar con
+dos copias divergentes.
+
+Y sigue desde el [paso 5](#5-las-credenciales) de abajo, que es igual para
+las dos opciones.
+
+---
+
+## Oracle Cloud, gratis para siempre
+
+La capa gratuita de Oracle es permanente —no una prueba— y basta de sobra.
+
+### 1. Crear la cuenta
 
 En [oracle.com/cloud/free](https://www.oracle.com/cloud/free/). Piden tarjeta
 para verificar identidad, **no cobran** mientras te quedes en los recursos
@@ -19,7 +121,7 @@ para verificar identidad, **no cobran** mientras te quedes en los recursos
 Elige bien la región al registrarte: **no se puede cambiar después**. Escoge
 la más cercana a México.
 
-## 2. Crear la máquina
+### 2. Crear la máquina
 
 **Compute → Instances → Create instance**
 
@@ -38,7 +140,7 @@ la más cercana a México.
 En **Add SSH keys**, deja que genere el par y **descarga la clave privada**.
 Sin ella no podrás entrar.
 
-## 3. Entrar por SSH
+### 3. Entrar por SSH
 
 Desde la Terminal del Mac, con la clave que descargaste:
 
@@ -49,7 +151,7 @@ ssh -i ~/Downloads/ssh-key-*.key ubuntu@LA_IP_PUBLICA
 
 La IP aparece en la página de la instancia.
 
-## 4. Instalar
+### 4. Instalar
 
 Ya dentro del servidor:
 
@@ -62,7 +164,11 @@ El script instala dependencias, crea el entorno de Python, **corre las
 pruebas del motor** —si fallan, se detiene antes de dejar nada a medias— y
 programa la ejecución cada 15 minutos con systemd.
 
+---
+
 ## 5. Las credenciales
+
+*(igual para Raspberry Pi y para Oracle)*
 
 El instalador crea `~/.nowcast.env` vacío. Rellénalo:
 

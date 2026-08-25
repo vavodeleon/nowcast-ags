@@ -2,6 +2,10 @@
 Description=Nowcast Aguascalientes — una pasada
 After=network-online.target
 Wants=network-online.target
+# Si el proyecto vive en un disco externo y ese disco no esta montado,
+# es preferible no arrancar a escribir en el punto de montaje vacio
+# -que estaria en la SD- y acabar con dos copias divergentes.
+RequiresMountsFor=__DESTINO__
 
 [Service]
 Type=oneshot
@@ -9,6 +13,19 @@ User=__USUARIO__
 WorkingDirectory=__DESTINO__
 EnvironmentFile=__ENTORNO__
 ExecStart=/usr/bin/env bash __DESTINO__/deploy/correr.sh
-TimeoutStartSec=600
-# si una pasada falla, que no arrastre a las siguientes
+TimeoutStartSec=900
 SuccessExitStatus=0 1
+
+# --- Convivencia con otros servicios de la misma maquina ---------------
+# Pensado para un Raspberry Pi que ademas atiende LoRa. El nowcast es
+# trabajo de fondo: puede tardar dos minutos mas sin que nadie lo note,
+# pero un gateway LoRa que pierde su ventana de recepcion pierde el
+# paquete para siempre. Asi que el nowcast siempre cede el paso.
+Nice=10
+CPUWeight=20
+IOSchedulingClass=idle
+IOWeight=20
+# Tope duro de memoria: en un Pi de 1 GB, esto garantiza que una corrida
+# del nowcast jamas pueda dejar sin RAM al resto del sistema.
+MemoryMax=700M
+MemorySwapMax=512M
