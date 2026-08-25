@@ -585,10 +585,16 @@ function conectarCorreccion(d){
   const ahora = new Date().toISOString().replace(/\.\d+Z$/, "Z");
   const visto = (d && d.ahora && d.ahora.estado) || "—";
   for (const [id, resp] of [["#btn-si","si"], ["#btn-no","no"]]){
+    const a = (d && d.ahora) || {};
     const cuerpo =
       `lluvia: ${resp} @ ${ahora}\n\n` +
       `El sistema decía: ${visto}\n` +
       `Probabilidad a 60 min: ${pct(d?.probabilities?.["60"])}\n` +
+      `Motivo que dio: ${a.corroborado_por || "—"}\n` +
+      `Techo de nube encima: ${hay(a.bt_encima) ? a.bt_encima + " K" : "—"}\n` +
+      `Forma del campo: ${a.forma || "—"}\n` +
+      `Rayos a menos de 25 km: ${a.rayos_cerca ?? 0}\n` +
+      `Lluvia observada: ${hay(a.precip_observada) ? a.precip_observada + " mm" : "—"}\n\n` +
       `(No borres la primera línea: es la que se lee automáticamente.)`;
     q(id).href = `https://github.com/${REPO}/issues/new`
       + `?labels=observacion`

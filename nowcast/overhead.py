@@ -48,6 +48,24 @@ FRACCION_YUNQUE = 0.80
 # Rayos a menos de esto cuentan como corroboracion
 RAYOS_CERCA_KM = 25.0
 
+# VETO FISICO. Si el satelite ve el cielo mas caliente que esto justo encima,
+# no hay nube suficientemente alta para llover y NADA puede afirmar lo
+# contrario. Existe por un falso positivo real: el sistema dijo "esta
+# lloviendo" con cielo despejado, porque una fuente de "precipitacion
+# observada" en realidad traia un pronostico de la hora siguiente.
+# 265 K son unos -8 grados: por debajo de esa altura, en este clima, no
+# llueve de forma apreciable.
+VETO_CIELO_CALIDO_K = 265.0
+
+# Para que la corroboracion externa cuente, el satelite tiene que estar
+# viendo al menos nube alta encima. Sin esto, cualquier fuente ajena podria
+# imponer un "llueve" que el sensor local desmiente.
+CORROBORACION_EXIGE_K = 245.0
+
+# Lluvia observada minima (mm en la hora en curso) para considerarla real.
+# 0.1 mm es una traza indistinguible del ruido del modelo.
+LLUVIA_MINIMA_MM = 0.3
+
 
 @dataclass
 class Ahora:
@@ -163,11 +181,27 @@ def assess(ir_frame, bloques_rayos: list | None = None,
     else:
         a.forma = "nubes"
 
-    # ---- ¿llueve? Solo con corroboracion independiente.
+    # ---- ¿llueve?
+    #
+    # Primero el veto: si el satelite ve cielo templado justo encima, no hay
+    # nube capaz de llover y ninguna otra fuente puede contradecirlo. El
+    # sensor que MIRA la ciudad manda sobre cualquier modelo.
     razones = []
-    if precip_observada is not None and precip_observada > 0.1:
-        razones.append("precipitación observada")
-    if a.rayos_cerca > 0:
+    if a.bt_encima >= VETO_CIELO_CALIDO_K:
+        a.lloviendo = False
+        a.corroborado_por = ""
+        a.estado = "Despejado" if a.bt_encima > 270 else "Nublado"
+        log.info("ahora: %s (veto por cielo templado, BT %.0f K)",
+                 a.estado, a.bt_encima)
+        return a
+
+    # La corroboracion externa solo cuenta si ademas hay nube alta encima.
+    hay_nube_alta = a.bt_encima < CORROBORACION_EXIGE_K
+
+    if (precip_observada is not None
+            and precip_observada >= LLUVIA_MINIMA_MM and hay_nube_alta):
+        razones.append(f"{precip_observada:.1f} mm observados")
+    if a.rayos_cerca > 0 and hay_nube_alta:
         razones.append(f"{a.rayos_cerca} rayos a menos de {RAYOS_CERCA_KM:.0f} km")
     # un nucleo convectivo muy frio y compacto se acepta por si solo
     if a.forma == "nucleo" and a.bt_encima <= config.IR_DEEP_K:

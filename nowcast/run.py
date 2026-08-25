@@ -140,10 +140,7 @@ def build_forecast() -> dict:
     # solo no distingue una celda que llueve del yunque de una tormenta lejana.
     precip_obs = None
     try:
-        obs = sources.fetch_observed_precip(hours_back=1)
-        serie = (obs.get("hourly") or {}).get("precipitation") or []
-        vals = [float(v) for v in serie if v is not None]
-        precip_obs = max(vals) if vals else None
+        precip_obs = sources.precip_hora_actual()
     except Exception as exc:
         log.debug("sin precipitacion observada: %s", exc)
 

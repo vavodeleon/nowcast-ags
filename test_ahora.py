@@ -77,7 +77,7 @@ chk("rayos de hace una hora no cuentan",
 # precipitacion observada si confirma
 a = overhead.assess(yunque, [], 1.4)
 chk("precipitacion observada confirma", a.lloviendo is True)
-chk("la cita", "precipitación observada" in a.corroborado_por, a.corroborado_por)
+chk("la cita con los milimetros", "mm observados" in a.corroborado_por, a.corroborado_por)
 chk("una traza no confirma", overhead.assess(yunque, [], 0.05).lloviendo is False)
 
 print("\nF. Sin satelite")
@@ -104,6 +104,52 @@ from nowcast import verify, store
 import inspect
 src = inspect.getsource(verify.run)
 chk("verify respeta las observaciones manuales", "manual" in src)
+
+
+
+# ---------------- el falso positivo real del 25 de agosto
+print("\nI. El caso que reportaste: cielo despejado, decia que llovia")
+# Reproduccion: cielo templado encima (sin nube alta) pero Open-Meteo colando
+# un pronostico de 0.2 mm como si fuera observacion.
+despejado = campo(lambda d: np.full_like(d, 285.0))
+a = overhead.assess(despejado, [], 0.2)
+chk("con cielo despejado NO puede llover", a.lloviendo is False,
+    f"lloviendo={a.lloviendo} razon={a.corroborado_por!r}")
+chk("lo reporta como despejado", a.estado == "Despejado", a.estado)
+
+# ni siquiera una lluvia observada fuerte vence al veto
+a = overhead.assess(despejado, [], 5.0)
+chk("5 mm 'observados' con cielo limpio no vencen al veto", a.lloviendo is False)
+
+# ni rayos mal ubicados
+bloques = [{"edad_min": 2, "puntos": [[config.LAT, config.LON, 30]]}]
+a = overhead.assess(despejado, bloques, None)
+chk("ni rayos con cielo limpio", a.lloviendo is False, a.corroborado_por)
+
+# nube media (250 K): tampoco basta para corroborar
+media = campo(lambda d: np.full_like(d, 252.0))
+a = overhead.assess(media, [], 1.0)
+chk("nube media no basta para corroborar", a.lloviendo is False, a.estado)
+
+# pero con nube alta de verdad, la lluvia observada SI cuenta
+alta = campo(lambda d: np.where(d < 150, 232.0, 258.0))
+a = overhead.assess(alta, [], 1.0)
+chk("con nube alta, 1 mm observado si confirma", a.lloviendo is True,
+    a.corroborado_por)
+chk("cita los milimetros", "mm" in a.corroborado_por, a.corroborado_por)
+
+# umbral de traza
+a = overhead.assess(alta, [], 0.15)
+chk("0.15 mm sigue siendo traza", a.lloviendo is False, a.corroborado_por)
+
+print("\nJ. La lluvia 'observada' no puede venir del futuro")
+import inspect
+from nowcast import sources as _s
+src = inspect.getsource(_s.precip_hora_actual)
+chk("pide forecast_hours=0", "forecast_hours=0" in src)
+chk("descarta explicitamente el futuro", "t > ahora" in src)
+chk("run.py ya no toma el maximo de una ventana",
+    "max(vals)" not in inspect.getsource(__import__("nowcast.run", fromlist=["run"]).build_forecast))
 
 print("\n" + ("TODO EN ORDEN" if ok else "HAY FALLOS"))
 sys.exit(0 if ok else 1)

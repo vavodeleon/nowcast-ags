@@ -302,6 +302,53 @@ def fetch_temperature() -> dict:
     }
 
 
+def precip_hora_actual() -> float | None:
+    """Lluvia acumulada SOLO en la hora en curso. Nada de futuro.
+
+    Existe por un falso positivo real: antes se tomaba el maximo de una
+    ventana que incluia `forecast_hours=1`, asi que un pronostico de 0.2 mm
+    para la hora siguiente se colaba como "precipitacion observada" y hacia
+    que el sistema afirmara que estaba lloviendo con el cielo despejado.
+    Un pronostico no es una observacion.
+    """
+    from datetime import datetime, timezone
+
+    url = (
+        "https://api.open-meteo.com/v1/forecast"
+        f"?latitude={config.LAT:.4f}&longitude={config.LON:.4f}"
+        "&hourly=precipitation&past_hours=2&forecast_hours=0&timezone=UTC"
+    )
+    data = http.get_json(url)
+    if not data:
+        return None
+
+    hourly = data.get("hourly") or {}
+    times = hourly.get("time") or []
+    vals = hourly.get("precipitation") or []
+    ahora = datetime.now(timezone.utc)
+
+    mejor, mejor_gap = None, None
+    for i, ts in enumerate(times):
+        if i >= len(vals) or vals[i] is None:
+            continue
+        try:
+            t = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone.utc)
+        if t > ahora:                      # nunca mirar hacia adelante
+            continue
+        gap = (ahora - t).total_seconds()
+        if mejor_gap is None or gap < mejor_gap:
+            mejor, mejor_gap = float(vals[i]), gap
+
+    # solo vale si es de la ultima hora y media
+    if mejor is None or mejor_gap is None or mejor_gap > 5400:
+        return None
+    return mejor
+
+
 def fetch_observed_precip(hours_back: int = 6) -> dict:
     """Precipitacion observada reciente (best-match) para la verificacion."""
     url = (

@@ -51,7 +51,11 @@ def _leer_issues() -> list[dict]:
     repo = _repo()
     if not repo:
         return []
-    url = f"{API}/repos/{repo}/issues?state=open&labels={ETIQUETA}&per_page=50"
+    # Sin filtro de etiqueta a proposito: GitHub descarta en silencio
+    # las etiquetas que no existen todavia en el repo, y por eso las
+    # primeras correcciones llegaron sin etiquetar y se perdieron.
+    # El formato del cuerpo ("lluvia: si/no @ fecha") ya las identifica.
+    url = f"{API}/repos/{repo}/issues?state=open&per_page=50"
     try:
         import requests
         r = requests.get(url, headers=_cabeceras(), timeout=config.HTTP_TIMEOUT)
