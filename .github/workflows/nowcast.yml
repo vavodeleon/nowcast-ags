@@ -1,49 +1,38 @@
 name: nowcast
 
-# Un disparo por hora, pero cada corrida dura DOS horas. Se solapan a
-# propósito.
+# Una pasada por disparo. Nada de bucles con sleep.
 #
-# Historia de por qué: el diseño obvio, `cron: "*/15"`, no funciona — GitHub
-# retrasa o se salta los workflows programados. Medido aquí: de 4 corridas
-# esperadas en una hora, ocurrió 1; y el cron diario del reporte matutino no
-# disparó ni una vez en su primer día.
+# Historia, para que no se repita: se intentó mantener el runner ocupado
+# horas con `sleep` entre pasadas, para compensar que el cron de GitHub no
+# se cumple. Funcionaba, pero es justo lo que los términos de servicio de
+# Actions prohíben —"serverless computing" y "actividad no relacionada con
+# la producción, prueba, despliegue o publicación del proyecto"— y GitHub
+# lo hizo cumplir: canceló corridas a mitad y dejó otras encoladas sin
+# asignar máquina.
 #
-# La solución tiene dos partes:
-#
-# 1. Se pide un disparo por hora y las pasadas de 15 min se hacen dentro del
-#    job, durmiendo entre ellas. Un solo cron a cumplir en vez de cuatro.
-#
-# 2. Cada job hace 16 pasadas (~4 h), no 4. En operación normal el disparo de
-#    la hora siguiente cancela al anterior enseguida y no se nota nada. Pero
-#    si GitHub se salta disparos, el job viejo SIGUE CORRIENDO y cubre el
-#    hueco él solo.
-#
-#    Las 4 horas no son arbitrarias: midiendo los disparos reales de este
-#    repo salieron a las 23:52, 2:48 y 5:26 — es decir, GitHub cumple
-#    aproximadamente uno de cada tres, con huecos de hasta 3 horas. Cubrir 4
-#    deja margen sobre el peor caso observado.
-#
-#    Alargar el job no cuesta nada en operación normal, porque el disparo
-#    siguiente lo cancela igual. Solo importa cuando falla el cron, que es
-#    exactamente cuando hace falta.
+# Así que aquí se hace lo correcto: un disparo, una pasada, ~1 minuto de
+# runner. La cadencia queda a merced del cron de GitHub (en la práctica una
+# corrida cada 1-3 horas). Si hace falta cadencia real de 15 minutos, eso
+# vive en un servidor propio ejecutando el mismo código; ver el README.
 on:
   schedule:
-    # minuto 7 y no en punto: la hora en punto es el pico de carga de GitHub
-    - cron: "7 * * * *"
+    # varios intentos por hora: GitHub cumple algunos y descarta otros,
+    # y cada uno cuesta ~1 minuto de runner, que es uso legítimo
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
+  issues: write   # para leer y cerrar tus correcciones
 
 concurrency:
   group: nowcast
-  # el disparo nuevo releva al viejo; sin esto se acumularían corridas
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 260
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
 
@@ -54,31 +43,29 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Pasadas cada 15 minutos durante 4 horas
+      - name: Ejecutar nowcast
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           NTFY_TOPIC_SALUD: ${{ secrets.NTFY_TOPIC_SALUD }}
+          # Necesario para leer y cerrar tus correcciones. En Actions este
+          # token NO se expone solo: hay que declararlo. Sin el, la API se
+          # consulta sin autenticar y los runners -que comparten IP- chocan
+          # contra el limite de 60 peticiones por hora.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python -m nowcast.run
+
+      - name: Guardar historial y publicar
         run: |
           git config user.name  "nowcast-bot"
           git config user.email "nowcast-bot@users.noreply.github.com"
-
-          PASADAS=16
-          for i in $(seq 1 $PASADAS); do
-            echo "::group::pasada $i de $PASADAS — $(date -u '+%H:%M UTC')"
-            python -m nowcast.run || echo "la pasada falló, seguimos"
-
-            git add data docs
-            if git diff --staged --quiet; then
-              echo "sin cambios que guardar"
-            else
-              git commit -m "nowcast $(date -u '+%Y-%m-%d %H:%M UTC')"
-              for intento in 1 2 3; do
-                git pull --rebase --autostash origin "${GITHUB_REF_NAME}" \
-                  && git push origin "HEAD:${GITHUB_REF_NAME}" && break
-                sleep 5
-              done
-            fi
-            echo "::endgroup::"
-
-            if [ "$i" -lt "$PASADAS" ]; then sleep 900; fi
-          done
+          git add data docs
+          if git diff --staged --quiet; then
+            echo "sin cambios"
+          else
+            git commit -m "nowcast $(date -u '+%Y-%m-%d %H:%M UTC')"
+            for intento in 1 2 3; do
+              git pull --rebase --autostash origin "${GITHUB_REF_NAME}" \
+                && git push origin "HEAD:${GITHUB_REF_NAME}" && break
+              sleep 5
+            done
+          fi

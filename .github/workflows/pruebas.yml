@@ -27,3 +27,9 @@ jobs:
 
       - name: Pruebas de rayos y temperatura
         run: python test_rayos.py
+
+      - name: Pruebas de falsos positivos y correcciones
+        run: python test_ahora.py
+
+      - name: El workflow pasa lo que el codigo espera
+        run: python test_workflow.py
