@@ -1,0 +1,14 @@
+[Unit]
+Description=Nowcast Aguascalientes — una pasada
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=__USUARIO__
+WorkingDirectory=__DESTINO__
+EnvironmentFile=__ENTORNO__
+ExecStart=/usr/bin/env bash __DESTINO__/deploy/correr.sh
+TimeoutStartSec=600
+# si una pasada falla, que no arrastre a las siguientes
+SuccessExitStatus=0 1

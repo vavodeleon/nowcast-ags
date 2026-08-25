@@ -1,0 +1,13 @@
+[Unit]
+Description=Nowcast cada 15 minutos
+
+[Timer]
+# En los minutos 0, 15, 30 y 45. systemd SI cumple horarios: esta es la
+# diferencia con el cron de GitHub, que descartaba la mayoria de disparos.
+OnCalendar=*:0/15
+# si el servidor estuvo apagado, corre en cuanto vuelva
+Persistent=true
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

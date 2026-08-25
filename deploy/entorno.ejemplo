@@ -1,0 +1,17 @@
+# Credenciales del servidor. Este archivo NO va al repositorio.
+# Permisos 600: solo tu usuario puede leerlo.
+
+# Canal de ntfy para las alertas de lluvia (el mismo del celular)
+NTFY_TOPIC=
+
+# Canal de ntfy para las alertas de presión (el de tu pareja)
+NTFY_TOPIC_SALUD=
+
+# Token de GitHub para publicar los datos y leer tus correcciones.
+# Fine-grained, solo sobre nowcast-ags, con permisos:
+#   Contents: Read and write
+#   Issues:   Read and write
+GITHUB_TOKEN=
+
+# Necesario para que el código sepa a qué repo consultar los issues
+GITHUB_REPOSITORY=vavodeleon/nowcast-ags
