@@ -1,6 +1,6 @@
 {
-  "issued_utc": "2026-08-26T19:30:32+00:00",
-  "issued_local": "2026-08-26 13:30",
+  "issued_utc": "2026-08-26T19:45:31+00:00",
+  "issued_local": "2026-08-26 13:45",
   "probabilities": {
     "15": 0.02,
     "30": 0.02,
@@ -12,8 +12,8 @@
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 300.9,
-    "contraste": 0.4,
+    "bt_encima": 298.5,
+    "contraste": 2.7,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
     "precip_observada": null,
@@ -22,9 +22,9 @@
     "corroborado_por": "",
     "estado": "Despejado"
   },
-  "motion_speed_kmh": 0.0,
-  "motion_from": "sin movimiento definido",
-  "motion_confidence": 0.0,
+  "motion_speed_kmh": 61.9,
+  "motion_from": "suroeste",
+  "motion_confidence": 0.373,
   "growth": 1.0,
   "cell_eta_min": null,
   "cell_km": null,
@@ -50,7 +50,7 @@
     "gem_seamless": 0.0
   },
   "confidence": "baja",
-  "calibration_n": 14545,
+  "calibration_n": 14551,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -63,7 +63,7 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": null,
+  "motion_bearing": 53.8,
   "pressure": {
     "now_msl": 1013.2,
     "now_surface": 821.4,
@@ -72,7 +72,7 @@
     "change_24h": -2.9,
     "forecast_drop": 5.2,
     "forecast_drop_at": "Wed 26, 19:00",
-    "forecast_drop_in_h": 5.5,
+    "forecast_drop_in_h": 5.2,
     "level": "alto",
     "trend": "estable",
     "series": [
@@ -578,9 +578,9 @@
     "ciclo_diario": 8.9
   },
   "temperatura": {
-    "ahora": 27.8,
-    "sensacion": 28.6,
-    "humedad": 29,
+    "ahora": 28.2,
+    "sensacion": 28.7,
+    "humedad": 28,
     "maxima": 28.9,
     "minima": 15.2,
     "serie": [
@@ -712,8 +712,10 @@
     ]
   },
   "rayos": {
-    "total_hora": 172,
-    "bloques": 4
+    "total_hora": 276,
+    "bloques": 4,
+    "fase": "despejado",
+    "dist_km": 244.8
   },
   "performance": {
     "15": {
@@ -752,8 +754,8 @@
       "frecuencia_lluvia": 0.107
     },
     "120": {
-      "n": 2028,
-      "brier": 0.0741,
+      "n": 2027,
+      "brier": 0.0742,
       "skill_vs_climatologia": 0.215,
       "acierto_binario": 0.903,
       "frecuencia_lluvia": 0.106
