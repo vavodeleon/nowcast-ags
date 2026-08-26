@@ -14,11 +14,12 @@ name: nowcast
 # runner. La cadencia queda a merced del cron de GitHub (en la práctica una
 # corrida cada 1-3 horas). Si hace falta cadencia real de 15 minutos, eso
 # vive en un servidor propio ejecutando el mismo código; ver el README.
+# El cron quedo apagado a proposito: el Raspberry Pi publica cada 15 minutos
+# con un temporizador de systemd, que si cumple horarios. Dos autores
+# escribiendo en el mismo repositorio cada cuarto de hora solo genera
+# conflictos de rebase. Se conserva el disparo manual como red de seguridad
+# por si algun dia el Pi se cae.
 on:
-  schedule:
-    # varios intentos por hora: GitHub cumple algunos y descarta otros,
-    # y cada uno cuesta ~1 minuto de runner, que es uso legítimo
-    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
 
 permissions:
