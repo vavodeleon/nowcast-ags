@@ -39,6 +39,12 @@ def maybe_pressure_alert(state) -> bool:
     el margen de tiempo para actuar.
     """
     if not config.NTFY_TOPIC_SALUD:
+        # Avisar solo cuando de verdad habia algo que decir. Sin esto, el
+        # canal sin configurar es indistinguible de "no pasaba nada", y una
+        # alerta de salud que se pierde en silencio es el peor caso posible.
+        if getattr(state, "is_risky_soon", False) or getattr(state, "is_falling_now", False):
+            log.warning("habia una alerta de presion que dar, pero "
+                        "NTFY_TOPIC_SALUD esta vacio: no se envio a nadie")
         return False
 
     sent = False
