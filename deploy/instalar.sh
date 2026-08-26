@@ -123,9 +123,13 @@ if [ "$RAM_MB" -lt 2000 ]; then
   # de matarla.
   DISCO_SWAP="$(dirname "$DESTINO")"
   ARCHIVO_SWAP="$DISCO_SWAP/.swapfile"
-  # OJO: no basta con preguntar si HAY swap. Raspberry Pi OS trae 100 MB
-  # por omision, que es inservible para compilar. Hay que mirar el TAMAÑO.
-  SWAP_MB="$(free -m | awk '/^Swap:/{print $2}')"
+  # OJO: no basta con preguntar si HAY swap, por dos motivos.
+  #  1. Raspberry Pi OS trae 100 MB por omision, inservible para compilar.
+  #  2. Raspberry Pi OS moderno activa zram, que es RAM comprimida, no disco.
+  #     'free' lo suma al total de swap y da la falsa impresion de tener de
+  #     sobra, pero no aporta capacidad real cuando pip se queda sin memoria.
+  # Por eso contamos solo el swap respaldado por disco.
+  SWAP_MB="$(awk 'NR>1 && $1 !~ /zram/ {s+=$3} END{print int(s/1024)}' /proc/swaps)"
   echo "     swap actual: ${SWAP_MB} MB"
   if [ "${SWAP_MB:-0}" -lt 1024 ]; then
     azul "     poca RAM: añadiendo 2 GB de swap en $DISCO_SWAP"
