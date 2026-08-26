@@ -127,11 +127,23 @@ def build_forecast() -> dict:
 
     # rayos detectados por el GLM
     bloques_rayos = []
+    tormenta = None
     try:
         rayos = lightning.update()
         bloques_rayos = rayos.get("bloques", [])
         rayos_resumen = {"total_hora": rayos.get("total_hora", 0),
                          "bloques": len(bloques_rayos)}
+        # La fase anterior hace falta para la histeresis: sin ella, una celda
+        # rondando el umbral cambiaria de estado cada quince minutos.
+        tormenta = lightning.evaluar(rayos, notify._fase_previa())
+        rayos_resumen["fase"] = tormenta.fase
+        if tormenta.dist_cercano_km is not None:
+            rayos_resumen["dist_km"] = round(tormenta.dist_cercano_km, 1)
+        log.info("tormenta: %s, mas cercano %s km, %s destellos en la hora",
+                 tormenta.fase,
+                 f"{tormenta.dist_cercano_km:.0f}" if tormenta.dist_cercano_km
+                 else "ninguno",
+                 tormenta.destellos_hora)
     except Exception as exc:
         log.error("rayos fallaron: %s", exc)
         rayos_resumen = {"total_hora": 0, "bloques": 0}
@@ -273,6 +285,7 @@ def build_forecast() -> dict:
         "pressure": pressure.to_dict(pres),
         "temperatura": temperatura,
         "rayos": rayos_resumen,
+        "_tormenta": tormenta,
     }
     result["_rows"] = rows
     result["_pressure"] = pres
@@ -346,6 +359,7 @@ def main() -> None:
     result = build_forecast()
     store.append_predictions(result.pop("_rows"))
     pres = result.pop("_pressure", None)
+    tormenta = result.pop("_tormenta", None)
     store.prune()
     publish(result)
 
@@ -362,6 +376,11 @@ def main() -> None:
                 notify.maybe_pressure_alert(pres)
             except Exception as exc:
                 log.error("alerta de presion fallo: %s", exc)
+        if tormenta is not None:
+            try:
+                notify.maybe_storm_alert(tormenta)
+            except Exception as exc:
+                log.error("alerta de tormenta fallo: %s", exc)
 
         # 5. reporte matutino: se comprueba aqui y no con un cron propio,
         #    porque los cron de GitHub no se cumplen

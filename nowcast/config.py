@@ -49,6 +49,23 @@ RADAR_HOME_RADIUS_KM = 25.0
 LIGHTNING_RADIUS_DEG = 3.0     # ±3° ≈ ±330 km, igual que la ventana del mapa
 LIGHTNING_HISTORY_MIN = 60     # una hora, en cuatro bloques de 15 min
 
+# --- Avisos de tormenta electrica -------------------------------------
+# Pensados para dar tiempo a preparar a un animal que se asusta con los
+# truenos. Las distancias no son arbitrarias:
+#   ~25 km es el alcance tipico del trueno audible. Mas alla se ve el
+#   relampago pero rara vez se oye, y lo que asusta al gato es el ruido.
+#   ~60 km da alrededor de una hora de margen con una celda moviendose a
+#   40-50 km/h, que es lo normal en tormenta de verano.
+RAYOS_LEJOS_KM = 60.0          # empieza a vigilar y avisa si se acerca
+RAYOS_CERCA_KM = 25.0          # el trueno ya se oye
+# Histeresis: para SALIR de un estado hace falta mas margen que para
+# entrar. Sin esto, una celda oscilando alrededor del umbral mandaria
+# avisos cada 15 minutos.
+RAYOS_SALIR_CERCA_KM = 35.0
+RAYOS_SALIR_LEJOS_KM = 75.0
+RAYOS_DESPEJADO_MIN = 30       # silencio necesario para dar el "ya paso"
+RAYOS_COOLDOWN_H = 1.5         # entre avisos del mismo tipo
+
 # ---------------------------------------------------------------- horizontes
 LEAD_TIMES_MIN = [15, 30, 45, 60, 90, 120, 180]
 

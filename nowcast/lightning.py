@@ -17,7 +17,9 @@ from __future__ import annotations
 
 import io
 import logging
+import math
 import re
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 import h5py
@@ -175,3 +177,139 @@ def update() -> dict:
     }
     store.save_json(config.LIGHTNING_JSON, datos)
     return datos
+
+
+# ---------------------------------------------------------------------------
+# Lectura de la tormenta: que tan cerca esta y si viene hacia aqui.
+#
+# El GLM ya deja una hora de historial en bloques de 15 minutos. Con eso se
+# puede hacer algo que un solo cuadro no permite: distinguir una celda que se
+# acerca de una que se aleja. Es la misma idea que el nowcasting por
+# adveccion, pero sobre descargas electricas en vez de topes nubosos.
+# ---------------------------------------------------------------------------
+
+def _dist_km(lat: float, lon: float) -> float:
+    """Distancia desde la ubicacion configurada, en kilometros."""
+    lat1, lon1 = math.radians(config.LAT), math.radians(config.LON)
+    lat2, lon2 = math.radians(lat), math.radians(lon)
+    dlat, dlon = lat2 - lat1, lon2 - lon1
+    h = (math.sin(dlat / 2) ** 2
+         + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2)
+    return 2 * 6371.0 * math.asin(math.sqrt(h))
+
+
+@dataclass
+class Tormenta:
+    """Que esta haciendo la actividad electrica alrededor."""
+    dist_cercano_km: float | None   # destello mas cercano del bloque actual
+    dist_min_hora_km: float | None  # el mas cercano de toda la hora
+    destellos_cerca: int            # en el bloque actual, dentro de RAYOS_CERCA_KM
+    destellos_hora: int
+    tendencia_km: float | None      # negativo = se acerca
+    acercandose: bool
+    minutos_sin_actividad: int | None
+    fase: str                       # despejado | vigilando | acercandose | encima
+
+
+def _dist_bloque(bloque: dict) -> float | None:
+    """Distancia al destello mas cercano de un bloque, o None si no hubo."""
+    puntos = bloque.get("puntos") or []
+    if not puntos:
+        return None
+    return min(_dist_km(p[0], p[1]) for p in puntos)
+
+
+def _cuantos_dentro(bloque: dict, km: float) -> int:
+    total = 0
+    for p in bloque.get("puntos") or []:
+        if _dist_km(p[0], p[1]) <= km:
+            total += int(p[2]) if len(p) > 2 else 1
+    return total
+
+
+def evaluar(datos: dict, fase_previa: str = "despejado") -> Tormenta:
+    """Resume el estado de la tormenta a partir del historial de bloques.
+
+    'fase_previa' importa por la histeresis: los umbrales para salir de un
+    estado son mas amplios que los de entrar. Sin eso, una celda rondando
+    justo en el limite mandaria un aviso cada quince minutos.
+    """
+    bloques = sorted(datos.get("bloques") or [], key=lambda b: b.get("t", ""))
+    if not bloques:
+        return Tormenta(None, None, 0, 0, None, False, None, "despejado")
+
+    distancias = [(b, _dist_bloque(b)) for b in bloques]
+    con_rayos = [(b, d) for b, d in distancias if d is not None]
+
+    actual = distancias[-1][1]
+    dist_min_hora = min((d for _, d in con_rayos), default=None)
+    destellos_hora = sum(b.get("total", 0) for b in bloques)
+    destellos_cerca = _cuantos_dentro(bloques[-1], config.RAYOS_CERCA_KM)
+
+    # Cuanto lleva sin actividad relevante: bloques recientes sin nada
+    # dentro del radio de vigilancia.
+    minutos_sin = 0
+    for b, d in reversed(distancias):
+        if d is not None and d <= config.RAYOS_SALIR_LEJOS_KM:
+            break
+        minutos_sin += 15
+    minutos_sin = minutos_sin if minutos_sin else None
+
+    # Tendencia: cuanto cambia la distancia entre los bloques con actividad.
+    # Se compara la primera mitad con la segunda para no depender de un solo
+    # bloque, que puede tener un destello suelto muy lejos del cuerpo de la
+    # celda.
+    tendencia = None
+    if len(con_rayos) >= 2:
+        mitad = len(con_rayos) // 2
+        antes = [d for _, d in con_rayos[:mitad or 1]]
+        despues = [d for _, d in con_rayos[mitad:]]
+        tendencia = (sum(despues) / len(despues)) - (sum(antes) / len(antes))
+
+    # Un umbral de 5 km evita llamar "acercandose" al ruido de medicion.
+    acercandose = tendencia is not None and tendencia < -5.0
+
+    # --- fase, con histeresis segun de donde veniamos
+    #
+    # La referencia es la distancia del bloque MAS RECIENTE con actividad, no
+    # el minimo de la hora. Usar el minimo de la hora tenia dos fallos: una
+    # celda que ya se fue seguia contando como cercana durante 60 minutos -el
+    # "ya paso" no llegaba nunca-, y una tormenta lejana actual quedaba
+    # enmascarada por otra cercana de hace un rato.
+    referencia = None
+    edad_referencia = 0
+    for i, (_b, d) in enumerate(reversed(distancias)):
+        if d is not None:
+            referencia, edad_referencia = d, i * 15
+            break
+    # Si lo ultimo que se vio ya es viejo, no describe el presente.
+    if referencia is not None and edad_referencia >= config.RAYOS_DESPEJADO_MIN:
+        referencia = None
+
+    if referencia is None:
+        fase = "despejado"
+    elif fase_previa == "encima":
+        fase = "encima" if referencia <= config.RAYOS_SALIR_CERCA_KM else (
+            "acercandose" if referencia <= config.RAYOS_SALIR_LEJOS_KM else "despejado")
+    elif referencia <= config.RAYOS_CERCA_KM:
+        fase = "encima"
+    elif referencia <= config.RAYOS_LEJOS_KM:
+        fase = "acercandose" if acercandose else "vigilando"
+    elif fase_previa in ("acercandose", "vigilando") and referencia <= config.RAYOS_SALIR_LEJOS_KM:
+        fase = "vigilando"
+    else:
+        fase = "despejado"
+
+    # Silencio suficiente manda sobre todo lo demas: si hace media hora que
+    # no se ve nada cerca, la tormenta se acabo aunque la histeresis quisiera
+    # mantenernos en alerta.
+    if minutos_sin is not None and minutos_sin >= config.RAYOS_DESPEJADO_MIN:
+        fase = "despejado"
+    # Y al reves: no se declara el "ya paso" antes de tiempo.
+    elif fase == "despejado" and minutos_sin is not None \
+            and minutos_sin < config.RAYOS_DESPEJADO_MIN \
+            and fase_previa in ("encima", "acercandose", "vigilando"):
+        fase = "vigilando"
+
+    return Tormenta(actual, dist_min_hora, destellos_cerca, destellos_hora,
+                    tendencia, acercandose, minutos_sin, fase)

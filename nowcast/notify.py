@@ -164,3 +164,86 @@ def maybe_alert(result: dict) -> bool:
     if ok:
         _mark(key)
     return ok
+
+
+def _fase_previa() -> str:
+    return store.load_json(config.STATE_JSON, {}).get("fase_tormenta", "despejado")
+
+
+def _guardar_fase(fase: str) -> None:
+    state = store.load_json(config.STATE_JSON, {})
+    state["fase_tormenta"] = fase
+    store.save_json(config.STATE_JSON, state)
+
+
+def maybe_storm_alert(t) -> bool:
+    """Avisa de tormenta electrica cercana, para dar tiempo a prepararse.
+
+    Se avisa por TRANSICION de fase, no por estado: mientras la tormenta
+    siga encima no se repite el aviso. Lo que se notifica es el cambio, que
+    es lo unico que aporta informacion nueva.
+
+    El tono evita el alarmismo a proposito. Quien recibe esto no necesita
+    que le digan que una tormenta es peligrosa; necesita saber cuanto
+    tiempo tiene y cuando puede bajar la guardia.
+    """
+    previa = _fase_previa()
+    fase = t.fase
+    if fase == previa:
+        return False
+
+    if not config.NTFY_TOPIC_SALUD:
+        if fase in ("acercandose", "encima"):
+            log.warning("habia un aviso de tormenta que dar, pero "
+                        "NTFY_TOPIC_SALUD esta vacio: no se envio a nadie")
+        _guardar_fase(fase)
+        return False
+
+    enviado = False
+    dist = t.dist_cercano_km if t.dist_cercano_km is not None else t.dist_min_hora_km
+
+    # --- se acerca: el aviso con margen para preparar al gato
+    if fase == "acercandose" and previa in ("despejado", "vigilando") \
+            and dist is not None \
+            and _cooldown_ok_hours("tormenta_lejos", config.RAYOS_COOLDOWN_H):
+        cuerpo = [f"Hay rayos a unos {dist:.0f} km y la actividad viene hacia aca."]
+        if t.tendencia_km is not None:
+            # Los bloques son de 15 min, asi que la tendencia por bloque
+            # multiplicada por 4 da la velocidad de aproximacion por hora.
+            kmh = abs(t.tendencia_km) * 4
+            if kmh > 5:
+                minutos = dist / kmh * 60
+                cuerpo.append(f"A este ritmo se oiria en {minutos:.0f}-"
+                              f"{minutos * 1.5:.0f} minutos.")
+        cuerpo += ["", "Puede que se desvie y no llegue.",
+                   "Buen momento para preparar el rincon tranquilo."]
+        if send("Tormenta electrica acercandose", "\n".join(cuerpo),
+                priority="default", tags="zap", topic=config.NTFY_TOPIC_SALUD):
+            _mark("tormenta_lejos")
+            enviado = True
+
+    # --- ya esta encima: los truenos se oyen
+    elif fase == "encima" and previa != "encima" and dist is not None \
+            and _cooldown_ok_hours("tormenta_cerca", config.RAYOS_COOLDOWN_H):
+        cuerpo = [f"Rayos a {dist:.0f} km. A esta distancia los truenos ya se oyen."]
+        if t.destellos_cerca:
+            cuerpo.append(f"{t.destellos_cerca} destellos cerca en los "
+                          "ultimos 15 minutos.")
+        cuerpo += ["", "Te aviso cuando pase."]
+        if send("Tormenta electrica encima", "\n".join(cuerpo),
+                priority="high", tags="zap", topic=config.NTFY_TOPIC_SALUD):
+            _mark("tormenta_cerca")
+            enviado = True
+
+    # --- ya paso: la parte que suele faltar en estos sistemas
+    elif fase == "despejado" and previa in ("encima", "acercandose"):
+        minutos = t.minutos_sin_actividad or config.RAYOS_DESPEJADO_MIN
+        if send("Ya paso la tormenta",
+                f"Sin rayos cerca desde hace {minutos} minutos.\n"
+                "El gato puede volver a la normalidad.",
+                priority="low", tags="white_check_mark",
+                topic=config.NTFY_TOPIC_SALUD):
+            enviado = True
+
+    _guardar_fase(fase)
+    return enviado

@@ -171,6 +171,28 @@ El tablero muestra el Brier score y la comparación contra climatología. Un
 **skill score positivo** significa que el sistema le gana a simplemente decir
 "llueve el X% de los días". Ese es el número que importa.
 
+### Avisos de tormenta eléctrica
+
+Además de la lluvia, el sistema vigila los rayos del GLM y avisa por
+transiciones, no por estado: mientras la tormenta siga encima no repite.
+
+| Cuándo | Qué se manda |
+|---|---|
+| Actividad a ~60 km acercándose | aviso anticipado, ~1 h de margen |
+| Actividad a ~25 km | los truenos ya se oyen |
+| 30 min sin nada cerca | ya pasó |
+
+Los 25 km no son arbitrarios: es el alcance típico del trueno audible. Más
+lejos se ve el relámpago pero rara vez se oye, y para un animal que se asusta
+lo relevante es el ruido.
+
+Hay histéresis deliberada —se entra en "encima" a 25 km pero no se sale hasta
+los 35— porque una celda rondando justo el umbral mandaría un aviso cada
+quince minutos, y un canal que bombardea acaba silenciado.
+
+El "ya pasó" existe porque es la mitad que suele faltar: saber cuándo se puede
+bajar la guardia es tan útil como saber cuándo subirla.
+
 ### Cuándo te avisa
 
 Push solo si la probabilidad calibrada supera 55% dentro de los próximos
@@ -240,6 +262,7 @@ nowcast/
 data/            historial: predicciones, observaciones, calibración
 docs/            tablero web
 selftest.py      pruebas con tormentas sintéticas
+test_tormenta.py avisos de rayos: distancias, histéresis, transiciones
 ```
 
 ## Ajustes comunes

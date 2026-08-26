@@ -146,6 +146,7 @@
       <span class="chip"><span class="swatch" style="background:#e13c3c"></span>fuerte</span>
       <span class="chip"><span class="swatch" style="background:#aa2896"></span>muy fuerte</span>
     </div>
+    <div id="estado-tormenta" style="display:none;font-weight:600;margin:8px 0 0"></div>
     <div class="leyenda" id="leyenda-rayos">
       <span class="chip"><b>Rayos:</b></span>
       <span class="chip"><span class="rayo" style="background:#ffd400;opacity:1"></span>ahora</span>
@@ -414,6 +415,9 @@ function pintarTemperatura(t){
 
 /* ---------- mapa ---------- */
 let mapa, capaSatelite, capaRayos;
+// pintarRayos lee rayos.json, pero la fase de la tormenta la calcula
+// el motor y viaja en latest.json. Se guarda aqui al renderizar.
+let ultimo = null;
 
 // Los rayos se colorean por antigüedad: los de ahora amarillo brillante,
 // los de hace 45 min naranja apagado. Así se ve hacia dónde avanza la
@@ -440,6 +444,27 @@ async function pintarRayos(){
   const total = (datos && datos.total_hora) || 0;
   q("#cuenta-rayos").textContent = total ? `(${total})` : "(0)";
   q("#leyenda-rayos").style.display = total ? "flex" : "none";
+
+  // Estado de la tormenta, en palabras. El numero de destellos no le dice
+  // nada a nadie; "se acerca" o "ya paso" si.
+  const est = q("#estado-tormenta");
+  if (est) {
+    const fase = ultimo && ultimo.rayos && ultimo.rayos.fase;
+    const km = ultimo && ultimo.rayos && ultimo.rayos.dist_km;
+    const cerca = km != null ? ` — lo más cercano a ${Math.round(km)} km` : "";
+    const texto = {
+      encima:      ["Tormenta encima", "#b91c1c"],
+      acercandose: ["Tormenta acercándose", "#c2410c"],
+      vigilando:   ["Actividad eléctrica en la zona", "#a16207"],
+    }[fase];
+    if (texto) {
+      est.textContent = texto[0] + cerca;
+      est.style.color = texto[1];
+      est.style.display = "block";
+    } else {
+      est.style.display = "none";
+    }
+  }
 
   if (capaRayos) capaRayos.remove();
   capaRayos = L.layerGroup();
@@ -528,6 +553,7 @@ function conectarCapas(){
 
 /* ---------- render principal ---------- */
 function render(d){
+  ultimo = d;
   const v = veredicto(d);
   q("#icono").textContent = v.ic;
   q("#titular").textContent = v.t;

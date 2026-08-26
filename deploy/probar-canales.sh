@@ -35,6 +35,12 @@ CANALES = [
      "Prueba del canal de presion",
      "Si ves esto, aqui llegaran los avisos de caida de presion barometrica.",
      "chart_with_downwards_trend"),
+    ("tormenta", config.NTFY_TOPIC_SALUD,
+     "Prueba del aviso de tormenta",
+     "Asi se veran los avisos de rayos cerca. Llegan al mismo canal que la "
+     "presion: uno cuando la tormenta se acerca, otro cuando ya se oye, y "
+     "otro cuando pasa.",
+     "zap"),
 ]
 
 fallo = False
