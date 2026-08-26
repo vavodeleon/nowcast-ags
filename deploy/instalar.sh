@@ -9,6 +9,13 @@
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/vavodeleon/nowcast-ags.git}"
+# Al reinstalar para actualizar, olvidar DESTINO clonaria una segunda copia
+# en el home en vez de actualizar la que ya corre. Si el script se ejecuta
+# desde dentro de una instalacion (tiene .venv), esa es la que toca.
+AQUI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+if [ -z "${DESTINO:-}" ] && [ -d "$AQUI/.venv" ]; then
+  DESTINO="$AQUI"
+fi
 DESTINO="${DESTINO:-$HOME/nowcast-ags}"
 ENTORNO="$HOME/.nowcast.env"
 

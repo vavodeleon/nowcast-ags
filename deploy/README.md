@@ -338,11 +338,15 @@ sudo systemctl start nowcast             # forzar una ahora
 Para actualizar el código cuando cambies algo desde el Mac:
 
 ```bash
-bash ~/nowcast-ags/deploy/instalar.sh
+sudo systemctl stop nowcast.timer
+bash /mnt/datos/nowcast-ags/deploy/instalar.sh
+sudo systemctl start nowcast.timer
 ```
 
-Es idempotente: hace `git pull`, reinstala lo que haga falta y vuelve a
-programar el temporizador. Se puede correr las veces que quieras.
+Es idempotente: hace `git pull`, reinstala lo que haga falta, vuelve a copiar
+las unidades de systemd y reprograma el temporizador. Se puede correr las
+veces que quieras. Detecta solo que ya está instalado ahí, así que no hace
+falta repetir `DESTINO`.
 
 ## Qué cambia y qué no
 

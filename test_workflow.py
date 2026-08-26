@@ -88,5 +88,28 @@ print("\nE. Esta prueba no necesita nada instalado")
 chk("sin dependencias externas",
     not re.search(r"^\s*import\s+(yaml|requests|numpy)", open(__file__).read(), re.M))
 
+print("\nF. Coherencia del despliegue")
+# Otro desajuste entre archivos que nadie comparaba: correr.sh asumia
+# $HOME/nowcast-ags mientras el instalador acepta DESTINO en otro disco.
+# systemd arrancaba el servicio y el script moria en el primer cd.
+def sin_comentarios(texto: str) -> str:
+    """Los comentarios explican fallos pasados y citan el codigo malo."""
+    return "\n".join(l for l in texto.splitlines() if not l.lstrip().startswith("#"))
+
+correr = sin_comentarios(open("deploy/correr.sh", encoding="utf-8").read())
+servicio = sin_comentarios(open("deploy/nowcast.service", encoding="utf-8").read())
+instalador = open("deploy/instalar.sh", encoding="utf-8").read()
+
+chk("correr.sh no da por hecho que el proyecto esta en el home",
+    "$HOME/nowcast-ags" not in correr)
+chk("un fallo no se reporta como exito",
+    not re.search(r"^SuccessExitStatus", servicio, re.M))
+
+# Todo marcador __ASI__ del .service tiene que sustituirlo el instalador.
+marcadores = set(re.findall(r"__([A-Z]+)__", servicio))
+sustituidos = set(re.findall(r"s\|__([A-Z]+)__\|", instalador))
+chk("el instalador sustituye todos los marcadores",
+    marcadores <= sustituidos, f"sin sustituir: {sorted(marcadores - sustituidos)}")
+
 print("\n" + ("TODO EN ORDEN" if ok else "HAY FALLOS"))
 sys.exit(0 if ok else 1)

@@ -14,7 +14,11 @@ WorkingDirectory=__DESTINO__
 EnvironmentFile=__ENTORNO__
 ExecStart=/usr/bin/env bash __DESTINO__/deploy/correr.sh
 TimeoutStartSec=900
-SuccessExitStatus=0 1
+# NO poner SuccessExitStatus=0 1. Lo tuvo, y hacia que systemd reportara
+# "Finished successfully" mientras el script fallaba en la primera linea.
+# run.py ya atrapa los fallos transitorios por su cuenta y sale con 0; si
+# sale distinto de 0 es que algo se rompio de verdad y queremos verlo en
+# systemctl status.
 
 # --- Convivencia con otros servicios de la misma maquina ---------------
 # Pensado para un Raspberry Pi que ademas atiende LoRa. El nowcast es

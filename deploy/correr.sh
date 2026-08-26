@@ -2,8 +2,17 @@
 # Una pasada del nowcast en el servidor: sincroniza, corre y publica.
 set -uo pipefail
 
-DESTINO="${DESTINO:-$HOME/nowcast-ags}"
-cd "$DESTINO" || exit 1
+# El script deduce donde vive a partir de su propia ruta. La version
+# anterior caia en $HOME/nowcast-ags, que solo es correcto si el proyecto
+# esta en el home: con DESTINO en un disco externo, systemd lo arrancaba y
+# fallaba el cd. El instalador sustituye marcadores en el .service pero no
+# aqui, asi que este archivo no puede depender de eso.
+AQUI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+DESTINO="${DESTINO:-$AQUI}"
+if ! cd "$DESTINO"; then
+  echo "ERROR: no existe $DESTINO" >&2
+  exit 3
+fi
 
 # El repo tiene dos autores: este servidor y, ocasionalmente, tú desde el Mac.
 # --autostash evita que un archivo a medias bloquee la sincronización.
