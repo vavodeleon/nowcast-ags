@@ -45,6 +45,9 @@ el nowcast siempre cede el paso.
 
 ### Arrancar de la SD, escribir en un disco externo
 
+Sirve igual un disco duro, un SSD o una memoria flash; más abajo están las
+particularidades de cada uno.
+
 Es lo recomendable, y **no hace falta arrancar desde USB**. La SD se
 desgasta por escrituras, y el sistema operativo casi solo lee una vez
 arrancado. Quien escribe 96 veces al día es el repositorio. Moviendo solo
@@ -120,6 +123,34 @@ vcgencmd get_throttled
 Pi se está quedando corto de voltaje: cambia a la opción 1 o 2 de arriba. El
 instalador también lo revisa y avisa.
 
+### ¿Y una memoria flash USB?
+
+Es la opción práctica en un Pi con ventilador o sin fuente de sobra: consume
+casi nada y no tiene partes móviles.
+
+La objeción evidente es que volvemos al desgaste por escritura, que es
+justamente de lo que huíamos con la SD. La diferencia está en los números.
+El sistema escribe unos **8–9 MB al día**. Aunque el controlador amplifique
+eso diez veces, son ~30 GB al año. Cualquier memoria de 16 GB o más, incluso
+con celdas mediocres, aguanta eso durante años. Lo que mata a las tarjetas SD
+no es el volumen sino estar además soportando el sistema operativo entero;
+aquí solo lleva el repositorio.
+
+Dos precauciones que sí valen la pena:
+
+- **Que sea de marca conocida.** Las memorias muy baratas traen controladores
+  sin nivelado de desgaste decente, y ahí sí el cálculo de arriba deja de
+  valer.
+- **`commit=60` en fstab** (ya está en la línea de más abajo), para que el
+  diario de ext4 no escriba cada 5 segundos.
+
+Y una advertencia de espacio, no de desgaste: el repositorio crece ~3 GB al
+año porque `satelite.png` entra al historial de git 96 veces al día. En una
+memoria de 8 GB eso es una pared en un par de años. Está pendiente moverlo a
+una rama huérfana `gh-pages` que se reescribe en un solo commit, lo que deja
+el crecimiento en ~15 MB al año. Conviene hacerlo antes de que el historial
+sea grande.
+
 **El disco tiene que estar en ext4.** Una memoria de fábrica viene en exFAT
 o FAT32, que no guardan permisos ni enlaces simbólicos: git se corrompe de
 formas raras y difíciles de diagnosticar. El instalador se detiene si
@@ -150,11 +181,15 @@ sudo nano /etc/fstab
 Añade al final, con tu UUID:
 
 ```
-UUID=EL-UUID-QUE-COPIASTE  /mnt/datos  ext4  defaults,noatime,nofail  0  2
+UUID=EL-UUID-QUE-COPIASTE  /mnt/datos  ext4  defaults,noatime,nofail,commit=60  0  2
 ```
 
 `noatime` evita escrituras cada vez que se lee un archivo. `nofail` hace que
-el Pi arranque igual aunque el disco no esté conectado.
+el Pi arranque igual aunque el disco no esté conectado. `commit=60` agrupa las
+escrituras del diario cada 60 segundos en vez de cada 5, que en memoria flash
+reduce bastante la amplificación de escritura; lo peor que puede pasar es
+perder el último minuto, y los datos se regeneran solos en la siguiente
+corrida.
 
 ```bash
 sudo mount -a
