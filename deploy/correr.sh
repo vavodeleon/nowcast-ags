@@ -8,7 +8,25 @@ set -uo pipefail
 # fallaba el cd. El instalador sustituye marcadores en el .service pero no
 # aqui, asi que este archivo no puede depender de eso.
 AQUI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
-DESTINO="${DESTINO:-$AQUI}"
+DESTINO="${NOWCAST_RAIZ:-${DESTINO:-$AQUI}}"
+
+# Este script hace 'git pull' del repositorio en el que el propio script
+# vive. Bash NO lee el archivo entero de golpe: lo va leyendo conforme lo
+# ejecuta. Si el pull trae una version nueva de este mismo archivo a mitad
+# de camino, bash sigue leyendo desde el desplazamiento anterior y ejecuta
+# fragmentos partidos. Paso de verdad: dio un "Cannot rebase onto multiple
+# branches" que no tenia nada que ver con git.
+# La solucion es correr desde una copia en /tmp, intocable por el pull.
+if [ -z "${NOWCAST_REEJECUTADO:-}" ]; then
+  COPIA="$(mktemp /tmp/nowcast-correr.XXXXXX.sh)"
+  cat "$(readlink -f "$0")" > "$COPIA"
+  export NOWCAST_REEJECUTADO=1
+  export NOWCAST_RAIZ="$DESTINO"
+  bash "$COPIA"
+  codigo=$?
+  rm -f "$COPIA"
+  exit $codigo
+fi
 if ! cd "$DESTINO"; then
   echo "ERROR: no existe $DESTINO" >&2
   exit 3

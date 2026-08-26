@@ -52,6 +52,8 @@
 
   /* ---------- mapa ---------- */
   #mapa{height:340px;border-radius:12px;overflow:hidden;background:#dde4ec}
+  /* Apaga el mapa base para que el infrarrojo y los rayos destaquen. */
+  .mapa-tenue{filter:grayscale(0.85) brightness(1.08) contrast(0.85) opacity(0.75)}
   .leyenda{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:13px;
     color:var(--muted);align-items:center}
   .chip{display:inline-flex;align-items:center;gap:6px}
@@ -461,8 +463,15 @@ function pintarMapa(d){
 
   mapa = L.map("mapa", {zoomControl:true, attributionControl:true,
                         scrollWheelZoom:false}).setView([d.lat, d.lon], 8);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-    attribution: '&copy; OpenStreetMap &copy; CARTO · satélite y rayos: NOAA GOES-19',
+  // Tiles de OpenStreetMap, sin API key. Antes se usaba CARTO, que en 2026
+  // empezo a exigir clave y a estampar "API KEY REQUIRED" sobre el mapa. Su
+  // clave es gratuita, pero esta pagina es HTML estatico en un repositorio
+  // publico: la clave quedaria publicada. Mejor no depender de ninguna.
+  // El estilo claro de CARTO se imita con un filtro CSS (.mapa-tenue), para
+  // que el mapa no compita con la capa de satelite que va encima.
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; OpenStreetMap · satélite y rayos: NOAA GOES-19',
+    className: "mapa-tenue",
     maxZoom: 12
   }).addTo(mapa);
 

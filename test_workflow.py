@@ -102,6 +102,9 @@ instalador = open("deploy/instalar.sh", encoding="utf-8").read()
 
 chk("correr.sh no da por hecho que el proyecto esta en el home",
     "$HOME/nowcast-ags" not in correr)
+chk("el script se protege de reescribirse a si mismo",
+    "NOWCAST_REEJECUTADO" in correr,
+    "git pull cambia correr.sh mientras bash lo lee")
 chk("el push va autenticado",
     "credential.helper" in correr, "git push sin credenciales falla en systemd")
 chk("el token no acaba en .git/config",
