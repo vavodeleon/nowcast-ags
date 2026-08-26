@@ -32,6 +32,11 @@ desde un SSD por USB.
 compilan desde cero y tardan una eternidad. En 64 bits llegan precompilados.
 El instalador lo detecta y avisa.
 
+Verificado sobre un Pi 3 Model B con Raspberry Pi OS Lite 64-bit (Debian 13
+trixie, Python 3.13): las dependencias se instalan precompiladas en un par
+de minutos y la suite del motor tarda **7.4 segundos**. La corrida real está
+dominada por la descarga, no por el procesador.
+
 **Convivencia con LoRa.** El servicio se instala con prioridad baja de CPU
 (`Nice=10`), disco en modo `idle` y un tope duro de 700 MB de memoria. Un
 nowcast puede tardar dos minutos más sin que nadie lo note; un gateway LoRa

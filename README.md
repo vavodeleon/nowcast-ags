@@ -3,8 +3,15 @@
 Predicción de lluvia a 0–3 horas siguiendo celdas de tormenta por satélite
 infrarrojo, en lugar de confiar en modelos numéricos.
 
-Corre solo en GitHub Actions, cada 15 minutos, gratis. No necesitas servidor
-ni dejar la computadora encendida.
+Corre cada 15 minutos en una máquina propia —un Raspberry Pi o una instancia
+gratuita de Oracle Cloud— y publica en GitHub Pages. Ver
+[`deploy/README.md`](deploy/README.md).
+
+> Empezó en GitHub Actions y no funcionó, con datos medidos: descarta la
+> mayoría de los disparos programados y los que acepta esperan hasta **50
+> minutos en cola** antes de arrancar, para un trabajo de un minuto. Además,
+> mantener un runner ocupado para compensarlo va contra sus términos de
+> servicio. Un nowcast que se actualiza cada hora no es un nowcast.
 
 ## Por qué el infrarrojo y no el radar
 
@@ -194,10 +201,15 @@ Medido en este repo: con `cron: "*/15"`, de cuatro corridas esperadas en una
 hora ocurrió **una**. GitHub retrasa o se salta los workflows programados
 cuando hay carga, y castiga especialmente los intervalos cortos.
 
-La solución está en `nowcast.yml`: se pide **un disparo por hora** —los cron
-horarios sí se cumplen— y dentro del mismo job se hacen las cuatro pasadas
-durmiendo 15 minutos entre cada una. El runner queda ocupado ~46 min por hora,
-lo cual en un repo público es gratis.
+Intenté compensarlo manteniendo el runner ocupado con esperas de 15 minutos
+dentro de un solo job. **Fue un error mío:** eso va contra los términos de
+Actions, que prohíben usar los runners para "cualquier actividad ajena a la
+producción, prueba, despliegue o publicación" del proyecto. GitHub lo hizo
+cumplir cancelando corridas a mitad. Está revertido.
+
+La solución de verdad es no depender de Actions: una máquina propia con un
+temporizador de systemd, que sí cumple horarios. Ver
+[`deploy/README.md`](deploy/README.md).
 
 ---
 
@@ -240,7 +252,7 @@ Todo en `nowcast/config.py`:
 | Más aviso anticipado | `ALERT_MAX_ETA_MIN` a 120 |
 | Mover la ubicación | `LAT`, `LON` |
 | Alertar solo con tormenta fuerte | `DBZ_STORM` y sube el umbral |
-| Correr cada 10 min | el cron en `.github/workflows/nowcast.yml` |
+| Correr cada 10 min | `OnCalendar` en `deploy/nowcast.timer` |
 
 ## Fuentes de datos
 
