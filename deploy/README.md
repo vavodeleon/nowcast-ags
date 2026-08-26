@@ -199,9 +199,14 @@ sudo chown -R $USER:$USER /mnt/datos
 ### Instalación
 
 ```bash
-git clone https://github.com/vavodeleon/nowcast-ags.git
-DESTINO=/mnt/datos/nowcast-ags bash nowcast-ags/deploy/instalar.sh
+git clone --depth 1 https://github.com/vavodeleon/nowcast-ags.git /tmp/instalador
+DESTINO=/mnt/datos/nowcast-ags bash /tmp/instalador/deploy/instalar.sh
 ```
+
+El clon a `/tmp` es solo para tener el script a mano; el instalador vuelve a
+clonar el proyecto de verdad en `DESTINO`. Se hace así para no dejar una
+segunda copia del repositorio en la tarjeta SD, que es justo lo que estamos
+tratando de evitar. `/tmp` se limpia solo al reiniciar.
 
 Esa variable `DESTINO` es la que manda todo al disco externo: el
 repositorio, el entorno de Python y el archivo de swap. El servicio queda
