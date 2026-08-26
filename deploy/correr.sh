@@ -26,8 +26,27 @@ if git diff --staged --quiet; then
   echo "sin cambios que publicar"
 else
   git commit -q -m "nowcast $(date -u '+%Y-%m-%d %H:%M UTC')"
+
+  # Autenticacion del push. En GitHub Actions la configuraba el runner; aqui
+  # hay que darsela nosotros. El token se entrega por un ayudante de
+  # credenciales que lo lee del entorno en el momento, para que NUNCA acabe
+  # ni en .git/config -que se queda en disco- ni en la linea de comandos
+  # -visible para cualquiera con 'ps'-.
+  if [ -z "${GITHUB_TOKEN:-}" ]; then
+    echo "ERROR: falta GITHUB_TOKEN; el pronostico se calculo pero no se publica" >&2
+    exit 4
+  fi
+  AYUDANTE='!f() { echo username=x-access-token; echo "password=$GITHUB_TOKEN"; }; f'
+
   for intento in 1 2 3; do
-    git pull --rebase --autostash origin main && git push -q origin HEAD:main && break
+    git pull --rebase --autostash origin main \
+      && git -c credential.helper= -c credential.helper="$AYUDANTE" \
+             push -q origin HEAD:main \
+      && { echo "publicado"; break; }
+    if [ "$intento" = 3 ]; then
+      echo "ERROR: no se pudo publicar tras 3 intentos" >&2
+      exit 5
+    fi
     sleep 5
   done
 fi

@@ -90,6 +90,9 @@ def procesar() -> int:
     """Convierte los issues abiertos en observaciones. Devuelve cuantos."""
     issues = _leer_issues()
     if not issues:
+        # Registrarlo aunque sea cero: el silencio absoluto no deja
+        # distinguir "no habia correcciones" de "ni siquiera lo intento".
+        log.info("feedback: sin correcciones pendientes")
         return 0
 
     filas: list[dict] = []
