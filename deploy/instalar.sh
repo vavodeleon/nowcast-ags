@@ -67,6 +67,43 @@ case "$FS" in
     exit 1 ;;
 esac
 
+# Un disco duro mecanico por USB puede pedir ~0.9 A al arrancar el plato, y
+# los puertos USB del Pi comparten un fusible de ~1.1 A. La consecuencia no es
+# que no arranque, sino bajones de voltaje intermitentes que desconectan el
+# disco a media escritura y corrompen el repositorio.
+if [ "$MONTAJE" != "/" ] && command -v vcgencmd >/dev/null 2>&1; then
+  ESTADO="$(vcgencmd get_throttled 2>/dev/null | cut -d= -f2)"
+  echo "     alimentación: $ESTADO"
+  if [ "$ESTADO" != "0x0" ] && [ -n "$ESTADO" ]; then
+    rojo ""
+    rojo "     AVISO: el Pi reporta problemas de alimentación ($ESTADO)."
+    rojo "     Si el disco externo se alimenta por USB, es casi seguro la causa."
+    rojo "     Un bajón mientras git escribe deja el repositorio corrupto."
+    rojo "     Solución: disco de 3.5\" con su propia corriente, o un hub USB"
+    rojo "     alimentado. Detalles en deploy/README.md"
+    rojo ""
+    read -r -p "     ¿Continuar de todas formas? [s/N] " seguir
+    [ "${seguir:-n}" = "s" ] || exit 1
+  else
+    verde "     alimentación estable"
+  fi
+
+  # Un disco que se duerme hara ~96 arranques de plato al dia. Los ciclos de
+  # aparcado son lo que desgasta un HDD; girando constante dura mas.
+  DISCO="$(df "$PADRE" | awk 'NR==2{print $1}' | sed 's/[0-9]*$//')"
+  if [ -b "$DISCO" ] && [ "$(cat "/sys/block/$(basename "$DISCO")/queue/rotational" 2>/dev/null)" = "1" ]; then
+    echo "     $DISCO es un disco mecánico"
+    if command -v hdparm >/dev/null 2>&1; then
+      sudo hdparm -S 0 -B 255 "$DISCO" >/dev/null 2>&1 \
+        && verde "     apagado automático desactivado (menos ciclos de arranque)" \
+        || echo "     no se pudo ajustar hdparm; no es grave"
+    else
+      echo "     instala hdparm para evitar que pare y arranque cada 15 min:"
+      echo "       sudo apt-get install -y hdparm && sudo hdparm -S 0 -B 255 $DISCO"
+    fi
+  fi
+fi
+
 if [ "$MONTAJE" = "/" ]; then
   echo ""
   echo "     Aviso: el proyecto quedará en la misma tarjeta que el sistema."
@@ -86,7 +123,11 @@ if [ "$RAM_MB" -lt 2000 ]; then
   # de matarla.
   DISCO_SWAP="$(dirname "$DESTINO")"
   ARCHIVO_SWAP="$DISCO_SWAP/.swapfile"
-  if ! swapon --show 2>/dev/null | grep -q .; then
+  # OJO: no basta con preguntar si HAY swap. Raspberry Pi OS trae 100 MB
+  # por omision, que es inservible para compilar. Hay que mirar el TAMAÑO.
+  SWAP_MB="$(free -m | awk '/^Swap:/{print $2}')"
+  echo "     swap actual: ${SWAP_MB} MB"
+  if [ "${SWAP_MB:-0}" -lt 1024 ]; then
     azul "     poca RAM: añadiendo 2 GB de swap en $DISCO_SWAP"
     sudo fallocate -l 2G "$ARCHIVO_SWAP"
     sudo chmod 600 "$ARCHIVO_SWAP"
@@ -94,7 +135,7 @@ if [ "$RAM_MB" -lt 2000 ]; then
     sudo swapon "$ARCHIVO_SWAP"
     echo "$ARCHIVO_SWAP none swap sw 0 0" | sudo tee -a /etc/fstab >/dev/null
   else
-    verde "     ya hay swap activo, no se toca"
+    verde "     swap suficiente, no se toca"
   fi
 fi
 

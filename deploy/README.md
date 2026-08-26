@@ -54,6 +54,72 @@ El disco externo solo necesita unos **8 GB**; cualquier SSD o memoria
 servirá de sobra por tamaño. Para durabilidad, un SSD SATA con adaptador USB
 aguanta mucho mejor las escrituras diarias que una memoria USB.
 
+### ¿Sirve un disco duro mecánico (HDD)?
+
+Sí, y para este trabajo hasta tiene una ventaja: **un HDD no se desgasta por
+escribir**. El motivo de sacar el repositorio de la tarjeta SD era el desgaste
+de la memoria flash, y un plato magnético sencillamente no tiene ese problema.
+El volumen tampoco es nada: unos **8–9 MB al día** entre el PNG del satélite,
+los JSON y el historial de git.
+
+Lo que sí hay que cuidar es la **corriente**, que es donde un Pi 3 se mete en
+líos:
+
+| | consumo a 5 V | comentario |
+|---|---|---|
+| HDD 2.5" en reposo | ~0.7 W | |
+| HDD 2.5" escribiendo | ~2.5 W | |
+| **Pico al arrancar el plato** | **~4.5 W (≈0.9 A)** | el problema |
+
+Los cuatro puertos USB del Pi 3B+ comparten un fusible de ~1.1 A. El pico de
+arranque de un disco de 2.5" alimentado por USB se come casi todo ese
+presupuesto de golpe. El resultado típico no es que no encienda, sino algo
+peor: **bajones de voltaje intermitentes**. El Pi se subalimenta, el disco se
+desconecta un instante y, si justo estaba escribiendo, el repositorio de git
+queda a medias. Es exactamente el tipo de fallo raro y difícil de diagnosticar
+que queremos evitar.
+
+Tres formas de resolverlo, de mejor a peor:
+
+1. **Un HDD de 3.5" con su propio adaptador de corriente.** Es el más
+   aburrido y el más seguro: no toma nada del Pi. Que sea grande y viejo da
+   igual, sobra con 8 GB.
+2. **Un hub USB con alimentación propia.** El disco cuelga del hub, no del
+   Pi. Igual de válido.
+3. **Un HDD de 2.5" directo al Pi.** Puede funcionar, pero solo con la fuente
+   oficial de 5.1 V / 2.5 A y sin nada más enchufado. Verifica que no haya
+   subalimentación (ver abajo).
+
+**Evita que el disco pare y arranque cada 15 minutos.** Un disco que se
+duerme solo hará ~96 ciclos de arranque al día, y los ciclos de arranque y
+aparcado de cabezales son justo lo que desgasta un HDD. Es más sano dejarlo
+girando:
+
+```bash
+sudo apt-get install -y hdparm
+sudo hdparm -S 0 -B 255 /dev/sda      # sin apagado automático
+```
+
+Para que sobreviva a los reinicios, añade en `/etc/hdparm.conf`:
+
+```
+/dev/sda {
+    spindown_time = 0
+    apm = 255
+}
+```
+
+**Comprobar que no hay subalimentación.** Este es el comando que importa,
+después de dejar el disco trabajando un rato:
+
+```bash
+vcgencmd get_throttled
+```
+
+`throttled=0x0` significa que todo va bien. Cualquier otra cosa indica que el
+Pi se está quedando corto de voltaje: cambia a la opción 1 o 2 de arriba. El
+instalador también lo revisa y avisa.
+
 **El disco tiene que estar en ext4.** Una memoria de fábrica viene en exFAT
 o FAT32, que no guardan permisos ni enlaces simbólicos: git se corrompe de
 formas raras y difíciles de diagnosticar. El instalador se detiene si
