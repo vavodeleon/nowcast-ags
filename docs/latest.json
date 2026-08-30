@@ -1,22 +1,22 @@
 {
-  "issued_utc": "2026-08-30T16:15:33+00:00",
-  "issued_local": "2026-08-30 10:15",
+  "issued_utc": "2026-08-30T16:30:49+00:00",
+  "issued_local": "2026-08-30 10:30",
   "probabilities": {
-    "15": 0.022,
+    "15": 0.023,
     "30": 0.053,
     "45": 0.02,
-    "60": 0.02,
+    "60": 0.05,
     "90": 0.074,
-    "120": 0.05,
-    "180": 0.057
+    "120": 0.085,
+    "180": 0.08
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 243.0,
-    "contraste": 45.7,
+    "bt_encima": 252.3,
+    "contraste": 34.2,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": 0.0,
+    "precip_observada": null,
     "forma": "nubes",
     "lloviendo": false,
     "corroborado_por": "",
@@ -44,13 +44,13 @@
     ]
   },
   "model_probs_1h": {
-    "ecmwf_ifs025": 0.04,
-    "gfs_seamless": 0.1,
-    "icon_seamless": 0.0,
-    "gem_seamless": 0.09
+    "ecmwf_ifs025": 0.06,
+    "gfs_seamless": 0.13,
+    "icon_seamless": 0.05,
+    "gem_seamless": 0.14
   },
   "confidence": "baja",
-  "calibration_n": 17138,
+  "calibration_n": 17145,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -65,14 +65,14 @@
   ],
   "motion_bearing": null,
   "pressure": {
-    "now_msl": 1019.9,
-    "now_surface": 823.2,
-    "change_3h": -0.7,
-    "change_6h": -0.6,
+    "now_msl": 1019.0,
+    "now_surface": 823.3,
+    "change_3h": -0.8,
+    "change_6h": -0.8,
     "change_24h": -0.4,
     "forecast_drop": 1.6,
     "forecast_drop_at": "Sun 30, 15:00",
-    "forecast_drop_in_h": 4.7,
+    "forecast_drop_in_h": 4.5,
     "level": "tranquilo",
     "trend": "estable",
     "series": [
@@ -578,9 +578,9 @@
     "ciclo_diario": 8.9
   },
   "temperatura": {
-    "ahora": 22.5,
-    "sensacion": 24.2,
-    "humedad": 53,
+    "ahora": 22.9,
+    "sensacion": 24.8,
+    "humedad": 52,
     "maxima": 27.6,
     "minima": 15.2,
     "serie": [
@@ -712,9 +712,10 @@
     ]
   },
   "rayos": {
-    "total_hora": 0,
+    "total_hora": 1,
     "bloques": 4,
-    "fase": "despejado"
+    "fase": "despejado",
+    "dist_km": 359.8
   },
   "performance": {
     "15": {
