@@ -16,7 +16,7 @@ export CLIMA_DB=""
 
 fallos=0
 for t in selftest test_visual test_matutino test_rayos test_ahora \
-         test_tormenta test_presion test_barometro test_archivo test_workflow; do
+         test_tormenta test_presion test_barometro test_archivo test_migracion test_workflow; do
   printf "  %-16s " "$t"
   if salida="$("$PY" "$t.py" 2>&1)"; then
     echo "$(echo "$salida" | tail -1)"

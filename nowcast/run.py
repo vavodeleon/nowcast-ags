@@ -259,6 +259,11 @@ def build_forecast() -> dict:
             "cell_intensity": (radar_nc or ir_nc).nearest_cell_intensity if (radar_nc or ir_nc) else "",
             "cape": round(cape, 0),
             "radar_coverage": round(coverage, 3),
+            # ver el comentario de PRED_FIELDS en store.py
+            "pres_1h": pres.change_1h if pres else "",
+            "pres_3h": pres.change_3h if pres else "",
+            "pres_nivel": pres.level if pres else "",
+            "pres_fuente": pres.fuente if pres else "",
         })
 
     # el infrarrojo manda: es el sensor que ve la ciudad
