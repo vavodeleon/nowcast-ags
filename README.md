@@ -171,6 +171,24 @@ El tablero muestra el Brier score y la comparación contra climatología. Un
 **skill score positivo** significa que el sistema le gana a simplemente decir
 "llueve el X% de los días". Ese es el número que importa.
 
+### Animación e historial
+
+El motor archiva un cuadro reproyectado cada 15 minutos, con los rayos de ese
+mismo instante, y conserva **7 días**. En la página, el botón *Animación* abre
+un reproductor con línea de tiempo y selector de día: sirve para ver cómo se
+desarrolló una celda, o para comprobar si la tormenta puntual del martes quedó
+registrada.
+
+Los cuadros se piden **bajo demanda**, no de golpe. Un día son ~96 PNG y unos
+8 MB; bajarlos al abrir el reproductor sería inaceptable con datos móviles, que
+es justo donde más se usa. Se precargan tres por delante del que se ve.
+
+Esto **no acelera el crecimiento del repositorio**: `satelite.png` ya entraba a
+git 96 veces al día como blobs distintos, y guardarlos con nombre propio cuesta
+exactamente lo mismo. La poda a 7 días saca los viejos del sitio publicado —lo
+que se descarga al abrir la página— pero no del historial de git, porque git no
+olvida. El crecimiento de ~3 GB al año sigue siendo un pendiente aparte.
+
 ### Avisos de tormenta eléctrica
 
 Además de la lluvia, el sistema vigila los rayos del GLM y avisa por
@@ -240,7 +258,8 @@ temporizador de systemd, que sí cumple horarios. Ver
 ```bash
 pip install -r requirements.txt
 
-python selftest.py                  # pruebas del motor, sin red
+bash pruebas.sh                     # todas las pruebas, sin red
+python selftest.py                  # solo el motor
 python -m nowcast.run --no-alert    # una corrida sin notificar
 python -m nowcast.daily             # reporte matutino
 python -m nowcast.run --verify-only # solo verificar y recalibrar
@@ -263,6 +282,9 @@ data/            historial: predicciones, observaciones, calibración
 docs/            tablero web
 selftest.py      pruebas con tormentas sintéticas
 test_tormenta.py avisos de rayos: distancias, histéresis, transiciones
+test_presion.py  la ventana de 1 h contra la marea atmosférica
+test_archivo.py  el historial: guardado, índice y poda
+test_pagina.js   la página, con DOM y red falsos (necesita node)
 ```
 
 ## Ajustes comunes

@@ -32,6 +32,7 @@ log = logging.getLogger(__name__)
 class PressureState:
     now_msl: float | None = None
     now_surface: float | None = None
+    change_1h: float | None = None
     change_3h: float | None = None
     change_6h: float | None = None
     change_24h: float | None = None
@@ -48,6 +49,24 @@ class PressureState:
     def is_falling_now(self) -> bool:
         return (self.change_3h is not None
                 and self.change_3h <= -config.PRESSURE_DROP_3H)
+
+    @property
+    def is_falling_fast(self) -> bool:
+        """Caida rapida, del tipo que precede a un frente de tormenta.
+
+        Existe porque la ventana de 3 h diluye lo veloz: una bajada de
+        2 hPa en cuarenta minutos es fisiologicamente notoria y se sentia
+        antes de que el sistema la marcara, porque repartida en tres horas
+        no llegaba al umbral. Lo que parece importar no es solo cuanto baja
+        sino que tan rapido.
+        """
+        return (self.change_1h is not None
+                and self.change_1h <= -config.PRESSURE_DROP_1H)
+
+    @property
+    def velocidad_hpa_h(self) -> float | None:
+        """Ritmo de caida en hPa por hora, para decirlo en el aviso."""
+        return -self.change_1h if self.change_1h is not None else None
 
     @property
     def is_risky_soon(self) -> bool:
@@ -170,7 +189,8 @@ def fetch() -> PressureState:
     state.now_surface = surface[idx_now] if idx_now < len(surface) else None
 
     ahora_limpio = limpio(now)
-    for hours, attr in ((3, "change_3h"), (6, "change_6h"), (24, "change_24h")):
+    for hours, attr in ((1, "change_1h"), (3, "change_3h"),
+                        (6, "change_6h"), (24, "change_24h")):
         past = limpio(now - timedelta(hours=hours))
         if ahora_limpio is not None and past is not None:
             setattr(state, attr, round(ahora_limpio - past, 1))
@@ -230,6 +250,7 @@ def to_dict(state: PressureState) -> dict:
     return {
         "now_msl": state.now_msl,
         "now_surface": state.now_surface,
+        "change_1h": state.change_1h,
         "change_3h": state.change_3h,
         "change_6h": state.change_6h,
         "change_24h": state.change_24h,

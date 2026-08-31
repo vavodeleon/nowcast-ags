@@ -42,7 +42,9 @@ def maybe_pressure_alert(state) -> bool:
         # Avisar solo cuando de verdad habia algo que decir. Sin esto, el
         # canal sin configurar es indistinguible de "no pasaba nada", y una
         # alerta de salud que se pierde en silencio es el peor caso posible.
-        if getattr(state, "is_risky_soon", False) or getattr(state, "is_falling_now", False):
+        if (getattr(state, "is_risky_soon", False)
+                or getattr(state, "is_falling_now", False)
+                or getattr(state, "is_falling_fast", False)):
             log.warning("habia una alerta de presion que dar, pero "
                         "NTFY_TOPIC_SALUD esta vacio: no se envio a nadie")
         return False
@@ -69,6 +71,26 @@ def maybe_pressure_alert(state) -> bool:
                 priority="default", tags="chart_with_downwards_trend",
                 topic=config.NTFY_TOPIC_SALUD):
             _mark("presion_previo")
+            sent = True
+
+    # ---- caida rapida: la que se sentia y el sistema no marcaba
+    # Va antes que la de 3 h a proposito. Si estan pasando las dos, la
+    # informacion util es la velocidad, no el acumulado.
+    if state.is_falling_fast and _cooldown_ok_hours(
+            "presion_rapida", config.PRESSURE_FAST_COOLDOWN_H):
+        ritmo = state.velocidad_hpa_h or 0.0
+        cuerpo = [
+            f"La presion esta bajando rapido: {ritmo:.1f} hPa en la ultima hora.",
+        ]
+        if state.change_3h is not None:
+            cuerpo.append(f"En 3 horas: {state.change_3h:+.1f} hPa.")
+        if state.now_msl:
+            cuerpo.append(f"Ahora: {state.now_msl:.0f} hPa a nivel del mar.")
+        cuerpo += ["", "Suele preceder a un frente de tormenta."]
+        if send("Bajada rapida de presion", "\n".join(cuerpo),
+                priority="high", tags="arrow_double_down",
+                topic=config.NTFY_TOPIC_SALUD):
+            _mark("presion_rapida")
             sent = True
 
     # ---- confirmacion cuando la caida ya esta ocurriendo

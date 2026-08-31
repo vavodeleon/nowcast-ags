@@ -102,11 +102,13 @@ NTFY_TOPIC_SALUD = os.environ.get("NTFY_TOPIC_SALUD", "")
 PRESSURE_DROP_WATCH = 3.0     # vigilancia
 PRESSURE_DROP_24H = 5.0       # riesgo alto: umbral principal
 PRESSURE_DROP_SEVERE = 8.0    # riesgo muy alto
+PRESSURE_DROP_1H = 1.5    # caida rapida: frente de tormenta entrando
 PRESSURE_DROP_3H = 2.5        # caída rápida en curso
 PRESSURE_LOOKAHEAD_H = 36     # cuánto futuro se revisa buscando caídas
 
 PRESSURE_ALERT_COOLDOWN_H = 20   # aviso anticipado: como mucho uno al día
 PRESSURE_LIVE_COOLDOWN_H = 6     # confirmación en tiempo real
+PRESSURE_FAST_COOLDOWN_H = 3     # caída rápida: puede repetirse en un día movido
 
 # ---------------------------------------------------------------- reporte diario
 # El reporte matutino NO usa un cron propio: los cron de GitHub no se cumplen
@@ -141,6 +143,12 @@ STATE_JSON = os.path.join(DATA_DIR, "state.json")
 LATEST_JSON = os.path.join(ROOT, "docs", "latest.json")
 HISTORY_JSON = os.path.join(ROOT, "docs", "history.json")
 LIGHTNING_JSON = os.path.join(ROOT, "docs", "rayos.json")
+
+# Historial de cuadros para la animacion y la revision de tormentas pasadas.
+# 7 dias son ~670 cuadros, unos 60 MB en el sitio publicado. Cabe de sobra en
+# la memoria USB y sigue siendo una descarga razonable para el navegador,
+# porque la pagina solo baja los cuadros del dia que se este mirando.
+HIST_DIAS = 7
 
 HTTP_TIMEOUT = 30
 HTTP_RETRIES = 3

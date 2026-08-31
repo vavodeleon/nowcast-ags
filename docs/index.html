@@ -54,6 +54,20 @@
   #mapa{height:340px;border-radius:12px;overflow:hidden;background:#dde4ec}
   /* Apaga el mapa base para que el infrarrojo y los rayos destaquen. */
   .mapa-tenue{filter:grayscale(0.85) brightness(1.08) contrast(0.85) opacity(0.75)}
+  #reproductor{margin-top:10px;padding-top:10px;border-top:1px solid #e5e9ef}
+  .fila-repro{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .fila-repro:last-child{margin-bottom:0}
+  #linea{flex:1;min-width:0}
+  #play{width:38px;height:34px;font-size:15px;border-radius:9px;
+        border:1px solid #d3dae4;background:#fff;cursor:pointer;flex:none}
+  #play:active{background:#eef2f7}
+  #marca-hora{font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace;
+              min-width:52px;text-align:right;flex:none}
+  #dia{padding:5px 8px;border-radius:8px;border:1px solid #d3dae4;background:#fff}
+  .tenue{color:#6b7684;font-size:12px;flex:1}
+  .tenue-btn{background:none;border:none;color:#3b6fb6;font-size:12px;
+             cursor:pointer;text-decoration:underline;padding:0}
+  #abrir-hist{cursor:pointer;border:1px solid #d3dae4;background:#fff}
   .leyenda{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:13px;
     color:var(--muted);align-items:center}
   .chip{display:inline-flex;align-items:center;gap:6px}
@@ -138,6 +152,20 @@
         <span>Nubes</span></label>
       <label class="toggle"><input type="checkbox" id="cap-rayos" checked>
         <span>Rayos <b id="cuenta-rayos"></b></span></label>
+      <button id="abrir-hist" class="toggle" type="button">▶ Animación</button>
+    </div>
+
+    <div id="reproductor" hidden>
+      <div class="fila-repro">
+        <button id="play" type="button" title="Reproducir">▶</button>
+        <input id="linea" type="range" min="0" max="0" value="0" step="1">
+        <span id="marca-hora">—</span>
+      </div>
+      <div class="fila-repro">
+        <select id="dia"></select>
+        <span id="aviso-hist" class="tenue"></span>
+        <button id="cerrar-hist" type="button" class="tenue-btn">volver a ahora</button>
+      </div>
     </div>
     <div class="leyenda">
       <span class="chip"><span class="swatch" style="background:#5abfa0"></span>nube alta</span>
@@ -418,6 +446,11 @@ let mapa, capaSatelite, capaRayos;
 // pintarRayos lee rayos.json, pero la fase de la tormenta la calcula
 // el motor y viaja en latest.json. Se guarda aqui al renderizar.
 let ultimo = null;
+let hist = null;          // {dia, cuadros:[{t, r}], bounds}
+let histIdx = 0;
+let histTimer = null;
+let capaHistSat = null, capaHistRayos = null;
+const cacheRayos = new Map();
 
 // Los rayos se colorean por antigüedad: los de ahora amarillo brillante,
 // los de hace 45 min naranja apagado. Así se ve hacia dónde avanza la
@@ -433,7 +466,7 @@ function estiloRayo(edadMin){
 }
 
 async function pintarRayos(){
-  if (!mapa) return;
+  if (!mapa || hist) return;
   let datos;
   try {
     const r = await fetch("rayos.json?t=" + Date.now());
@@ -484,6 +517,10 @@ async function pintarRayos(){
 
 function pintarMapa(d){
   if (typeof L === "undefined" || !hay(d.lat) || !hay(d.lon)) return;
+  // Si se esta revisando el historial, una actualizacion del presente no
+  // debe reconstruir el mapa por debajo: se perderia el cuadro que el
+  // usuario esta mirando, a mitad de una animacion.
+  if (hist) return;
   if (mapa) mapa.remove();
 
   mapa = L.map("mapa", {zoomControl:true, attributionControl:true,
@@ -501,6 +538,8 @@ function pintarMapa(d){
   }).addTo(mapa);
 
   if (d.map_bounds){
+    // El ?t= es obligatorio: sin el, el navegador reutiliza el PNG viejo y
+    // el mapa se queda congelado aunque los numeros se actualicen.
     capaSatelite = L.imageOverlay("satelite.png?t=" + Date.now(), d.map_bounds,
                                   {opacity:.78});
     if (q("#cap-satelite").checked) capaSatelite.addTo(mapa);
@@ -539,16 +578,181 @@ function pintarMapa(d){
   pintarRayos();
 }
 
+/* ------------------------------------------------------------------
+   Animación e historial
+
+   El motor archiva un cuadro cada 15 minutos en docs/hist/. Aquí se
+   reproducen.
+
+   Decisión que condiciona todo lo demás: los cuadros se piden **bajo
+   demanda**, no de golpe. Un día entero son ~96 PNG y unos 8 MB; bajarlos
+   al abrir el reproductor sería inaceptable con datos móviles, que es
+   justamente donde más se va a usar. Se precargan tres por delante del
+   que se está viendo, que basta para que la reproducción no se entrecorte.
+   ------------------------------------------------------------------ */
+async function pedirJSON(url){
+  const r = await fetch(url + "?t=" + Date.now(), {cache: "no-store"});
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+async function abrirHistorial(){
+  q("#reproductor").hidden = false;
+  q("#abrir-hist").textContent = "▶ Animación";
+  let dias;
+  try {
+    dias = await pedirJSON("hist/dias.json");
+  } catch {
+    q("#aviso-hist").textContent =
+      "Todavía no hay historial. Se llena solo, un cuadro cada 15 minutos.";
+    return;
+  }
+  const sel = q("#dia");
+  sel.innerHTML = "";
+  for (const d of dias.slice().reverse()){
+    const o = document.createElement("option");
+    o.value = d;
+    o.textContent = etiquetaDia(d);
+    sel.appendChild(o);
+  }
+  await cargarDia(sel.value);
+}
+
+function etiquetaDia(d){
+  // Comparar contra la fecha local del navegador, no contra UTC: a las 19:00
+  // de Aguascalientes ya es el día siguiente en UTC y "hoy" saldría mal.
+  const hoy = new Date();
+  const local = n => new Date(n.getTime() - n.getTimezoneOffset()*60000)
+                       .toISOString().slice(0,10);
+  const ayer = new Date(hoy.getTime() - 86400000);
+  if (d === local(hoy)) return "Hoy";
+  if (d === local(ayer)) return "Ayer";
+  return d;
+}
+
+async function cargarDia(dia){
+  detener();
+  try {
+    const ind = await pedirJSON(`hist/${dia}.json`);
+    hist = {dia, cuadros: ind.cuadros || [], bounds: ind.bounds};
+  } catch {
+    q("#aviso-hist").textContent = "No se pudo leer ese día.";
+    return;
+  }
+  if (!hist.cuadros.length){
+    q("#aviso-hist").textContent = "Ese día no tiene cuadros.";
+    return;
+  }
+  const conRayos = hist.cuadros.filter(c => c.r).length;
+  q("#aviso-hist").textContent =
+    `${hist.cuadros.length} cuadros` +
+    (conRayos ? ` · ${conRayos} con rayos` : " · sin rayos ese día");
+  q("#linea").max = hist.cuadros.length - 1;
+  // Arrancar al final: lo más reciente es lo que casi siempre se quiere ver.
+  irA(hist.cuadros.length - 1);
+}
+
+function urlCuadro(i){
+  return `hist/${hist.dia}/${hist.cuadros[i].t}.png`;
+}
+
+async function irA(i){
+  if (!hist || !mapa) return;
+  histIdx = Math.max(0, Math.min(i, hist.cuadros.length - 1));
+  const c = hist.cuadros[histIdx];
+  q("#linea").value = histIdx;
+  q("#marca-hora").textContent = `${c.t.slice(0,2)}:${c.t.slice(2)}`;
+
+  // Se ocultan las capas del presente para no superponer dos momentos.
+  if (capaSatelite && mapa.hasLayer(capaSatelite)) capaSatelite.remove();
+  if (capaRayos && mapa.hasLayer(capaRayos)) capaRayos.remove();
+
+  if (capaHistSat) capaHistSat.remove();
+  capaHistSat = L.imageOverlay(urlCuadro(histIdx), hist.bounds,
+                               {opacity:.78, interactive:false});
+  if (q("#cap-satelite").checked) capaHistSat.addTo(mapa);
+
+  await pintarRayosHist(c);
+
+  // Precarga hacia adelante: el navegador ya los tiene cuando llega el turno.
+  for (let k = 1; k <= 3; k++){
+    const j = histIdx + k;
+    if (j < hist.cuadros.length) new Image().src = urlCuadro(j);
+  }
+}
+
+async function pintarRayosHist(c){
+  if (capaHistRayos) capaHistRayos.remove();
+  capaHistRayos = L.layerGroup();
+  if (c.r){
+    const url = `hist/${hist.dia}/${c.t}.r.json`;
+    let puntos = cacheRayos.get(url);
+    if (!puntos){
+      try { puntos = await pedirJSON(url); cacheRayos.set(url, puntos); }
+      catch { puntos = []; }
+    }
+    for (const [lat, lon, n] of puntos){
+      L.circleMarker([lat, lon], {
+        radius: 5 + Math.min(3, Math.log2(n + 1)),
+        color:"#7a3b00", weight:.6, opacity:.7,
+        fillColor:"#ffd400", fillOpacity:1, interactive:false
+      }).addTo(capaHistRayos);
+    }
+  }
+  if (q("#cap-rayos").checked) capaHistRayos.addTo(mapa);
+}
+
+function reproducir(){
+  if (!hist) return;
+  // Reproducir desde el final no haría nada visible; se vuelve al principio.
+  if (histIdx >= hist.cuadros.length - 1) histIdx = 0;
+  q("#play").textContent = "⏸";
+  histTimer = setInterval(() => {
+    if (histIdx >= hist.cuadros.length - 1){ detener(); return; }
+    irA(histIdx + 1);
+  }, 450);
+}
+
+function detener(){
+  if (histTimer){ clearInterval(histTimer); histTimer = null; }
+  const b = q("#play"); if (b) b.textContent = "▶";
+}
+
+function cerrarHistorial(){
+  detener();
+  hist = null;
+  if (capaHistSat){ capaHistSat.remove(); capaHistSat = null; }
+  if (capaHistRayos){ capaHistRayos.remove(); capaHistRayos = null; }
+  q("#reproductor").hidden = true;
+  q("#aviso-hist").textContent = "";
+  // Volver al presente: se repinta con el último dato que ya tenemos.
+  if (ultimo) render(ultimo);
+}
+
+function conectarReproductor(){
+  q("#abrir-hist").addEventListener("click", () => {
+    if (q("#reproductor").hidden) abrirHistorial();
+    else cerrarHistorial();
+  });
+  q("#cerrar-hist").addEventListener("click", cerrarHistorial);
+  q("#play").addEventListener("click", () => histTimer ? detener() : reproducir());
+  q("#linea").addEventListener("input", e => { detener(); irA(+e.target.value); });
+  q("#dia").addEventListener("change", e => cargarDia(e.target.value));
+}
+
 /* los interruptores de capa */
 function conectarCapas(){
-  q("#cap-satelite").addEventListener("change", e => {
-    if (!capaSatelite || !mapa) return;
-    e.target.checked ? capaSatelite.addTo(mapa) : capaSatelite.remove();
-  });
-  q("#cap-rayos").addEventListener("change", e => {
-    if (!capaRayos || !mapa) return;
-    e.target.checked ? capaRayos.addTo(mapa) : capaRayos.remove();
-  });
+  // En modo historial las capas visibles son las del pasado, no las del
+  // presente. El interruptor tiene que actuar sobre la que se esta viendo.
+  const alternar = (viva, historica) => e => {
+    const capa = hist ? historica() : viva();
+    if (!capa || !mapa) return;
+    e.target.checked ? capa.addTo(mapa) : capa.remove();
+  };
+  q("#cap-satelite").addEventListener("change",
+    alternar(() => capaSatelite, () => capaHistSat));
+  q("#cap-rayos").addEventListener("change",
+    alternar(() => capaRayos, () => capaHistRayos));
 }
 
 /* ---------- render principal ---------- */
@@ -641,14 +845,92 @@ function conectarCorreccion(d){
 // Las librerías van con `defer`, así que se ejecutan justo antes de
 // DOMContentLoaded. Arrancar ahí garantiza que L y Chart ya existen, y que
 // la página se dibuja aunque alguna no llegue a cargar.
+// --------------------------------------------------------------------
+// Actualización
+//
+// Antes esto era `setTimeout(() => location.reload(), 5 min)`, y fallaba en
+// el celular por dos motivos a la vez:
+//
+//   1. Los navegadores estrangulan los temporizadores de las pestañas en
+//      segundo plano. En un teléfono con la pantalla apagada ese reload
+//      simplemente no ocurre, así que al volver a mirar la página el dato
+//      seguía siendo el de hace horas.
+//   2. Recargar la página entera vuelve a bajar Leaflet, Chart.js y el PNG
+//      del satélite: medio megabyte por actualización. Con datos móviles
+//      lentos eso tarda o falla, y al fallar deja una página de error.
+//
+// Ahora se piden solo los JSON -unos pocos KB- y se reacciona a los momentos
+// en que el usuario de verdad está mirando: al volver a la pestaña y al
+// recuperar la conexión.
+// --------------------------------------------------------------------
+let ultimoIntento = 0;
+
+async function actualizar(motivo){
+  // Evita ráfagas: volver a la pestaña dos veces seguidas no dispara dos
+  // consultas. 20 s es menos que el ciclo del motor, así que nunca estorba.
+  const ahora = Date.now();
+  if (motivo !== "arranque" && ahora - ultimoIntento < 20000) return;
+  ultimoIntento = ahora;
+
+  try {
+    // `no-store` porque las redes móviles suelen llevar proxys que cachean
+    // con mucha alegría, y el parámetro `?t=` no siempre les basta.
+    const r = await fetch("latest.json?t=" + ahora, {cache: "no-store"});
+    if (!r.ok) throw new Error(r.status);
+    render(await r.json());
+    marcarFrescura(true);
+  } catch (e) {
+    // No se borra lo que ya se veía: un dato de hace un rato sigue siendo
+    // mejor que una pantalla vacía. Pero se dice que está viejo.
+    marcarFrescura(false);
+    if (!ultimo) {
+      q("#titular").textContent = "Aún no hay datos";
+      q("#icono").textContent = "🛰️";
+    }
+  }
+  // pintarRayos() no se llama aqui: pintarMapa ya lo hace al terminar, y
+  // duplicarlo pedia rayos.json dos veces por actualizacion.
+}
+
+function marcarFrescura(ok){
+  const sello = q("#sello");
+  if (!sello) return;
+  if (!ok) {
+    sello.textContent = (ultimo && ultimo.issued_local)
+      ? `Sin conexión — mostrando lo de ${ultimo.issued_local}`
+      : "Sin conexión";
+    sello.style.color = "#a16207";
+    return;
+  }
+  sello.style.color = "";
+  // Si el motor lleva mucho sin publicar, el problema no es la conexión sino
+  // el Raspberry. Conviene distinguirlo: son arreglos distintos.
+  if (ultimo && ultimo.issued_utc) {
+    const edad = (Date.now() - Date.parse(ultimo.issued_utc)) / 60000;
+    if (edad > 45) {
+      sello.textContent += ` · el sistema lleva ${Math.round(edad)} min sin publicar`;
+      sello.style.color = "#a16207";
+    }
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   conectarCapas();
-  const bust = "?t=" + Date.now();
-  fetch("latest.json" + bust).then(r => r.json()).then(render).catch(() => {
-    q("#titular").textContent = "Aún no hay datos";
-    q("#icono").textContent = "🛰️";
+  conectarReproductor();
+  actualizar("arranque");
+
+  // Al volver a mirar la pestaña. Este es el caso que fallaba en el celular.
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) actualizar("visible");
   });
-  setTimeout(() => location.reload(), 5 * 60 * 1000);
+  // Al recuperar la conexión, que es literalmente lo que describías: la
+  // página cargaba con datos y no se actualizaba hasta llegar al wifi.
+  window.addEventListener("online", () => actualizar("online"));
+  window.addEventListener("focus", () => actualizar("foco"));
+
+  // El temporizador se conserva para la pestaña que se queda abierta en una
+  // computadora, donde sí corre. En el celular no se depende de él.
+  setInterval(() => { if (!document.hidden) actualizar("reloj"); }, 5 * 60 * 1000);
 });
 </script>
 </body>

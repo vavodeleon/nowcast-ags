@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
-from . import (calibrate, config, engine, feedback, lightning, notify, overhead,
+from . import (archivo, calibrate, config, engine, feedback, lightning, notify, overhead,
                pressure, render, sources, store, verify)
 
 log = logging.getLogger(__name__)
@@ -165,11 +165,21 @@ def build_forecast() -> dict:
         try:
             import os
             os.makedirs(os.path.dirname(config.LATEST_JSON), exist_ok=True)
-            map_bounds = render.render(
-                ir_frames[-1],
-                os.path.join(os.path.dirname(config.LATEST_JSON), "satelite.png"))
+            ruta_png = os.path.join(os.path.dirname(config.LATEST_JSON),
+                                    "satelite.png")
+            map_bounds = render.render(ir_frames[-1], ruta_png)
         except Exception as exc:
             log.error("no se pudo generar la imagen del satelite: %s", exc)
+
+        # Archivar para la animacion y el historial. Se copia el PNG que ya se
+        # genero en vez de reproyectar otra vez: en un Pi 3 eso cuesta varios
+        # segundos y daria exactamente lo mismo.
+        try:
+            puntos_ahora = bloques_rayos[-1].get("puntos") if bloques_rayos else None
+            archivo.guardar(issued, ruta_png, map_bounds, puntos_ahora)
+            archivo.podar()
+        except Exception as exc:
+            log.error("no se pudo archivar el cuadro: %s", exc)
 
     # el movimiento que reportamos es el de la fuente mas confiable
     motion = None
