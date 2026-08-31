@@ -130,15 +130,50 @@ def procesar() -> int:
     return incorporadas
 
 
+def _misma_hora(a: str | None, b: str | None, minutos: int = 90) -> bool:
+    """¿Dos avisos son del mismo episodio de presion?
+
+    Noventa minutos: una bajada de presion sinoptica dura horas, asi que
+    dos avisos separados por menos de eso casi siempre describen el mismo
+    frente. Mas fino no aporta y mas grueso fusionaria episodios distintos.
+    """
+    if not a or not b:
+        return False
+    try:
+        ta = datetime.fromisoformat(a)
+        tb = datetime.fromisoformat(b)
+    except ValueError:
+        return False
+    return abs((tb - ta).total_seconds()) <= minutos * 60
+
+
 def resumen() -> dict:
     """Cuantos avisos, cuantos acertaron, y con que numeros.
 
     Sirve para dos cosas: mostrarlo en el tablero, y decidir cuando hay
     suficientes casos para tocar un umbral con fundamento.
     """
-    filas = [f for f in store.read_salud() if f.get("dolor")]
+    filas = [f for f in store.read_salud()
+             if f.get("dolor") and f.get("tipo") != "prueba"]
     if not filas:
         return {"respondidos": 0, "aciertos": 0, "tasa": None}
+
+    # Un episodio, un caso. La primera noche de uso real salieron tres
+    # avisos en el mismo segundo por una sola bajada de presion; contarlos
+    # por separado inflaria el numero de casos por tres y cualquier umbral
+    # que saliera de ahi estaria mal. Se agrupa por cercania en el tiempo.
+    filas.sort(key=lambda f: f.get("ts_aviso", ""))
+    episodios: list[dict] = []
+    for f in filas:
+        if episodios and _misma_hora(episodios[-1].get("ts_aviso"),
+                                     f.get("ts_aviso")):
+            # Se conserva el que si tuvo dolor: si ella contesto que si a
+            # cualquiera de los avisos del episodio, el episodio cuenta.
+            if f.get("dolor") == "si":
+                episodios[-1] = f
+            continue
+        episodios.append(f)
+    filas = episodios
 
     def num(f, c):
         try:
@@ -164,4 +199,9 @@ def resumen() -> dict:
         # medias es ruido. Se dice explicitamente para que nadie -yo el
         # primero- mueva un umbral con cuatro casos.
         "suficientes": len(filas) >= 30,
+        # Cuantas filas se fusionaron por ser del mismo episodio. Si este
+        # numero es alto, algo esta mandando avisos de mas.
+        "avisos_agrupados": len([f for f in store.read_salud()
+                                 if f.get("dolor")
+                                 and f.get("tipo") != "prueba"]) - len(filas),
     }

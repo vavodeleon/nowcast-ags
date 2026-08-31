@@ -43,6 +43,22 @@ def maybe_pressure_alert(state) -> bool:
     El tono es deliberadamente sereno y concreto. Una alerta de salud que
     suena alarmante genera ansiedad sin aportar nada; lo util es el dato y
     el margen de tiempo para actuar.
+
+    **Un solo aviso por episodio.** Antes se mandaban los tres que
+    aplicaran, y la primera noche de uso real salieron los tres en el mismo
+    segundo por una unica bajada de presion. Dos consecuencias, y la
+    segunda es peor que la primera:
+
+      1. Tres notificaciones seguidas para lo mismo, que es justo lo que
+         hace que alguien silencie un canal.
+      2. Tres preguntas separadas sobre UN episodio. Al contarlas como tres
+         casos independientes, el aprendizaje triplicaria cada evento: con
+         treinta respuestas se creeria tener treinta casos teniendo diez, y
+         el umbral que saliera de ahi estaria mal.
+
+    Asi que se elige el mas informativo y se manda solo ese. El orden es
+    por urgencia: lo que esta pasando rapido gana a lo que esta pasando, y
+    ambos ganan al pronostico de mañana.
     """
     if not config.NTFY_TOPIC_SALUD:
         # Avisar solo cuando de verdad habia algo que decir. Sin esto, el
@@ -57,8 +73,19 @@ def maybe_pressure_alert(state) -> bool:
 
     sent = False
 
+    # Se decide primero CUAL toca, y luego se manda. Sin este corte, los
+    # tres bloques de abajo podian dispararse en la misma pasada.
+    if state.is_falling_fast:
+        cual = "rapida"
+    elif state.is_falling_now:
+        cual = "ahora"
+    elif state.is_risky_soon:
+        cual = "previo"
+    else:
+        return False
+
     # ---- aviso anticipado, a partir del pronostico
-    if state.is_risky_soon and _cooldown_ok_hours(
+    if cual == "previo" and state.is_risky_soon and _cooldown_ok_hours(
             "presion_previo", config.PRESSURE_ALERT_COOLDOWN_H):
         cuando = state.forecast_drop_at or "en las proximas horas"
         horas = state.forecast_drop_in_h
@@ -84,7 +111,7 @@ def maybe_pressure_alert(state) -> bool:
     # ---- caida rapida: la que se sentia y el sistema no marcaba
     # Va antes que la de 3 h a proposito. Si estan pasando las dos, la
     # informacion util es la velocidad, no el acumulado.
-    if state.is_falling_fast and _cooldown_ok_hours(
+    if cual == "rapida" and _cooldown_ok_hours(
             "presion_rapida", config.PRESSURE_FAST_COOLDOWN_H):
         ritmo = state.velocidad_hpa_h or 0.0
         cuerpo = [
@@ -104,7 +131,7 @@ def maybe_pressure_alert(state) -> bool:
             sent = True
 
     # ---- confirmacion cuando la caida ya esta ocurriendo
-    if state.is_falling_now and _cooldown_ok_hours(
+    if cual == "ahora" and _cooldown_ok_hours(
             "presion_ahora", config.PRESSURE_LIVE_COOLDOWN_H):
         cuerpo = [
             f"La presion bajo {abs(state.change_3h):.1f} hPa en las ultimas "
