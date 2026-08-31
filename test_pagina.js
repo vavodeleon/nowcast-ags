@@ -67,6 +67,13 @@ global.document = {
   hidden: false,
 };
 global.window = { addEventListener(ev, fn) { (oyentes[`win:${ev}`] ||= []).push(fn); } };
+// Node ya define `navigator` como solo-lectura desde la v21; hay que
+// redefinir la propiedad en vez de asignarla.
+Object.defineProperty(global, "navigator", {
+  value: { onLine: true, connection: { effectiveType: "4g" } },
+  configurable: true, writable: true,
+});
+global.location = { origin: "https://vavodeleon.github.io" };
 global.Image = class { set src(v) { imagenesPedidas.push(v); } };
 global.setTimeout = (fn) => { try { fn(); } catch {} return 0; };
 global.setInterval = () => 1;
@@ -157,6 +164,11 @@ global.puente = {
   get capaHistSat(){ return capaHistSat },
   get capaHistRayos(){ return capaHistRayos },
   set ultimoIntento(v){ ultimoIntento = v },
+  // Las declaraciones de función son ligables: se puede sustituir render
+  // para provocar un fallo de dibujado de verdad.
+  get render(){ return render },
+  set render(f){ render = f },
+  get bitacora(){ return bitacora },
 };`);
 const puente = global.puente;
 
@@ -198,8 +210,9 @@ const espera = () => new Promise((r) => process.nextTick(r));
   await espera(); await espera();
   chk("el titular no se vacía", el("titular").textContent === titularPrevio,
     el("titular").textContent);
-  chk("el sello avisa de que no hay conexión",
-    /sin conexión/i.test(el("sello").textContent), el("sello").textContent);
+  chk("el sello dice que no se pudo descargar",
+    /no se pudo descargar/i.test(el("sello").textContent), el("sello").textContent);
+  chk("y no culpa al dibujado", !/dibujarlo/i.test(el("sello").textContent));
   redCaida = false;
 
   console.log("\nD. El reproductor");
@@ -252,7 +265,45 @@ const espera = () => new Promise((r) => process.nextTick(r));
     puente.capaHistSat === null && puente.capaHistRayos === null);
   chk("el historial deja de estar activo", puente.hist === null);
 
-  console.log("\nI. Todo lo que el JavaScript busca existe en el HTML");
+  console.log("\nI. Un fallo al dibujar no se confunde con falta de red");
+  // Esto es lo que estaba mal: render() vivía dentro del mismo try que el
+  // fetch, así que cualquier error al dibujar hacía que la página dijera
+  // "sin conexión" con la conexión perfecta, y se buscaba el problema en la
+  // red. Aquí se provoca un fallo de dibujado con la red funcionando.
+  const renderBueno = puente.render;
+  puente.render = () => { throw new Error("Chart no está definido"); };
+  puente.bitacora.length = 0;
+  puente.ultimoIntento = 0;
+  await disparar("win:online");
+  await espera(); await espera(); await espera();
+
+  const sello = el("sello").textContent;
+  chk("no culpa a la conexión", !/no se pudo descargar/i.test(sello), sello);
+  chk("dice que el fallo fue al dibujar", /dibujarlo/i.test(sello), sello);
+  chk("la bitácora guarda el error concreto",
+    /Chart no está definido/.test(el("diag-texto").textContent),
+    el("diag-texto").textContent.split("\n")[0] || "(vacía)");
+  puente.render = renderBueno;
+
+  // Y al revés: sin red, el mensaje sí debe ser el de la descarga.
+  redCaida = true;
+  puente.ultimoIntento = 0;
+  await disparar("win:online");
+  await espera(); await espera(); await espera();
+  chk("sin red sí culpa a la descarga",
+    /no se pudo descargar/i.test(el("sello").textContent), el("sello").textContent);
+  chk("y prueba los dos modos de caché antes de rendirse",
+    /no-store/.test(el("diag-texto").textContent)
+    && /normal/.test(el("diag-texto").textContent));
+  redCaida = false;
+
+  console.log("\nJ. El diagnóstico dice si las librerías cargaron");
+  chk("informa de Leaflet y Chart",
+    /Leaflet:/.test(el("diag-entorno").textContent)
+    && /Chart\.js:/.test(el("diag-entorno").textContent),
+    el("diag-entorno").textContent.split("\n")[0]);
+
+  console.log("\nK. Todo lo que el JavaScript busca existe en el HTML");
   const faltantes = [...consultados].filter(
     (id) => !new RegExp(`id=["']${id}["']`).test(html));
   chk(`${consultados.size} elementos consultados, ninguno inexistente`,

@@ -887,6 +887,43 @@ function conectarCorreccion(d){
 // --------------------------------------------------------------------
 let ultimoIntento = 0;
 
+// Bitácora de lo que pasa al actualizar. La página se usa en un teléfono,
+// donde no hay consola ni forma de ver un error: sin esto, cualquier fallo
+// se convierte en "no funciona con datos" y hay que adivinar.
+const bitacora = [];
+function anotar(texto){
+  const t = new Date().toLocaleTimeString("es-MX", {hour12:false});
+  bitacora.unshift(`${t}  ${texto}`);
+  bitacora.length = Math.min(bitacora.length, 12);
+  const caja = q("#diag-texto");
+  if (caja) caja.textContent = bitacora.join("\n");
+}
+
+async function pedirLatest(ahora){
+  // Dos intentos con modos de caché distintos. `no-store` es lo correcto,
+  // pero se ha visto fallar en algunos navegadores y redes móviles; si el
+  // primero falla, el segundo dice si la culpa era de esa opción o de la
+  // red. La bitácora deja constancia de cuál funcionó.
+  const intentos = [
+    ["no-store", {cache: "no-store"}],
+    ["normal",   {}],
+  ];
+  let ultimoFallo;
+  for (const [nombre, opciones] of intentos){
+    try {
+      const r = await fetch("latest.json?t=" + ahora, opciones);
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const datos = await r.json();
+      if (nombre !== "no-store") anotar(`descarga OK en modo ${nombre}`);
+      return datos;
+    } catch (e) {
+      ultimoFallo = e;
+      anotar(`descarga falló (${nombre}): ${e.message || e}`);
+    }
+  }
+  throw ultimoFallo;
+}
+
 async function actualizar(motivo){
   // Evita ráfagas: volver a la pestaña dos veces seguidas no dispara dos
   // consultas. 20 s es menos que el ciclo del motor, así que nunca estorba.
@@ -894,34 +931,54 @@ async function actualizar(motivo){
   if (motivo !== "arranque" && ahora - ultimoIntento < 20000) return;
   ultimoIntento = ahora;
 
+  // --- 1. Traer el dato.
+  let datos;
   try {
-    // `no-store` porque las redes móviles suelen llevar proxys que cachean
-    // con mucha alegría, y el parámetro `?t=` no siempre les basta.
-    const r = await fetch("latest.json?t=" + ahora, {cache: "no-store"});
-    if (!r.ok) throw new Error(r.status);
-    render(await r.json());
-    marcarFrescura(true);
+    datos = await pedirLatest(ahora);
   } catch (e) {
     // No se borra lo que ya se veía: un dato de hace un rato sigue siendo
     // mejor que una pantalla vacía. Pero se dice que está viejo.
-    marcarFrescura(false);
+    marcarFrescura("sin-red", e);
     if (!ultimo) {
       q("#titular").textContent = "Aún no hay datos";
       q("#icono").textContent = "🛰️";
     }
+    return;
+  }
+
+  // --- 2. Dibujarlo. SEPARADO a propósito.
+  // Antes esto vivía dentro del mismo try que la descarga, así que un error
+  // al dibujar -por ejemplo si Leaflet o Chart.js no habían cargado- hacía
+  // que la página dijera "sin conexión" con la conexión perfectamente bien.
+  // Dos causas distintas no pueden compartir un mismo mensaje.
+  try {
+    render(datos);
+    marcarFrescura("ok");
+  } catch (e) {
+    marcarFrescura("error-dibujo", e);
+    anotar(`descarga OK pero falló al dibujar: ${e.message || e}`);
   }
   // pintarRayos() no se llama aqui: pintarMapa ya lo hace al terminar, y
   // duplicarlo pedia rayos.json dos veces por actualizacion.
 }
 
-function marcarFrescura(ok){
+function marcarFrescura(estado, error){
   const sello = q("#sello");
   if (!sello) return;
-  if (!ok) {
-    sello.textContent = (ultimo && ultimo.issued_local)
-      ? `Sin conexión — mostrando lo de ${ultimo.issued_local}`
-      : "Sin conexión";
+
+  if (estado === "sin-red") {
+    const desde = (ultimo && ultimo.issued_local)
+      ? ` — mostrando lo de ${ultimo.issued_local}` : "";
+    sello.textContent = "No se pudo descargar el dato" + desde;
     sello.style.color = "#a16207";
+    return;
+  }
+  if (estado === "error-dibujo") {
+    // Este caso importa distinguirlo: el dato llegó bien. Si el usuario ve
+    // "sin conexión" cuando la conexión funciona, busca el problema donde no
+    // está -y eso ya pasó una vez con esta misma página-.
+    sello.textContent = "El dato llegó pero la página no pudo dibujarlo";
+    sello.style.color = "#b91c1c";
     return;
   }
   sello.style.color = "";
@@ -937,6 +994,19 @@ function marcarFrescura(ok){
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Lo primero: dejar constancia de si las librerías cargaron. Si alguna
+  // falta, el mapa o las gráficas fallan y conviene saber que la causa fue
+  // esa y no la red.
+  const ent = q("#diag-entorno");
+  if (ent) {
+    ent.textContent =
+      `Leaflet: ${typeof L !== "undefined" ? "cargado" : "NO CARGÓ"}\n` +
+      `Chart.js: ${typeof Chart !== "undefined" ? "cargado" : "NO CARGÓ"}\n` +
+      `Conexión: ${navigator.onLine ? "en línea" : "sin línea"}` +
+      (navigator.connection && navigator.connection.effectiveType
+        ? ` (${navigator.connection.effectiveType})` : "") + "\n" +
+      `Origen: ${location.origin}`;
+  }
   conectarCapas();
   conectarReproductor();
   actualizar("arranque");
@@ -955,5 +1025,12 @@ document.addEventListener("DOMContentLoaded", () => {
   setInterval(() => { if (!document.hidden) actualizar("reloj"); }, 5 * 60 * 1000);
 });
 </script>
+<details id="diag" style="margin:18px auto 40px;max-width:640px;
+         font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#6b7684">
+  <summary style="cursor:pointer">Diagnóstico</summary>
+  <div id="diag-entorno" style="margin:8px 0;white-space:pre-wrap"></div>
+  <pre id="diag-texto" style="white-space:pre-wrap;margin:0"></pre>
+</details>
+
 </body>
 </html>
