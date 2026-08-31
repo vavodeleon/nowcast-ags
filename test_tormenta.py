@@ -132,7 +132,38 @@ for titulo, cuerpo in enviados:
 chk("tres avisos en toda la tormenta, no uno por corrida",
     len(enviados) == 3, f"{len(enviados)} avisos")
 
-print("\nF. Sin canal configurado no revienta")
+print("\nF. La noche del granizo: fase ya en 'encima' y la celda se acerca")
+# Reproduccion del caso real del 30 de agosto. La fase llevaba rato en
+# "encima" por actividad lejana; la celda se metio hasta 10 km con miles de
+# destellos, y no salio ningun aviso porque no hubo transicion de fase.
+enviados.clear()
+marcas: dict = {}
+notify._cooldown_ok_hours = lambda clave, horas: not marcas.get(clave)
+notify._mark = lambda clave: marcas.__setitem__(clave, True)
+memoria["fase_tormenta"] = "encima"
+
+# Sigue lejos dentro de "encima": no debe decir nada.
+t = lightning.evaluar(historial(32, 30, 33, 31), "encima")
+notify.maybe_storm_alert(t)
+chk("a 31 km, dentro de 'encima', sigue callado", len(enviados) == 0,
+    f"{len(enviados)} avisos")
+
+# Ahora se mete de verdad.
+t = lightning.evaluar(historial(30, 22, 14, 9), "encima")
+notify.maybe_storm_alert(t)
+chk("cuando se mete a 9 km sí avisa", len(enviados) == 1,
+    f"{len(enviados)} avisos")
+if enviados:
+    chk("y el mensaje dice la distancia",
+        "9 km" in enviados[-1][1], enviados[-1][1].splitlines()[0])
+
+# Pero no lo repite en cada corrida mientras siga encima.
+for _ in range(4):
+    t = lightning.evaluar(historial(10, 8, 7, 6), "encima")
+    notify.maybe_storm_alert(t)
+chk("no lo repite mientras dura", len(enviados) == 1, f"{len(enviados)} avisos")
+
+print("\nG. Sin canal configurado no revienta")
 config.NTFY_TOPIC_SALUD = ""
 memoria["fase_tormenta"] = "despejado"
 t = lightning.evaluar(historial(60, 40, 25, 12), "despejado")

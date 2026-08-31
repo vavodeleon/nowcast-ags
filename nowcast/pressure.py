@@ -309,9 +309,25 @@ def _aplicar_sensor(state: PressureState, now: datetime) -> None:
     if ahora_s is None:
         return
 
+    # SOLO las ventanas cortas salen del sensor. Las largas se quedan en el
+    # modelo, siempre, aunque el sensor pudiera calcularlas.
+    #
+    # El motivo es un fallo observado: el cambio de 24 h salto de +4.1 a -2.2
+    # hPa entre dos corridas separadas por 15 minutos. Fisicamente imposible.
+    # Lo que ocurrio fue que una corrida uso el sensor y la siguiente cayo al
+    # modelo -el nodo LoRa se quedo sin reportar un rato en plena tormenta- y
+    # el numero salto seis hPa por cambiar de fuente, no porque cambiara la
+    # atmosfera. Con los umbrales de salud de por medio, eso puede disparar o
+    # silenciar un aviso por un motivo puramente contable.
+    #
+    # La division tambien tiene sentido fisico: el sensor mide un punto cada
+    # minuto y en eso le gana a cualquier modelo, pero una ventana de 24 h es
+    # una señal sinoptica de escala regional, que es justo lo que un modelo
+    # describe bien y un sensor puntual no.
+    VENTANAS_DEL_SENSOR = ((1, "change_1h"), (3, "change_3h"))
+
     cambios = {}
-    for horas, attr in ((1, "change_1h"), (3, "change_3h"), (6, "change_6h"),
-                        (24, "change_24h")):
+    for horas, attr in VENTANAS_DEL_SENSOR:
         pasado = barometro.valor_en(serie_limpia, now - timedelta(hours=horas))
         if pasado is None:
             continue          # sin historia suficiente: se deja la del modelo
@@ -327,7 +343,8 @@ def _aplicar_sensor(state: PressureState, now: datetime) -> None:
         state.now_msl = round(crudo_ahora * factor, 1)
         state.now_surface = round(crudo_ahora, 1)
     state.fuente = "sensor local"
-    log.info("presion del sensor de la malla: %s muestras cada %ss, "
-             "1h %s hPa, 3h %s hPa",
+    state.sensor["ventanas"] = sorted(cambios)
+    log.info("presion: 1h y 3h del sensor de la malla (%s muestras cada %ss); "
+             "6h y 24h del modelo. 1h %s hPa, 3h %s hPa",
              state.sensor["muestras"], state.sensor["cadencia_s"],
              state.change_1h, state.change_3h)

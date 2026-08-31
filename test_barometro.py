@@ -167,6 +167,33 @@ with open(RUTA, "wb") as fh:
 s = estado()
 chk("se ignora y se sigue", s.fuente == "modelo" and s.now_msl is not None)
 
+print("\nG-bis. Las ventanas largas NO cambian de fuente")
+# Un cambio de 24 h que salta 6 hPa entre dos corridas de 15 minutos es
+# imposible en la atmosfera y ocurrio de verdad: una corrida uso el sensor y
+# la siguiente el modelo. Con umbrales de salud de por medio, eso dispara o
+# silencia un aviso por contabilidad, no por meteorologia.
+sembrar()
+con_sensor = estado()
+os.rename(RUTA, RUTA + ".off")
+sin_sensor = estado()
+os.rename(RUTA + ".off", RUTA)
+
+chk("la fuente cambia de verdad entre los dos casos",
+    con_sensor.fuente != sin_sensor.fuente,
+    f"{con_sensor.fuente} vs {sin_sensor.fuente}")
+chk("el cambio de 24 h es idéntico con y sin sensor",
+    con_sensor.change_24h == sin_sensor.change_24h,
+    f"{con_sensor.change_24h} vs {sin_sensor.change_24h}")
+chk("el de 6 h también",
+    con_sensor.change_6h == sin_sensor.change_6h,
+    f"{con_sensor.change_6h} vs {sin_sensor.change_6h}")
+chk("y el pronóstico también",
+    con_sensor.forecast_drop == sin_sensor.forecast_drop,
+    f"{con_sensor.forecast_drop} vs {sin_sensor.forecast_drop}")
+chk("pero la ventana de 1 h sí sale del sensor",
+    con_sensor.sensor.get("ventanas") == ["change_1h", "change_3h"],
+    str(con_sensor.sensor.get("ventanas")))
+
 print("\nH. El caso que este archivo existe para impedir")
 # Si alguien quitara la conversion, change_1h saldria de ~200 hPa y la
 # alerta diria algo aterrador. Se comprueba que eso no puede pasar.

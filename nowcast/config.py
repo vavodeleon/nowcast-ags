@@ -65,6 +65,13 @@ RAYOS_SALIR_CERCA_KM = 35.0
 RAYOS_SALIR_LEJOS_KM = 75.0
 RAYOS_DESPEJADO_MIN = 30       # silencio necesario para dar el "ya paso"
 RAYOS_COOLDOWN_H = 1.5         # entre avisos del mismo tipo
+# Cuando la tormenta ya esta "encima" no se repite el aviso, pero hay un caso
+# que si merece uno segundo: que se ponga MUCHO mas cerca. Paso de verdad una
+# noche de granizo: la fase llevaba horas en "encima" por actividad lejana,
+# la celda se metio hasta 10 km con ~9000 destellos en una hora, y no salio
+# ningun aviso porque no hubo transicion de fase.
+RAYOS_ENCIMA_KM = 10.0         # justo encima: segundo aviso
+RAYOS_ESCALADA_COOLDOWN_H = 3.0
 
 # ---------------------------------------------------------------- horizontes
 LEAD_TIMES_MIN = [15, 30, 45, 60, 90, 120, 180]

@@ -139,8 +139,11 @@ def build_forecast() -> dict:
         rayos_resumen["fase"] = tormenta.fase
         if tormenta.dist_cercano_km is not None:
             rayos_resumen["dist_km"] = round(tormenta.dist_cercano_km, 1)
-        log.info("tormenta: %s, mas cercano %s km, %s destellos en la hora",
-                 tormenta.fase,
+        # Registrar la fase ANTERIOR: sin eso no hay forma de saber por que
+        # un aviso salio o no salio, porque se avisa por transicion.
+        log.info("tormenta: %s (antes %s), mas cercano %s km, "
+                 "%s destellos en la hora",
+                 tormenta.fase, notify._fase_previa(),
                  f"{tormenta.dist_cercano_km:.0f}" if tormenta.dist_cercano_km
                  else "ninguno",
                  tormenta.destellos_hora)

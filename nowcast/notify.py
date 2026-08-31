@@ -135,21 +135,34 @@ def _mark(key: str) -> None:
 
 
 def maybe_alert(result: dict) -> bool:
-    """Decide si vale la pena molestarte y manda la alerta."""
+    """Decide si vale la pena molestarte y manda la alerta.
+
+    El presente manda sobre el pronostico. Esto no era asi y produjo el peor
+    mensaje que ha mandado el sistema: durante una tormenta con granizo, con
+    'Esta lloviendo' escrito en su propio registro desde hacia 17 minutos,
+    aviso de "Lluvia probable - en ~90 min". Anunciaba el futuro mientras
+    ignoraba lo que ya estaba pasando, y eso destruye la confianza en todos
+    los demas avisos.
+    """
     probs = result.get("probabilities") or {}
     eta = result.get("cell_eta_min")
     speed = result.get("motion_speed_kmh") or 0
     origen = result.get("motion_from") or "?"
+    ahora = result.get("ahora") or {}
+    rayos = result.get("rayos") or {}
+    lloviendo = bool(ahora.get("lloviendo"))
+    fase = rayos.get("fase")
 
     # la ventana relevante: probabilidad maxima dentro del plazo de alerta
     inside = {int(k): float(v) for k, v in probs.items()
               if v is not None and int(k) <= config.ALERT_MAX_ETA_MIN}
-    if not inside:
+    if not inside and not lloviendo:
         return False
-    best_lead = max(inside, key=lambda k: inside[k])
-    best_p = inside[best_lead]
+    best_lead = max(inside, key=lambda k: inside[k]) if inside else None
+    best_p = inside[best_lead] if inside else 0.0
 
-    if best_p < config.ALERT_PROB_THRESHOLD:
+    # Si ya esta lloviendo, hay algo que decir aunque el pronostico sea bajo.
+    if best_p < config.ALERT_PROB_THRESHOLD and not lloviendo:
         return False
 
     key = "storm"
@@ -157,15 +170,34 @@ def maybe_alert(result: dict) -> bool:
         log.info("alerta suprimida por cooldown")
         return False
 
-    if eta is not None and eta <= config.ALERT_MAX_ETA_MIN:
+    # ---- el titulo describe el AHORA si hay un ahora que describir
+    if lloviendo:
+        cuando = "está lloviendo"
+    elif eta is not None and eta <= config.ALERT_MAX_ETA_MIN:
         cuando = f"llega en ~{int(eta)} min"
     else:
         cuando = f"en ~{best_lead} min"
 
-    intensidad = "Tormenta" if best_p >= 0.75 else "Lluvia probable"
+    if lloviendo:
+        intensidad = "Tormenta" if fase == "encima" else "Lluvia"
+    else:
+        intensidad = "Tormenta" if best_p >= 0.75 else "Lluvia probable"
     title = f"{intensidad} — {cuando}"
-    lines = [
-        f"Probabilidad: {best_p * 100:.0f}%",
+
+    lines = []
+    if lloviendo:
+        corrobora = ahora.get("corroborado_por")
+        detalle = f" ({corrobora})" if corrobora else ""
+        lines.append(f"Está lloviendo ahora{detalle}.")
+        if fase == "encima" and rayos.get("dist_km") is not None:
+            lines.append(f"Rayos a {rayos['dist_km']:.0f} km.")
+        if best_p >= config.ALERT_PROB_THRESHOLD and best_lead:
+            lines.append(f"Sigue probable las próximas {best_lead} min "
+                         f"({best_p * 100:.0f}%).")
+        lines.append("")
+    else:
+        lines.append(f"Probabilidad: {best_p * 100:.0f}%")
+    lines += [
         f"Viene del {origen} a {speed:.0f} km/h",
     ]
     if result.get("cell_km"):
@@ -211,6 +243,28 @@ def maybe_storm_alert(t) -> bool:
     """
     previa = _fase_previa()
     fase = t.fase
+    dist_ahora = t.dist_cercano_km
+
+    # Escalada dentro de la misma fase. Se avisa por transiciones, y eso
+    # dejaba un hueco: si la fase ya era "encima" por actividad lejana de un
+    # rato antes, una celda nueva que se mete hasta encima no producia nada.
+    # Ocurrio en la tormenta de granizo del 30 de agosto.
+    if (fase == "encima" and previa == "encima"
+            and dist_ahora is not None
+            and dist_ahora <= config.RAYOS_ENCIMA_KM
+            and config.NTFY_TOPIC_SALUD
+            and _cooldown_ok_hours("tormenta_escalada",
+                                   config.RAYOS_ESCALADA_COOLDOWN_H)):
+        cuerpo = [f"La tormenta se metió hasta {dist_ahora:.0f} km."]
+        if t.destellos_cerca:
+            cuerpo.append(f"{t.destellos_cerca} destellos cerca en los "
+                          "últimos 15 minutos.")
+        cuerpo += ["", "Los truenos van a ser fuertes."]
+        if send("La tormenta está justo encima", "\n".join(cuerpo),
+                priority="high", tags="zap", topic=config.NTFY_TOPIC_SALUD):
+            _mark("tormenta_escalada")
+            return True
+
     if fase == previa:
         return False
 

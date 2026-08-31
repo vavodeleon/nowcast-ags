@@ -151,5 +151,69 @@ chk("descarta explicitamente el futuro", "t > ahora" in src)
 chk("run.py ya no toma el maximo de una ventana",
     "max(vals)" not in inspect.getsource(__import__("nowcast.run", fromlist=["run"]).build_forecast))
 
+
+
+# ---------------------------------------------------------------------------
+print("\nZ. El aviso no puede anunciar el futuro ignorando el presente")
+# Caso real, 30 de agosto de 2026, tormenta con granizo:
+#
+#   19:45  ahora: Esta lloviendo | BT 244 K
+#   20:02  notificacion enviada: "Lluvia probable - en ~90 min"
+#
+# Diecisiete minutos despues de escribir en su propio registro que estaba
+# lloviendo, el sistema aviso de lluvia para dentro de hora y media. La causa
+# era que maybe_alert solo leia 'probabilities' y nunca 'ahora'.
+from nowcast import config as _cfg, notify as _nt   # noqa: E402
+
+_enviados: list = []
+_nt.send = lambda titulo, cuerpo, **kw: (_enviados.append((titulo, cuerpo)), True)[1]
+_nt._cooldown_ok = lambda clave, minutos=None: True
+_nt._mark = lambda clave: None
+_cfg.NTFY_TOPIC = "canal-de-prueba"
+
+LLOVIENDO = {
+    "probabilities": {"30": 0.4, "60": 0.51, "90": 0.6, "120": 0.5, "180": 0.4},
+    "cell_eta_min": None, "motion_speed_kmh": 35, "motion_from": "noroeste",
+    "confidence": "baja",
+    "ahora": {"lloviendo": True, "estado": "Está lloviendo",
+              "corroborado_por": "lluvia medida"},
+    "rayos": {"fase": "encima", "dist_km": 10.0},
+}
+
+_enviados.clear()
+_nt.maybe_alert(LLOVIENDO)
+chk("con lluvia en curso, avisa", len(_enviados) == 1, f"{len(_enviados)}")
+titulo, cuerpo = _enviados[-1] if _enviados else ("", "")
+chk("el titulo NO promete lluvia para dentro de un rato",
+    "min" not in titulo, titulo)
+chk("el titulo dice que esta lloviendo",
+    "lloviendo" in titulo.lower(), titulo)
+chk("reconoce la tormenta encima", "Tormenta" in titulo, titulo)
+chk("el cuerpo lo dice primero",
+    cuerpo.splitlines()[0].startswith("Está lloviendo"), cuerpo.splitlines()[0])
+chk("y menciona los rayos cerca", "10 km" in cuerpo, cuerpo)
+
+print("\n   El mensaje que habria llegado anoche:")
+print(f"     {titulo}")
+for linea in cuerpo.splitlines():
+    if linea.strip():
+        print(f"       {linea}")
+
+# Sin lluvia en curso, el comportamiento de siempre.
+SECO = dict(LLOVIENDO, ahora={"lloviendo": False, "estado": "Despejado"},
+            rayos={"fase": "despejado"}, cell_eta_min=40)
+_enviados.clear()
+_nt.maybe_alert(SECO)
+titulo2 = _enviados[-1][0] if _enviados else ""
+chk("sin lluvia, sigue hablando del futuro", "min" in titulo2, titulo2)
+chk("y no dice que este lloviendo", "lloviendo" not in titulo2.lower(), titulo2)
+
+# Lluvia en curso con pronostico bajo: igual hay que decirlo.
+FLOJO = dict(LLOVIENDO, probabilities={"30": 0.1, "60": 0.1, "90": 0.1})
+_enviados.clear()
+_nt.maybe_alert(FLOJO)
+chk("lluvia en curso avisa aunque el pronostico sea bajo",
+    len(_enviados) == 1, f"{len(_enviados)}")
+
 print("\n" + ("TODO EN ORDEN" if ok else "HAY FALLOS"))
 sys.exit(0 if ok else 1)
