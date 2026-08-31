@@ -171,6 +171,34 @@ El tablero muestra el Brier score y la comparación contra climatología. Un
 **skill score positivo** significa que el sistema le gana a simplemente decir
 "llueve el X% de los días". Ese es el número que importa.
 
+### El barómetro de la malla
+
+Si el servicio de Meshtastic que corre en la misma máquina está alimentando
+`~/clima/clima.db`, ese sensor pasa a ser la **fuente primaria** de presión
+para el presente y los cambios recientes. Open-Meteo se queda con el
+pronóstico, porque el sensor sabe qué está pasando pero no qué va a pasar.
+
+Vale la pena por dos motivos: mide **cada 60 segundos** en vez de cada hora
+—un frente que baja 2 hPa en cuarenta minutos es un salto ilegible en la serie
+horaria y una pendiente clara en la del sensor—, y **sigue midiendo sin
+internet**, que es justo lo que se cae en una tormenta.
+
+Dos trampas que el código resuelve y conviene conocer:
+
+**Unidades.** El sensor marca ~815 hPa (presión de estación a 1880 m) y
+Open-Meteo entrega ~1015 hPa (reducida a nivel del mar). Mezclarlas sin
+convertir daría un salto de 200 hPa que el detector de frentes leería como una
+catástrofe. La conversión **no** usa la fórmula barométrica con una altitud
+supuesta: el factor se estima comparando ambas series donde se solapan, lo que
+absorbe también cualquier desviación de calibración del sensor. Sale ~1.25.
+
+**Ruido.** Un BMP280 tiene ruido de décimas entre muestras. Se usa la mediana
+de una ventana de 10 minutos, no la última lectura.
+
+Si el sensor lleva más de 30 minutos sin reportar, o hay menos de hora y media
+de historia, o la base no existe o está corrupta, el sistema vuelve a
+Open-Meteo sin ruido. La página dice de dónde salió el dato.
+
 ### Animación e historial
 
 El motor archiva un cuadro reproyectado cada 15 minutos, con los rayos de ese
@@ -283,6 +311,7 @@ docs/            tablero web
 selftest.py      pruebas con tormentas sintéticas
 test_tormenta.py avisos de rayos: distancias, histéresis, transiciones
 test_presion.py  la ventana de 1 h contra la marea atmosférica
+test_barometro.py el sensor de la malla: unidades, ruido y respaldo
 test_archivo.py  el historial: guardado, índice y poda
 test_pagina.js   la página, con DOM y red falsos (necesita node)
 ```

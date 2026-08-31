@@ -58,7 +58,18 @@ for mod in ("config", "feedback"):
     pedidas |= set(re.findall(r"os\.environ\.get\(\s*[\"']([A-Z_]+)[\"']", src))
 
 entorno = claves(bloque("env"))
-automaticas = {"GITHUB_REPOSITORY", "NTFY_SERVER"}   # las pone Actions o tienen valor por omision
+# Variables que el workflow NO tiene que pasar, cada una por su motivo.
+# Esta lista se amplia a mano y a proposito: cuando el codigo empieza a leer
+# una variable nueva, la prueba falla y obliga a decidir si hay que pasarla
+# o si pertenece aqui. Ese empujon es justo lo que faltaba el dia que
+# GITHUB_TOKEN no llegaba y nadie se entero.
+automaticas = {
+    "GITHUB_REPOSITORY",   # la pone Actions sola
+    "NTFY_SERVER",         # tiene valor por omision: ntfy.sh
+    # El barometro de la malla LoRa vive en el Raspberry, no en un runner.
+    # Su ausencia es el caso normal aqui y el codigo cae al modelo solo.
+    "CLIMA_DB",
+}
 faltantes = pedidas - entorno - automaticas
 print(f"     el codigo pide: {sorted(pedidas)}")
 print(f"     el workflow da: {sorted(entorno)}")

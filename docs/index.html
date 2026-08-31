@@ -217,6 +217,7 @@
     </div>
     <div class="chartbox"><canvas id="chart-presion"></canvas></div>
     <div class="datos" id="datos-presion"></div>
+    <p class="nota" id="origen-presion"></p>
     <p class="nota" id="nota-presion">
       La línea gris es lo que marcaría un barómetro. La azul es la misma
       presión pero sin el vaivén que se repite todos los días, y es sobre esa
@@ -341,12 +342,33 @@ function pintarPresion(p){
     sub = `Baja ${p.forecast_drop.toFixed(0)} hPa hacia el ${p.forecast_drop_at}.`;
   q("#nivel-sub").textContent = sub;
 
+  const signo = v => `${v > 0 ? "+" : ""}${v.toFixed(1)}`;
   const campos = [
     ["Ahora", hay(p.now_msl) ? `${Math.round(p.now_msl)} hPa` : "—"],
-    ["Últimas 3 h", hay(p.change_3h) ? `${p.change_3h > 0 ? "+" : ""}${p.change_3h.toFixed(1)}` : "—"],
-    ["Últimas 24 h", hay(p.change_24h) ? `${p.change_24h > 0 ? "+" : ""}${p.change_24h.toFixed(1)}` : "—"],
+    // La ventana de 1 h se añadió porque las caídas rápidas de frente se
+    // diluyen en la de 3 h: se sentían antes de que el sistema las marcara.
+    ["Última hora", hay(p.change_1h) ? signo(p.change_1h) : "—"],
+    ["Últimas 3 h", hay(p.change_3h) ? signo(p.change_3h) : "—"],
+    ["Últimas 24 h", hay(p.change_24h) ? signo(p.change_24h) : "—"],
     ["Tendencia", p.trend || "—"],
   ];
+
+  // De dónde sale el dato. Importa: el sensor de casa mide cada minuto y
+  // sigue midiendo sin internet; el modelo es una interpolación horaria.
+  const origen = q("#origen-presion");
+  if (origen) {
+    if (p.fuente === "sensor local") {
+      const s = p.sensor || {};
+      origen.textContent = "Medida en casa por el sensor de la malla"
+        + (s.cadencia_s ? `, cada ${s.cadencia_s} s.` : ".");
+      origen.style.color = "#2f7d5b";
+    } else {
+      origen.textContent = (p.sensor && p.sensor.muestras)
+        ? "El sensor de casa no está reportando; datos del modelo."
+        : "Datos del modelo meteorológico.";
+      origen.style.color = "#6b7684";
+    }
+  }
   if (hay(p.ciclo_diario) && p.ciclo_diario > 0)
     q("#amp-ciclo").textContent = p.ciclo_diario.toFixed(1);
 

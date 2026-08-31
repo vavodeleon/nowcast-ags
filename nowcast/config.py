@@ -150,6 +150,14 @@ LIGHTNING_JSON = os.path.join(ROOT, "docs", "rayos.json")
 # porque la pagina solo baja los cuadros del dia que se este mirando.
 HIST_DIAS = 7
 
+# --- Barometro fisico de la malla LoRa --------------------------------
+# El servicio de Meshtastic guarda aqui las lecturas del sensor. Es una
+# fuente OPCIONAL: si el archivo no existe, el sistema usa Open-Meteo y
+# no pasa nada. Se puede apuntar a otro sitio con la variable CLIMA_DB.
+CLIMA_DB = os.environ.get("CLIMA_DB", os.path.expanduser("~/clima/clima.db"))
+# Un sensor que dejo de reportar hace media hora no describe el presente.
+BAROMETRO_MAX_EDAD_MIN = 30
+
 HTTP_TIMEOUT = 30
 HTTP_RETRIES = 3
 USER_AGENT = "nowcast-ags/1.0 (personal precipitation nowcasting)"

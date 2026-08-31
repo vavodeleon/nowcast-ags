@@ -23,7 +23,7 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
-from . import config, http
+from . import barometro, config, http
 
 log = logging.getLogger(__name__)
 
@@ -40,6 +40,8 @@ class PressureState:
     forecast_drop: float | None = None
     forecast_drop_at: str | None = None
     forecast_drop_in_h: float | None = None
+    fuente: str = "modelo"            # modelo | sensor local
+    sensor: dict = field(default_factory=dict)   # diagnostico de la fuente local
     level: str = "sin datos"          # sin datos | tranquilo | vigilancia | alto | muy alto
     daily_cycle_amplitude: float = 0.0   # cuanto oscila la presion cada dia por si sola
     trend: str = "sin datos"          # bajando | subiendo | estable
@@ -195,6 +197,16 @@ def fetch() -> PressureState:
         if ahora_limpio is not None and past is not None:
             setattr(state, attr, round(ahora_limpio - past, 1))
 
+    # ---- el barometro fisico, si la malla lo esta alimentando
+    # Sustituye al modelo para el PRESENTE y los cambios recientes, que es
+    # donde gana: mide aqui, cada minuto, sin depender de internet. El
+    # pronostico se queda en Open-Meteo, porque el sensor sabe que esta
+    # pasando pero no que va a pasar.
+    try:
+        _aplicar_sensor(state, now)
+    except Exception as exc:
+        log.warning("el barometro local fallo, se sigue con el modelo: %s", exc)
+
     # ---- peor caida de 24 h en lo que viene
     # Para cada hora futura, cuanto habra bajado respecto a 24 h antes.
     worst = 0.0
@@ -250,6 +262,8 @@ def to_dict(state: PressureState) -> dict:
     return {
         "now_msl": state.now_msl,
         "now_surface": state.now_surface,
+        "fuente": state.fuente,
+        "sensor": state.sensor,
         "change_1h": state.change_1h,
         "change_3h": state.change_3h,
         "change_6h": state.change_6h,
@@ -263,3 +277,57 @@ def to_dict(state: PressureState) -> dict:
         "umbral_24h": config.PRESSURE_DROP_24H,
         "ciclo_diario": state.daily_cycle_amplitude,
     }
+
+
+def _aplicar_sensor(state: PressureState, now: datetime) -> None:
+    """Reemplaza presente y cambios recientes con el sensor de la malla."""
+    serie = barometro.leer(horas=30)
+    state.sensor = barometro.resumen(serie)
+    if not barometro.utilizable(serie):
+        if state.sensor.get("muestras"):
+            log.info("barometro local presente pero no utilizable: %s", state.sensor)
+        return
+
+    factor = barometro.factor_a_nivel_del_mar(serie, state.now_msl)
+    if factor is None:
+        return
+    state.sensor["factor"] = round(factor, 4)
+
+    # La marea tambien esta en la serie del sensor: hay que quitarla igual
+    # que en la del modelo, o el umbral de 1 hora se dispara cada tarde.
+    tiempos = [t for t, _ in serie]
+    valores = [v for _, v in serie]
+    try:
+        limpia_s, ciclo_s = remove_daily_cycle(tiempos, valores)
+    except Exception as exc:
+        log.info("no se pudo quitar la marea del sensor: %s", exc)
+        return
+    serie_limpia = list(zip(tiempos, [float(v) for v in limpia_s]))
+    state.sensor["amplitud_diaria"] = round(float(np.ptp(ciclo_s)) * factor, 2)
+
+    ahora_s = barometro.valor_en(serie_limpia, now)
+    if ahora_s is None:
+        return
+
+    cambios = {}
+    for horas, attr in ((1, "change_1h"), (3, "change_3h"), (6, "change_6h"),
+                        (24, "change_24h")):
+        pasado = barometro.valor_en(serie_limpia, now - timedelta(hours=horas))
+        if pasado is None:
+            continue          # sin historia suficiente: se deja la del modelo
+        cambios[attr] = round((ahora_s - pasado) * factor, 1)
+
+    if not cambios:
+        return
+    for attr, valor in cambios.items():
+        setattr(state, attr, valor)
+
+    crudo_ahora = barometro.valor_en(serie, now)
+    if crudo_ahora is not None:
+        state.now_msl = round(crudo_ahora * factor, 1)
+        state.now_surface = round(crudo_ahora, 1)
+    state.fuente = "sensor local"
+    log.info("presion del sensor de la malla: %s muestras cada %ss, "
+             "1h %s hPa, 3h %s hPa",
+             state.sensor["muestras"], state.sensor["cadencia_s"],
+             state.change_1h, state.change_3h)
