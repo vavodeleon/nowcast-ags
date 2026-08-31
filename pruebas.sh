@@ -9,6 +9,11 @@
 cd "$(cd "$(dirname "$0")" && pwd)"
 PY="./.venv/bin/python"; [ -x "$PY" ] || PY="python3"
 
+# La suite no debe tocar nada de la maquina. En el Raspberry existe el
+# barometro de la malla, y sin esto una prueba de presion sintetica acaba
+# leyendo la presion real de la casa y fallando por motivos ajenos.
+export CLIMA_DB=""
+
 fallos=0
 for t in selftest test_visual test_matutino test_rayos test_ahora \
          test_tormenta test_presion test_barometro test_archivo test_workflow; do

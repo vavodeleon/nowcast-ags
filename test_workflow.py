@@ -129,5 +129,25 @@ sustituidos = set(re.findall(r"s\|__([A-Z]+)__\|", instalador))
 chk("el instalador sustituye todos los marcadores",
     marcadores <= sustituidos, f"sin sustituir: {sorted(marcadores - sustituidos)}")
 
+print("\nG. Las pruebas no leen nada de la maquina")
+# La suite empezo a depender del entorno sin que nadie lo notara: al añadir
+# el barometro de la malla, una prueba de presion sintetica pasaba a leer la
+# presion REAL de la casa si el archivo existia. Pasaba en un portatil y
+# fallaba en el Raspberry.
+import glob as _glob
+sueltas = []
+for ruta in sorted(_glob.glob("test_*.py")):
+    if ruta == "test_barometro.py":
+        continue          # esa prueba SI es sobre el sensor; apunta a un temporal
+    cuerpo = open(ruta, encoding="utf-8").read()
+    usa_presion = "pressure.fetch" in cuerpo or "_pr.fetch" in cuerpo
+    if usa_presion and 'CLIMA_DB = ""' not in cuerpo:
+        sueltas.append(ruta)
+chk("ninguna prueba de presion depende del sensor real",
+    not sueltas, ", ".join(sueltas) or "—")
+
+corredor = open("pruebas.sh", encoding="utf-8").read()
+chk("el corredor tambien lo neutraliza", 'export CLIMA_DB=""' in corredor)
+
 print("\n" + ("TODO EN ORDEN" if ok else "HAY FALLOS"))
 sys.exit(0 if ok else 1)

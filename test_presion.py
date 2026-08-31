@@ -16,6 +16,11 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 from nowcast import config, http, notify, pressure
+# Aislamiento: sin esto, la prueba lee el barometro REAL de la malla si la
+# maquina lo tiene, y la serie sintetica que fabricamos aqui queda pisada por
+# la presion de verdad. Paso en el Raspberry: la suite pasaba en una maquina
+# sin sensor y fallaba en la que si lo tiene.
+config.CLIMA_DB = ""
 
 ok = True
 

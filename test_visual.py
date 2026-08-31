@@ -12,6 +12,11 @@ def chk(name, cond, detail=""):
 # ---------------- niveles de presion
 print("A. Niveles de riesgo por presion")
 from nowcast import pressure, config
+# Aislamiento: sin esto, la prueba lee el barometro REAL de la malla si la
+# maquina lo tiene, y la serie sintetica que fabricamos aqui queda pisada por
+# la presion de verdad. Paso en el Raspberry: la suite pasaba en una maquina
+# sin sensor y fallaba en la que si lo tiene.
+config.CLIMA_DB = ""
 for caida, esperado in [(0.5,"tranquilo"),(3.5,"vigilancia"),(6.0,"alto"),(9.0,"muy alto")]:
     got = pressure._level_for(caida)
     chk(f"caida de {caida} hPa -> {esperado}", got == esperado, got)
