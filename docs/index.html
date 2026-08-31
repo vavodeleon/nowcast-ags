@@ -1036,8 +1036,19 @@ document.addEventListener("DOMContentLoaded", () => {
         ? ` (${navigator.connection.effectiveType})` : "") + "\n" +
       `Origen: ${location.origin}`;
   }
-  conectarCapas();
-  conectarReproductor();
+  // Cada paso del arranque va aislado. Antes iban seguidos, y si uno
+  // lanzaba -por ejemplo `q("#loquesea").addEventListener` sobre un elemento
+  // que no existe- el manejador entero moria ANTES de pedir el dato. El
+  // resultado era un "Cargando..." eterno sin un solo mensaje de error, que
+  // es justo lo que se veia en el telefono. Traer el dato es lo unico
+  // imprescindible; los interruptores y el reproductor son accesorios y no
+  // pueden impedirlo.
+  const intentar = (nombre, fn) => {
+    try { fn(); }
+    catch (e) { anotar(`fallo al preparar ${nombre}: ${e.message || e}`); }
+  };
+  intentar("las capas", conectarCapas);
+  intentar("el reproductor", conectarReproductor);
 
   // Red de seguridad: si a los 12 segundos el titular sigue diciendo
   // "Cargando...", algo se atascó de una forma que no previmos. Mejor
@@ -1051,6 +1062,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, 12000);
 
+  // Lo importante va antes que lo accesorio, y sin nada que pueda impedirlo.
   actualizar("arranque");
 
   // Al volver a mirar la pestaña. Este es el caso que fallaba en el celular.

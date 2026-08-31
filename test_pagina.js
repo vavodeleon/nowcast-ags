@@ -206,6 +206,8 @@ global.puente = {
   get render(){ return render },
   set render(f){ render = f },
   get bitacora(){ return bitacora },
+  get conectarCapas(){ return conectarCapas },
+  set conectarCapas(f){ conectarCapas = f },
 };`);
 const puente = global.puente;
 
@@ -385,7 +387,24 @@ const espera = () => new Promise((r) => process.nextTick(r));
     && /Chart\.js:/.test(el("diag-entorno").textContent),
     el("diag-entorno").textContent.split("\n")[0]);
 
-  console.log("\nL. Todo lo que el JavaScript busca existe en el HTML");
+  console.log("\nL. Un accesorio roto no impide traer el dato");
+  // Antes, si conectarCapas() o conectarReproductor() lanzaban, el arranque
+  // moria ahi y nunca se pedia latest.json: "Cargando..." eterno y ningun
+  // mensaje. Los accesorios no pueden bloquear lo esencial.
+  const capasBueno = puente.conectarCapas;
+  puente.conectarCapas = () => { throw new Error("#cap-satelite no existe"); };
+  const antesL = pedidas.length;
+  el("titular").textContent = "Cargando...";
+  await disparar("doc:DOMContentLoaded");
+  await espera(); await espera();
+  chk("se pide el dato igualmente",
+    pedidas.length > antesL, `${pedidas.length - antesL} peticiones`);
+  chk("y la bitácora dice qué accesorio falló",
+    /fallo al preparar las capas/.test(el("diag-texto").textContent),
+    el("diag-texto").textContent.split("\n")[0] || "(vacía)");
+  puente.conectarCapas = capasBueno;
+
+  console.log("\nM. Todo lo que el JavaScript busca existe en el HTML");
   const faltantes = [...consultados].filter(
     (id) => !new RegExp(`id=["']${id}["']`).test(html));
   chk(`${consultados.size} elementos consultados, ninguno inexistente`,
