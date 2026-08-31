@@ -31,26 +31,46 @@ def chk(nombre: str, condicion: bool, detalle: str = "") -> None:
 AMPLITUD = 3.5          # +-3.5 hPa = 7 hPa de recorrido, el caso realista
 BASE = 1013.0
 
+# El reloj se congela. La primera version usaba la hora real y fallaba segun
+# el minuto en que se ejecutara: la serie se construye en horas exactas, pero
+# fetch() pregunta por 'ahora' con minutos, y la busqueda del valor mas
+# cercano caia en una muestra o en la siguiente segun el momento. Paso de
+# verdad: la prueba pasaba en una maquina y fallaba en el Raspberry.
+AHORA = datetime(2026, 8, 26, 18, 0, tzinfo=timezone.utc)
+
+
+class Reloj(datetime):
+    """datetime con now() fijo. Hereda para que fromisoformat siga sirviendo."""
+
+    @classmethod
+    def now(cls, tz=None):
+        return AHORA.astimezone(tz) if tz else AHORA.replace(tzinfo=None)
+
+
+pressure.datetime = Reloj
+
 
 def serie(frente_hpa_h: float = 0.0, horas_de_frente: int = 0) -> dict:
     """Respuesta sintetica de Open-Meteo: marea diaria + frente opcional.
 
-    El frente se aplica a las ultimas 'horas_de_frente' horas antes de ahora,
-    que es como entra de verdad: rapido y al final de la serie.
+    El frente entra como una rampa que termina en AHORA y se mantiene
+    despues: asi la caida es la misma se mire la muestra anterior o la
+    posterior, y la prueba no depende de donde caiga el redondeo.
     """
-    ahora = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     tiempos, valores = [], []
     for h in range(-30, 49):
-        t = ahora + timedelta(hours=h)
+        t = AHORA + timedelta(hours=h)
         # marea: componentes de 24 h y 12 h, como la real
         hora_dia = t.hour + t.minute / 60
         v = (BASE
              + AMPLITUD * math.cos(2 * math.pi * (hora_dia - 4) / 24)
              + 0.8 * math.cos(2 * math.pi * hora_dia / 12))
         if frente_hpa_h and h >= -horas_de_frente:
-            # Rampa: cero al empezar el frente, caida maxima al llegar a
-            # ahora, y a partir de ahi se mantiene (no rebota).
-            avance = min(h + horas_de_frente, horas_de_frente)
+            # La rampa NO se aplana en h=0: sigue bajando un par de horas
+            # mas. Un frente real no se detiene en seco al llegar la hora en
+            # que uno mira, y aplanarla ahi hacia que 'ahora' y 'hace una
+            # hora' cayeran en el mismo valor cuando el redondeo subia.
+            avance = min(h + horas_de_frente, horas_de_frente + 3)
             v -= frente_hpa_h * avance
         tiempos.append(t.strftime("%Y-%m-%dT%H:%M"))
         valores.append(round(v, 2))
@@ -75,7 +95,7 @@ chk("no se declara caida rapida", not s.is_falling_fast)
 chk("no se declara caida en curso", not s.is_falling_now)
 
 print("\n   Sin la correccion, esto es lo que habria pasado:")
-crudo = [v for v in serie()["hourly"]["pressure_msl"]]
+crudo = serie()["hourly"]["pressure_msl"]
 # la pendiente maxima de la marea, en la serie cruda
 peor = min(crudo[i + 1] - crudo[i] for i in range(len(crudo) - 1))
 print(f"     la marea sola cambia hasta {peor:.2f} hPa en una hora")
