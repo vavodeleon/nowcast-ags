@@ -69,6 +69,9 @@ automaticas = {
     # El barometro de la malla LoRa vive en el Raspberry, no en un runner.
     # Su ausencia es el caso normal aqui y el codigo cae al modelo solo.
     "CLIMA_DB",
+    # El canal de respuestas de salud solo tiene sentido en la maquina que
+    # manda los avisos; en un runner no hay a quien preguntarle si le dolio.
+    "NTFY_TOPIC_RESPUESTAS",
 }
 faltantes = pedidas - entorno - automaticas
 print(f"     el codigo pide: {sorted(pedidas)}")

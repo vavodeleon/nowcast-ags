@@ -7,6 +7,13 @@ NTFY_TOPIC=
 # Canal de ntfy para las alertas de presión (el de tu pareja)
 NTFY_TOPIC_SALUD=
 
+# Canal de VUELTA: por aquí contesta ella si le dolió o no, tocando un botón
+# de la propia notificación. Tiene que ser un nombre DISTINTO al de arriba,
+# generado al azar igual que los demás:
+#   echo "resp-$(head -c 9 /dev/urandom | base64 | tr -d '/+=' | head -c 12)"
+# Nadie tiene que suscribirse a este: solo lo lee el Raspberry.
+NTFY_TOPIC_RESPUESTAS=
+
 # Token de GitHub para publicar los datos y leer tus correcciones.
 # Fine-grained, solo sobre nowcast-ags, con permisos:
 #   Contents: Read and write

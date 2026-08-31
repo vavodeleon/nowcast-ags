@@ -9,7 +9,8 @@ log = logging.getLogger(__name__)
 
 
 def send(title: str, message: str, *, priority: str = "default",
-         tags: str = "", topic: str | None = None) -> bool:
+         tags: str = "", topic: str | None = None,
+         actions: str = "") -> bool:
     topic = topic if topic is not None else config.NTFY_TOPIC
     if not topic:
         log.warning("canal ntfy no configurado; no se envia nada")
@@ -20,6 +21,11 @@ def send(title: str, message: str, *, priority: str = "default",
     }
     if tags:
         headers["Tags"] = tags
+    if actions:
+        # Botones dentro de la propia notificacion. Las cabeceras HTTP son
+        # latin-1, asi que las etiquetas van sin acentos a proposito.
+        headers["Actions"] = actions.encode("utf-8").decode(
+            "latin-1", errors="replace")
     url = f"{config.NTFY_SERVER.rstrip('/')}/{topic}"
     ok = http.post(url, message.encode("utf-8"), headers)
     if ok:
@@ -67,10 +73,12 @@ def maybe_pressure_alert(state) -> bool:
             cuerpo.append(f"Ahora: {state.now_msl:.0f} hPa a nivel del mar.")
         cuerpo.append("")
         cuerpo.append("Buen momento para tener a la mano lo que te funcione.")
+        ts = store.now_utc().isoformat()
         if send("Presion en descenso mañana", "\n".join(cuerpo),
                 priority="default", tags="chart_with_downwards_trend",
-                topic=config.NTFY_TOPIC_SALUD):
+                topic=config.NTFY_TOPIC_SALUD, actions=_botones_salud(ts)):
             _mark("presion_previo")
+            _registrar_aviso_salud(state, "previo", ts)
             sent = True
 
     # ---- caida rapida: la que se sentia y el sistema no marcaba
@@ -87,10 +95,12 @@ def maybe_pressure_alert(state) -> bool:
         if state.now_msl:
             cuerpo.append(f"Ahora: {state.now_msl:.0f} hPa a nivel del mar.")
         cuerpo += ["", "Suele preceder a un frente de tormenta."]
+        ts = store.now_utc().isoformat()
         if send("Bajada rapida de presion", "\n".join(cuerpo),
                 priority="high", tags="arrow_double_down",
-                topic=config.NTFY_TOPIC_SALUD):
+                topic=config.NTFY_TOPIC_SALUD, actions=_botones_salud(ts)):
             _mark("presion_rapida")
+            _registrar_aviso_salud(state, "rapida", ts)
             sent = True
 
     # ---- confirmacion cuando la caida ya esta ocurriendo
@@ -104,10 +114,12 @@ def maybe_pressure_alert(state) -> bool:
             cuerpo.append(f"En 24 horas: {state.change_24h:+.1f} hPa.")
         if state.now_msl:
             cuerpo.append(f"Ahora: {state.now_msl:.0f} hPa a nivel del mar.")
+        ts = store.now_utc().isoformat()
         if send("La presion esta bajando ahora", "\n".join(cuerpo),
                 priority="high", tags="arrow_down_small",
-                topic=config.NTFY_TOPIC_SALUD):
+                topic=config.NTFY_TOPIC_SALUD, actions=_botones_salud(ts)):
             _mark("presion_ahora")
+            _registrar_aviso_salud(state, "ahora", ts)
             sent = True
 
     return sent
@@ -323,3 +335,53 @@ def maybe_storm_alert(t) -> bool:
 
     _guardar_fase(fase)
     return enviado
+
+
+# ---------------------------------------------------------------------------
+# El bucle de aprendizaje del canal de salud
+#
+# La lluvia se verifica sola: horas despues se puede preguntar si llovio. Una
+# migrana no. La unica forma de saber si un aviso acerto es que ella lo diga,
+# y para que eso ocurra de verdad tiene que costar un toque, no abrir una
+# pagina ni escribir nada.
+#
+# ntfy permite botones dentro de la notificacion que hacen una peticion HTTP.
+# Los botones publican en un canal APARTE, que el Raspberry consulta en cada
+# corrida. Separado a proposito: si ese nombre se filtrara -va escrito dentro
+# del mensaje- lo peor que podria hacer alguien es meter respuestas falsas,
+# nunca leer los avisos de salud.
+# ---------------------------------------------------------------------------
+
+def _botones_salud(ts_aviso: str) -> str:
+    """Dos botones: si dolio o no. Formato de la cabecera Actions de ntfy."""
+    if not config.NTFY_TOPIC_RESPUESTAS:
+        return ""
+    url = f"{config.NTFY_SERVER.rstrip('/')}/{config.NTFY_TOPIC_RESPUESTAS}"
+    # Sin acentos: la cabecera viaja en latin-1 y no vale la pena arriesgar.
+    return (f"http, Si me dolio, {url}, method=POST, "
+            f"body=dolor:si @{ts_aviso}, clear=true; "
+            f"http, No, {url}, method=POST, "
+            f"body=dolor:no @{ts_aviso}, clear=true")
+
+
+def _registrar_aviso_salud(state, tipo: str, ts_aviso: str) -> None:
+    """Deja la fila lista, con la presion tal como estaba al avisar.
+
+    Se guarda AHORA y no cuando llegue la respuesta, porque para entonces la
+    presion ya sera otra y el dato que hay que correlacionar es el del
+    momento del aviso.
+    """
+    try:
+        store.append_salud({
+            "ts_aviso": ts_aviso,
+            "tipo": tipo,
+            "change_1h": getattr(state, "change_1h", None),
+            "change_3h": getattr(state, "change_3h", None),
+            "change_24h": getattr(state, "change_24h", None),
+            "nivel": getattr(state, "level", ""),
+            "fuente": getattr(state, "fuente", ""),
+            "dolor": "",
+            "ts_respuesta": "",
+        })
+    except Exception as exc:
+        log.error("no se pudo registrar el aviso de salud: %s", exc)

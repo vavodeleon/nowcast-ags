@@ -171,6 +171,35 @@ El tablero muestra el Brier score y la comparación contra climatología. Un
 **skill score positivo** significa que el sistema le gana a simplemente decir
 "llueve el X% de los días". Ese es el número que importa.
 
+### El canal de salud también aprende
+
+La lluvia se verifica sola: horas después se le puede preguntar a Open-Meteo
+si llovió. **Una migraña no tiene sensor.** La única forma de saber si un aviso
+acertó es que la persona lo diga, y para que eso pase de verdad tiene que
+costar un toque.
+
+Los avisos de presión llevan dos botones —*Sí me dolió* / *No*— dentro de la
+propia notificación. Publican en un canal de ntfy **aparte**, que el Raspberry
+consulta en cada corrida. Cada respuesta queda en `data/salud.csv` junto a la
+presión que había **en el momento del aviso**, que es lo que hay que poder
+correlacionar después.
+
+El canal de vuelta es distinto del de avisos a propósito: su nombre viaja
+escrito dentro del mensaje, y un mensaje se puede leer sobre el hombro. Si se
+filtrara, lo peor que podría hacer alguien es meter respuestas falsas — nunca
+leer los avisos de salud.
+
+Por qué importa: los umbrales actuales salen de la literatura sobre migraña y
+presión, **no de ella**. La sensibilidad individual varía mucho. Sin
+respuestas, cualquier ajuste es una opinión disfrazada de número. Con treinta o
+cuarenta se puede empezar a decir qué ventana y qué umbral separan de verdad
+sus días malos. `salud.resumen()` lo reporta y dice explícitamente cuándo
+todavía **no** hay suficientes casos, para que nadie mueva un umbral con cuatro.
+
+Esto no diagnostica ni predice migrañas. La presión es uno de muchos
+disparadores posibles y el sistema solo ve ese: que un día no avise no dice
+nada sobre lo que ella vaya a sentir.
+
 ### El barómetro de la malla
 
 Si el servicio de Meshtastic que corre en la misma máquina está alimentando
@@ -312,6 +341,8 @@ selftest.py      pruebas con tormentas sintéticas
 test_tormenta.py avisos de rayos: distancias, histéresis, transiciones
 test_presion.py  la ventana de 1 h contra la marea atmosférica
 test_barometro.py el sensor de la malla: unidades, ruido y respaldo
+test_salud.py    el bucle de respuestas: botones, recogida y resumen
+test_migracion.py añadir columnas sin corromper el historial
 test_archivo.py  el historial: guardado, índice y poda
 test_pagina.js   la página, con DOM y red falsos (necesita node)
 ```

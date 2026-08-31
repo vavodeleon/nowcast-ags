@@ -35,6 +35,17 @@ def get_bytes(url: str, *, timeout: int | None = None) -> bytes | None:
     return None
 
 
+def get_text(url: str, *, timeout: int | None = None) -> str | None:
+    """Cuerpo como texto. ntfy devuelve JSON por lineas, no un JSON unico."""
+    crudo = get_bytes(url, timeout=timeout)
+    if crudo is None:
+        return None
+    try:
+        return crudo.decode("utf-8")
+    except UnicodeDecodeError:
+        return crudo.decode("utf-8", errors="replace")
+
+
 def get_json(url: str, *, timeout: int | None = None) -> Any | None:
     timeout = timeout or config.HTTP_TIMEOUT
     for attempt in range(config.HTTP_RETRIES):

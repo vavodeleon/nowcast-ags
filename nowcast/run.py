@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 
 from . import (archivo, calibrate, config, engine, feedback, lightning, notify, overhead,
+               salud,
                pressure, render, sources, store, verify)
 
 log = logging.getLogger(__name__)
@@ -357,6 +358,13 @@ def main() -> None:
         feedback.procesar()
     except Exception as exc:
         log.error("no se pudo procesar el feedback: %s", exc)
+
+    # 0-bis. y las respuestas del canal de salud, contestadas desde la
+    #        propia notificacion
+    try:
+        salud.procesar()
+    except Exception as exc:
+        log.error("no se pudieron procesar las respuestas de salud: %s", exc)
 
     # 1. verificar lo que ya paso (esto alimenta el aprendizaje)
     try:

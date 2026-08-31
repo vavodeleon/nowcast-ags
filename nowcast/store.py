@@ -37,6 +37,15 @@ log = logging.getLogger(__name__)
 
 OBS_FIELDS = ["valid_utc", "rained", "mm", "peak_score", "source"]
 
+# Episodios de migrana. Una fila por aviso enviado; 'dolor' llega despues,
+# cuando ella contesta desde la notificacion. Se guarda la presion tal como
+# estaba al avisar, porque es lo que hay que poder correlacionar luego: sin
+# eso solo quedaria "aviso a las 19:31" sin saber con que numeros.
+SALUD_FIELDS = [
+    "ts_aviso", "tipo", "change_1h", "change_3h", "change_24h",
+    "nivel", "fuente", "dolor", "ts_respuesta",
+]
+
 
 def _ensure(path: str, fields: list[str]) -> None:
     """Crea el archivo si falta y lo migra si le faltan columnas.
@@ -159,3 +168,45 @@ def round_slot(dt: datetime, minutes: int = 15) -> str:
     dt = dt.replace(second=0, microsecond=0)
     dt = dt.replace(minute=(dt.minute // minutes) * minutes)
     return dt.isoformat()
+
+
+def append_salud(fila: dict) -> None:
+    _ensure(config.SALUD_CSV, SALUD_FIELDS)
+    with open(config.SALUD_CSV, "a", newline="", encoding="utf-8") as fh:
+        csv.DictWriter(fh, fieldnames=SALUD_FIELDS,
+                       extrasaction="ignore").writerow(fila)
+
+
+def read_salud() -> list[dict]:
+    if not os.path.exists(config.SALUD_CSV):
+        return []
+    with open(config.SALUD_CSV, newline="", encoding="utf-8") as fh:
+        return list(csv.DictReader(fh))
+
+
+def responder_salud(ts_aviso: str, dolor: str, ts_respuesta: str) -> bool:
+    """Rellena la respuesta del aviso mas cercano que siga sin contestar.
+
+    Devuelve True si encontro a quien asignarsela. No se exige coincidencia
+    exacta de marca de tiempo: ella puede tardar en contestar y el boton
+    manda la hora del aviso, pero mas vale ser tolerante que perder el dato.
+    """
+    filas = read_salud()
+    if not filas:
+        return False
+    candidatas = [f for f in filas if not f.get("dolor")]
+    if not candidatas:
+        return False
+    exacta = [f for f in candidatas if f.get("ts_aviso") == ts_aviso]
+    elegida = exacta[0] if exacta else candidatas[-1]
+    elegida["dolor"] = dolor
+    elegida["ts_respuesta"] = ts_respuesta
+
+    tmp = config.SALUD_CSV + ".tmp"
+    with open(tmp, "w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=SALUD_FIELDS, extrasaction="ignore")
+        w.writeheader()
+        for f in filas:
+            w.writerow(f)
+    os.replace(tmp, config.SALUD_CSV)
+    return True

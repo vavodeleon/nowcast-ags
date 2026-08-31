@@ -98,6 +98,13 @@ NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "")
 # las alertas de tormenta.
 NTFY_TOPIC_SALUD = os.environ.get("NTFY_TOPIC_SALUD", "")
 
+# Canal de VUELTA: por aqui contesta ella si le dolio o no, tocando un boton
+# de la propia notificacion. Es un canal SEPARADO del de avisos a proposito.
+# Si alguien llegara a ver este nombre -va dentro del mensaje, y un mensaje
+# se puede leer sobre el hombro- lo unico que podria hacer es meter ruido en
+# las respuestas. No podria leer los avisos de salud.
+NTFY_TOPIC_RESPUESTAS = os.environ.get("NTFY_TOPIC_RESPUESTAS", "")
+
 # ---------------------------------------------------------------- presión
 # Umbrales en hPa de presión reducida a NIVEL DEL MAR. Ojo: la presión de
 # estación aquí ronda los 805 hPa por los 1,880 m de altitud; los valores de
@@ -150,6 +157,7 @@ STATE_JSON = os.path.join(DATA_DIR, "state.json")
 LATEST_JSON = os.path.join(ROOT, "docs", "latest.json")
 HISTORY_JSON = os.path.join(ROOT, "docs", "history.json")
 LIGHTNING_JSON = os.path.join(ROOT, "docs", "rayos.json")
+SALUD_CSV = os.path.join(ROOT, "data", "salud.csv")
 
 # Historial de cuadros para la animacion y la revision de tormentas pasadas.
 # 7 dias son ~670 cuadros, unos 60 MB en el sitio publicado. Cabe de sobra en
