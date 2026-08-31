@@ -491,7 +491,7 @@ async function pintarRayos(){
   if (!mapa || hist) return;
   let datos;
   try {
-    const r = await fetch("rayos.json?t=" + Date.now());
+    const r = await conLimite("rayos.json?t=" + Date.now(), {}, 8000);
     datos = await r.json();
   } catch { return; }
 
@@ -613,7 +613,8 @@ function pintarMapa(d){
    que se está viendo, que basta para que la reproducción no se entrecorte.
    ------------------------------------------------------------------ */
 async function pedirJSON(url){
-  const r = await fetch(url + "?t=" + Date.now(), {cache: "no-store"});
+  // Mismo límite de tiempo que en latest.json, por el mismo motivo.
+  const r = await conLimite(url + "?t=" + Date.now(), {cache: "no-store"}, 8000);
   if (!r.ok) throw new Error(r.status);
   return r.json();
 }
@@ -899,26 +900,54 @@ function anotar(texto){
   if (caja) caja.textContent = bitacora.join("\n");
 }
 
+// ESTE es el fallo que tenía la página en datos móviles.
+//
+// `fetch()` no tiene tiempo de espera por omisión: si la petición se queda
+// colgada, la promesa nunca se resuelve NI se rechaza. La página se quedaba
+// en "Cargando..." para siempre y el manejo de errores nunca llegaba a
+// ejecutarse, así que ni siquiera aparecía un mensaje que dijera qué pasaba.
+// Parecía "no funciona con datos" cuando en realidad era "espera infinita".
+//
+// Colgarse en vez de fallar es típico de redes móviles: Chrome en Android
+// prefiere QUIC sobre UDP y muchas celulares lo degradan sin cerrar la
+// conexión, así que nadie avisa de nada. Con un límite de tiempo, el intento
+// se aborta, el segundo suele salir por TCP, y si tampoco, al menos se dice.
+const ESPERA_MAX_MS = 8000;
+
+async function conLimite(url, opciones, ms){
+  const ctrl = new AbortController();
+  const reloj = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, {...opciones, signal: ctrl.signal});
+  } finally {
+    clearTimeout(reloj);
+  }
+}
+
 async function pedirLatest(ahora){
-  // Dos intentos con modos de caché distintos. `no-store` es lo correcto,
-  // pero se ha visto fallar en algunos navegadores y redes móviles; si el
-  // primero falla, el segundo dice si la culpa era de esa opción o de la
-  // red. La bitácora deja constancia de cuál funcionó.
+  // Dos intentos. El primero con `no-store`, que es lo correcto; el segundo
+  // en modo normal, que además reintenta la conexión y suele salir por otra
+  // vía si la primera se colgó.
   const intentos = [
     ["no-store", {cache: "no-store"}],
     ["normal",   {}],
   ];
   let ultimoFallo;
   for (const [nombre, opciones] of intentos){
+    const t0 = Date.now();
     try {
-      const r = await fetch("latest.json?t=" + ahora, opciones);
+      const r = await conLimite("latest.json?t=" + ahora, opciones, ESPERA_MAX_MS);
       if (!r.ok) throw new Error("HTTP " + r.status);
       const datos = await r.json();
-      if (nombre !== "no-store") anotar(`descarga OK en modo ${nombre}`);
+      if (nombre !== "no-store")
+        anotar(`descarga OK en modo ${nombre} (${Date.now() - t0} ms)`);
       return datos;
     } catch (e) {
       ultimoFallo = e;
-      anotar(`descarga falló (${nombre}): ${e.message || e}`);
+      const motivo = e.name === "AbortError"
+        ? `se colgó, abortada a los ${ESPERA_MAX_MS / 1000} s`
+        : (e.message || e);
+      anotar(`descarga falló (${nombre}, ${Date.now() - t0} ms): ${motivo}`);
     }
   }
   throw ultimoFallo;
@@ -1009,6 +1038,19 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   conectarCapas();
   conectarReproductor();
+
+  // Red de seguridad: si a los 12 segundos el titular sigue diciendo
+  // "Cargando...", algo se atascó de una forma que no previmos. Mejor
+  // decirlo que dejar al usuario mirando un mensaje que no cambia nunca.
+  setTimeout(() => {
+    const t = q("#titular");
+    if (t && /cargando/i.test(t.textContent)) {
+      t.textContent = "No se pudo cargar el dato";
+      q("#icono").textContent = "📡";
+      anotar("seguía en 'Cargando...' a los 12 s");
+    }
+  }, 12000);
+
   actualizar("arranque");
 
   // Al volver a mirar la pestaña. Este es el caso que fallaba en el celular.

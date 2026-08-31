@@ -75,9 +75,31 @@ Object.defineProperty(global, "navigator", {
 });
 global.location = { origin: "https://vavodeleon.github.io" };
 global.Image = class { set src(v) { imagenesPedidas.push(v); } };
-global.setTimeout = (fn) => { try { fn(); } catch {} return 0; };
+// Reloj controlado. La primera version ejecutaba los setTimeout al
+// instante, lo cual habria hecho que el nuevo limite de tiempo abortara
+// TODAS las descargas nada mas empezar: la prueba habria "detectado" un
+// fallo inexistente. Aqui los temporizadores se guardan y solo corren
+// cuando la prueba avanza el reloj a proposito.
+const temporizadores = [];
+let idTemporizador = 0;
+global.setTimeout = (fn, ms = 0) => {
+  temporizadores.push({ id: ++idTemporizador, fn, ms });
+  return idTemporizador;
+};
+global.clearTimeout = (id) => {
+  const t = temporizadores.find((t) => t.id === id);
+  if (t) t.cancelado = true;
+};
 global.setInterval = () => 1;
 global.clearInterval = () => {};
+
+async function avanzar(ms) {
+  for (const t of temporizadores) {
+    if (!t.cancelado && !t.hecho && t.ms <= ms) { t.hecho = true; t.fn(); }
+  }
+  await new Promise((r) => process.nextTick(r));
+  await new Promise((r) => process.nextTick(r));
+}
 
 // ------------------------------------------------------------ Leaflet falso
 const capasEnMapa = new Set();
@@ -120,6 +142,7 @@ global.Chart = class { constructor() {} destroy() {} update() {} };
 const pedidas = [];
 const imagenesPedidas = [];
 let redCaida = false;
+let redColgada = false;
 
 const LATEST = {
   issued_utc: new Date().toISOString(),
@@ -143,8 +166,22 @@ const RESPUESTAS = {
   "hist/2026-08-30/1215.r.json": [[21.9, -102.3, 5]],
   "hist/2026-08-30/1230.r.json": [[21.8, -102.2, 12]],
 };
-global.fetch = async (url, opciones) => {
+global.fetch = async (url, opciones = {}) => {
   pedidas.push({ url, opciones });
+  // Colgarse NO es lo mismo que fallar: la promesa se queda pendiente para
+  // siempre y solo la aborta el AbortController. Esto es lo que hacia la
+  // red movil, y por eso la pagina se quedaba en "Cargando..." sin dar
+  // ningun mensaje de error.
+  if (redColgada) {
+    return new Promise((_, rechazar) => {
+      if (!opciones.signal) return;         // sin límite, se cuelga de verdad
+      opciones.signal.addEventListener("abort", () => {
+        const e = new Error("The operation was aborted");
+        e.name = "AbortError";
+        rechazar(e);
+      });
+    });
+  }
   if (redCaida) throw new Error("sin red");
   const clave = Object.keys(RESPUESTAS).find((k) => url.startsWith(k));
   if (!clave) return { ok: false, status: 404, json: async () => ({}) };
@@ -297,13 +334,58 @@ const espera = () => new Promise((r) => process.nextTick(r));
     && /normal/.test(el("diag-texto").textContent));
   redCaida = false;
 
-  console.log("\nJ. El diagnóstico dice si las librerías cargaron");
+  console.log("\nJ. Una red que se CUELGA (el fallo real en datos móviles)");
+  // Distinto de una red caída: la petición ni responde ni falla. Sin límite
+  // de tiempo, `fetch` espera para siempre, la página se queda en
+  // "Cargando..." y el manejo de errores nunca se ejecuta, así que ni
+  // siquiera aparece un mensaje. Es exactamente lo que se veía en el
+  // teléfono: todo el HTML dibujado y ningún dato ni ningún error.
+  redColgada = true;
+  puente.bitacora.length = 0;
+  el("titular").textContent = "Cargando...";
+  puente.ultimoIntento = 0;
+
+  const enMarcha = disparar("win:online");
+  await espera();
+  chk("mientras se cuelga, aún no hay veredicto",
+    /cargando/i.test(el("titular").textContent), el("titular").textContent);
+
+  await avanzar(8000);          // vence el límite del primer intento
+  await avanzar(8000);          // y el del segundo
+  await enMarcha;
+  await espera(); await espera();
+
+  chk("la espera se corta sola", /abort/i.test(el("diag-texto").textContent),
+    el("diag-texto").textContent.split("\n")[0] || "(bitácora vacía)");
+  chk("la bitácora dice que se colgó",
+    /se colgó/.test(el("diag-texto").textContent),
+    el("diag-texto").textContent.split("\n")[0] || "(vacía)");
+  chk("se prueban los dos intentos antes de rendirse",
+    (el("diag-texto").textContent.match(/se colgó/g) || []).length === 2,
+    (el("diag-texto").textContent.match(/se colgó/g) || []).length + " intentos");
+  chk("y el usuario ve un mensaje, no un 'Cargando' eterno",
+    !/cargando/i.test(el("titular").textContent)
+    || /no se pudo descargar/i.test(el("sello").textContent),
+    `titular "${el("titular").textContent}", sello "${el("sello").textContent}"`);
+
+  console.log("\n   Bitácora tal como la vería Álvaro:");
+  for (const linea of el("diag-texto").textContent.split("\n"))
+    console.log("     " + linea);
+  redColgada = false;
+
+  console.log("\nJ-bis. La red de seguridad de los 12 segundos");
+  el("titular").textContent = "Cargando...";
+  await avanzar(12000);
+  chk("un 'Cargando' que no cambia acaba avisando",
+    !/cargando/i.test(el("titular").textContent), el("titular").textContent);
+
+  console.log("\nK. El diagnóstico dice si las librerías cargaron");
   chk("informa de Leaflet y Chart",
     /Leaflet:/.test(el("diag-entorno").textContent)
     && /Chart\.js:/.test(el("diag-entorno").textContent),
     el("diag-entorno").textContent.split("\n")[0]);
 
-  console.log("\nK. Todo lo que el JavaScript busca existe en el HTML");
+  console.log("\nL. Todo lo que el JavaScript busca existe en el HTML");
   const faltantes = [...consultados].filter(
     (id) => !new RegExp(`id=["']${id}["']`).test(html));
   chk(`${consultados.size} elementos consultados, ninguno inexistente`,
