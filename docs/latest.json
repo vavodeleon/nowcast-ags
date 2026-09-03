@@ -1,6 +1,6 @@
 {
-  "issued_utc": "2026-09-03T13:15:50+00:00",
-  "issued_local": "2026-09-03 07:15",
+  "issued_utc": "2026-09-03T13:30:50+00:00",
+  "issued_local": "2026-09-03 07:30",
   "probabilities": {
     "15": 0.02,
     "30": 0.02,
@@ -8,15 +8,15 @@
     "60": 0.02,
     "90": 0.02,
     "120": 0.02,
-    "180": 0.02
+    "180": 0.049
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 265.7,
-    "contraste": 5.1,
+    "bt_encima": 268.4,
+    "contraste": 3.7,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": 0.0,
+    "precip_observada": null,
     "forma": "nubes",
     "lloviendo": false,
     "corroborado_por": "",
@@ -47,10 +47,10 @@
     "ecmwf_ifs025": 0.0,
     "gfs_seamless": 0.0,
     "icon_seamless": 0.0,
-    "gem_seamless": 0.03
+    "gem_seamless": 0.0
   },
   "confidence": "baja",
-  "calibration_n": 19805,
+  "calibration_n": 19812,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -65,28 +65,28 @@
   ],
   "motion_bearing": null,
   "pressure": {
-    "now_msl": 1019.7,
-    "now_surface": 818.5,
+    "now_msl": 1020.1,
+    "now_surface": 818.6,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1796,
-      "edad_min": 0.2,
+      "edad_min": 0.1,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2459,
+      "factor": 1.2462,
       "amplitud_diaria": 4.12,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": 0.5,
-    "change_3h": 0.8,
-    "change_6h": -0.5,
-    "change_24h": -2.5,
+    "change_1h": 0.3,
+    "change_3h": 0.7,
+    "change_6h": -0.4,
+    "change_24h": -2.1,
     "forecast_drop": 3.7,
     "forecast_drop_at": "Thu 03, 15:00",
-    "forecast_drop_in_h": 7.7,
+    "forecast_drop_in_h": 7.5,
     "level": "vigilancia",
     "trend": "estable",
     "series": [
@@ -592,9 +592,9 @@
     "ciclo_diario": 6.6
   },
   "temperatura": {
-    "ahora": 15.1,
-    "sensacion": 16.6,
-    "humedad": 98,
+    "ahora": 15.6,
+    "sensacion": 17.0,
+    "humedad": 96,
     "maxima": 25.1,
     "minima": 14.8,
     "serie": [
