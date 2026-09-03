@@ -1,6 +1,6 @@
 {
-  "issued_utc": "2026-09-03T11:15:40+00:00",
-  "issued_local": "2026-09-03 05:15",
+  "issued_utc": "2026-09-03T11:30:49+00:00",
+  "issued_local": "2026-09-03 05:30",
   "probabilities": {
     "15": 0.02,
     "30": 0.055,
@@ -12,20 +12,20 @@
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 261.3,
-    "contraste": 8.4,
+    "bt_encima": 258.8,
+    "contraste": 10.0,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": 0.0,
+    "precip_observada": null,
     "forma": "nubes",
     "lloviendo": false,
     "corroborado_por": "",
     "estado": "Nublado"
   },
-  "motion_speed_kmh": 5.7,
+  "motion_speed_kmh": 6.2,
   "motion_from": "norte",
-  "motion_confidence": 0.692,
-  "growth": 1.088,
+  "motion_confidence": 0.521,
+  "growth": 0.954,
   "cell_eta_min": null,
   "cell_km": null,
   "cape": 1390.0,
@@ -44,13 +44,13 @@
     ]
   },
   "model_probs_1h": {
-    "ecmwf_ifs025": 0.04,
-    "gfs_seamless": 0.1,
+    "ecmwf_ifs025": 0.01,
+    "gfs_seamless": 0.06,
     "icon_seamless": 0.0,
-    "gem_seamless": 0.1
+    "gem_seamless": 0.07
   },
   "confidence": "buena",
-  "calibration_n": 19749,
+  "calibration_n": 19756,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -63,30 +63,30 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 181.5,
+  "motion_bearing": 202.5,
   "pressure": {
-    "now_msl": 1019.0,
+    "now_msl": 1019.6,
     "now_surface": 817.8,
     "fuente": "sensor local",
     "sensor": {
-      "muestras": 1797,
-      "edad_min": 0.0,
+      "muestras": 1796,
+      "edad_min": 0.2,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.246,
+      "factor": 1.2468,
       "amplitud_diaria": 4.08,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": 0.3,
-    "change_3h": -0.0,
-    "change_6h": -0.8,
-    "change_24h": -2.3,
+    "change_1h": 0.2,
+    "change_3h": 0.1,
+    "change_6h": -0.1,
+    "change_24h": -2.5,
     "forecast_drop": 4.3,
     "forecast_drop_at": "Thu 03, 15:00",
-    "forecast_drop_in_h": 9.7,
+    "forecast_drop_in_h": 9.5,
     "level": "vigilancia",
     "trend": "estable",
     "series": [
@@ -592,9 +592,9 @@
     "ciclo_diario": 6.6
   },
   "temperatura": {
-    "ahora": 14.6,
-    "sensacion": 15.4,
-    "humedad": 98,
+    "ahora": 14.5,
+    "sensacion": 15.3,
+    "humedad": 99,
     "maxima": 25.2,
     "minima": 14.3,
     "serie": [
