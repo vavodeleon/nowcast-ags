@@ -1,22 +1,22 @@
 {
-  "issued_utc": "2026-09-04T11:15:49+00:00",
-  "issued_local": "2026-09-04 05:15",
+  "issued_utc": "2026-09-04T11:30:50+00:00",
+  "issued_local": "2026-09-04 05:30",
   "probabilities": {
-    "15": 0.103,
+    "15": 0.102,
     "30": 0.08,
-    "45": 0.105,
-    "60": 0.122,
+    "45": 0.103,
+    "60": 0.04,
     "90": 0.051,
-    "120": 0.044,
-    "180": 0.039
+    "120": 0.036,
+    "180": 0.02
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 256.2,
-    "contraste": 7.1,
+    "bt_encima": 261.1,
+    "contraste": 3.9,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": 0.0,
+    "precip_observada": null,
     "forma": "nubes",
     "lloviendo": false,
     "corroborado_por": "",
@@ -45,12 +45,12 @@
   },
   "model_probs_1h": {
     "ecmwf_ifs025": 0.0,
-    "gfs_seamless": 0.35,
-    "icon_seamless": 0.1,
-    "gem_seamless": 0.19
+    "gfs_seamless": 0.2,
+    "icon_seamless": 0.03,
+    "gem_seamless": 0.11
   },
   "confidence": "baja",
-  "calibration_n": 20430,
+  "calibration_n": 20437,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -65,28 +65,28 @@
   ],
   "motion_bearing": null,
   "pressure": {
-    "now_msl": 1017.2,
-    "now_surface": 816.0,
+    "now_msl": 1017.6,
+    "now_surface": 815.8,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1736,
       "edad_min": 0.4,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2466,
-      "amplitud_diaria": 5.26,
+      "factor": 1.2473,
+      "amplitud_diaria": 5.25,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
     "change_1h": -0.9,
-    "change_3h": -1.0,
-    "change_6h": -0.9,
-    "change_24h": -1.9,
+    "change_3h": -1.5,
+    "change_6h": -0.4,
+    "change_24h": -2.4,
     "forecast_drop": 2.6,
     "forecast_drop_at": "Sat 05, 01:00",
-    "forecast_drop_in_h": 19.7,
+    "forecast_drop_in_h": 19.5,
     "level": "tranquilo",
     "trend": "estable",
     "series": [
@@ -592,8 +592,8 @@
     "ciclo_diario": 7.6
   },
   "temperatura": {
-    "ahora": 14.8,
-    "sensacion": 15.6,
+    "ahora": 14.7,
+    "sensacion": 15.5,
     "humedad": 98,
     "maxima": 27.0,
     "minima": 14.6,
