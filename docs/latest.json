@@ -1,10 +1,10 @@
 {
-  "issued_utc": "2026-09-06T01:30:45+00:00",
-  "issued_local": "2026-09-05 19:30",
+  "issued_utc": "2026-09-06T01:45:51+00:00",
+  "issued_local": "2026-09-05 19:45",
   "probabilities": {
-    "15": 0.094,
+    "15": 0.093,
     "30": 0.059,
-    "45": 0.067,
+    "45": 0.072,
     "60": 0.129,
     "90": 0.116,
     "120": 0.113,
@@ -12,8 +12,8 @@
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 289.0,
-    "contraste": -2.1,
+    "bt_encima": 285.8,
+    "contraste": 0.5,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
     "precip_observada": null,
@@ -22,10 +22,10 @@
     "corroborado_por": "",
     "estado": "Despejado"
   },
-  "motion_speed_kmh": 24.0,
-  "motion_from": "norte",
-  "motion_confidence": 0.223,
-  "growth": 0.868,
+  "motion_speed_kmh": 31.3,
+  "motion_from": "noreste",
+  "motion_confidence": 0.27,
+  "growth": 0.835,
   "cell_eta_min": null,
   "cell_km": null,
   "cape": 490.0,
@@ -50,7 +50,7 @@
     "gem_seamless": 0.48
   },
   "confidence": "baja",
-  "calibration_n": 21499,
+  "calibration_n": 21506,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -63,30 +63,30 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 200.0,
+  "motion_bearing": 205.9,
   "pressure": {
     "now_msl": 1011.1,
-    "now_surface": 812.7,
+    "now_surface": 813.0,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1798,
-      "edad_min": 0.5,
+      "edad_min": 0.6,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2441,
-      "amplitud_diaria": 5.78,
+      "factor": 1.2437,
+      "amplitud_diaria": 5.79,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": -0.2,
-    "change_3h": -0.8,
+    "change_1h": 0.1,
+    "change_3h": -0.7,
     "change_6h": -2.0,
     "change_24h": -1.8,
     "forecast_drop": 2.1,
     "forecast_drop_at": "Sun 06, 15:00",
-    "forecast_drop_in_h": 19.5,
+    "forecast_drop_in_h": 19.2,
     "level": "tranquilo",
     "trend": "bajando",
     "series": [
@@ -592,8 +592,8 @@
     "ciclo_diario": 7.3
   },
   "temperatura": {
-    "ahora": 25.3,
-    "sensacion": 24.4,
+    "ahora": 25.1,
+    "sensacion": 24.0,
     "humedad": 33,
     "maxima": 27.9,
     "minima": 15.4,
@@ -726,10 +726,10 @@
     ]
   },
   "rayos": {
-    "total_hora": 5981,
+    "total_hora": 5315,
     "bloques": 4,
     "fase": "despejado",
-    "dist_km": 187.8
+    "dist_km": 189.3
   },
   "performance": {
     "15": {
@@ -741,45 +741,45 @@
     },
     "30": {
       "n": 2036,
-      "brier": 0.0752,
-      "skill_vs_climatologia": 0.272,
-      "acierto_binario": 0.894,
+      "brier": 0.075,
+      "skill_vs_climatologia": 0.273,
+      "acierto_binario": 0.895,
       "frecuencia_lluvia": 0.117
     },
     "45": {
       "n": 2035,
-      "brier": 0.0762,
-      "skill_vs_climatologia": 0.26,
+      "brier": 0.076,
+      "skill_vs_climatologia": 0.261,
       "acierto_binario": 0.89,
       "frecuencia_lluvia": 0.116
     },
     "60": {
       "n": 2034,
-      "brier": 0.0778,
-      "skill_vs_climatologia": 0.241,
-      "acierto_binario": 0.892,
+      "brier": 0.0777,
+      "skill_vs_climatologia": 0.242,
+      "acierto_binario": 0.893,
       "frecuencia_lluvia": 0.116
     },
     "90": {
       "n": 2032,
-      "brier": 0.079,
-      "skill_vs_climatologia": 0.236,
-      "acierto_binario": 0.895,
+      "brier": 0.0788,
+      "skill_vs_climatologia": 0.235,
+      "acierto_binario": 0.896,
       "frecuencia_lluvia": 0.117
     },
     "120": {
       "n": 2030,
-      "brier": 0.0779,
-      "skill_vs_climatologia": 0.236,
+      "brier": 0.0778,
+      "skill_vs_climatologia": 0.234,
       "acierto_binario": 0.899,
       "frecuencia_lluvia": 0.115
     },
     "180": {
       "n": 2026,
-      "brier": 0.0774,
-      "skill_vs_climatologia": 0.237,
-      "acierto_binario": 0.896,
-      "frecuencia_lluvia": 0.115
+      "brier": 0.0772,
+      "skill_vs_climatologia": 0.236,
+      "acierto_binario": 0.897,
+      "frecuencia_lluvia": 0.114
     }
   }
 }
