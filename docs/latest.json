@@ -1,22 +1,22 @@
 {
-  "issued_utc": "2026-09-09T15:15:40+00:00",
-  "issued_local": "2026-09-09 09:15",
+  "issued_utc": "2026-09-09T15:30:43+00:00",
+  "issued_local": "2026-09-09 09:30",
   "probabilities": {
     "15": 0.02,
     "30": 0.02,
     "45": 0.02,
     "60": 0.02,
     "90": 0.02,
-    "120": 0.02,
-    "180": 0.02
+    "120": 0.022,
+    "180": 0.054
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 272.8,
-    "contraste": 15.2,
+    "bt_encima": 271.6,
+    "contraste": 17.6,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": 0.0,
+    "precip_observada": null,
     "forma": "despejado",
     "lloviendo": false,
     "corroborado_por": "",
@@ -50,7 +50,7 @@
     "gem_seamless": 0.0
   },
   "confidence": "baja",
-  "calibration_n": 23900,
+  "calibration_n": 23907,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -65,16 +65,16 @@
   ],
   "motion_bearing": null,
   "pressure": {
-    "now_msl": 1022.5,
+    "now_msl": 1021.8,
     "now_surface": 820.0,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1762,
-      "edad_min": 0.9,
+      "edad_min": 1.0,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2469,
-      "amplitud_diaria": 4.7,
+      "factor": 1.246,
+      "amplitud_diaria": 4.66,
       "ventanas": [
         "change_1h",
         "change_3h"
@@ -82,11 +82,11 @@
     },
     "change_1h": -0.3,
     "change_3h": -0.8,
-    "change_6h": -0.3,
-    "change_24h": 1.8,
+    "change_6h": -0.9,
+    "change_24h": 1.6,
     "forecast_drop": 3.2,
     "forecast_drop_at": "Wed 09, 18:00",
-    "forecast_drop_in_h": 8.7,
+    "forecast_drop_in_h": 8.5,
     "level": "vigilancia",
     "trend": "estable",
     "series": [
@@ -592,9 +592,9 @@
     "ciclo_diario": 7.0
   },
   "temperatura": {
-    "ahora": 18.3,
-    "sensacion": 18.1,
-    "humedad": 75,
+    "ahora": 18.9,
+    "sensacion": 18.6,
+    "humedad": 73,
     "maxima": 24.8,
     "minima": 14.6,
     "serie": [
@@ -728,8 +728,7 @@
   "rayos": {
     "total_hora": 1,
     "bloques": 4,
-    "fase": "despejado",
-    "dist_km": 362.6
+    "fase": "despejado"
   },
   "performance": {
     "15": {
