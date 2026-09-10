@@ -1,19 +1,19 @@
 {
-  "issued_utc": "2026-09-10T18:00:42+00:00",
-  "issued_local": "2026-09-10 12:00",
+  "issued_utc": "2026-09-10T18:15:40+00:00",
+  "issued_local": "2026-09-10 12:15",
   "probabilities": {
-    "15": 0.098,
-    "30": 0.158,
+    "15": 0.135,
+    "30": 0.16,
     "45": 0.155,
     "60": 0.121,
     "90": 0.161,
-    "120": 0.152,
-    "180": 0.235
+    "120": 0.151,
+    "180": 0.233
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 260.5,
-    "contraste": 5.3,
+    "bt_encima": 259.7,
+    "contraste": 6.5,
     "fraccion_fria": 0.04,
     "rayos_cerca": 0,
     "precip_observada": 0.0,
@@ -22,10 +22,10 @@
     "corroborado_por": "",
     "estado": "Nublado"
   },
-  "motion_speed_kmh": 11.2,
+  "motion_speed_kmh": 11.5,
   "motion_from": "oeste",
-  "motion_confidence": 0.456,
-  "growth": 1.114,
+  "motion_confidence": 0.465,
+  "growth": 0.915,
   "cell_eta_min": null,
   "cell_km": null,
   "cape": 1570.0,
@@ -50,7 +50,7 @@
     "gem_seamless": 0.09
   },
   "confidence": "buena",
-  "calibration_n": 24635,
+  "calibration_n": 24642,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -63,30 +63,30 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 99.3,
+  "motion_bearing": 95.3,
   "pressure": {
-    "now_msl": 1020.2,
-    "now_surface": 819.6,
+    "now_msl": 1020.1,
+    "now_surface": 819.3,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1799,
       "edad_min": 0.2,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2448,
-      "amplitud_diaria": 5.89,
+      "factor": 1.2451,
+      "amplitud_diaria": 5.9,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": 0.0,
-    "change_3h": 1.0,
+    "change_1h": -0.1,
+    "change_3h": 0.6,
     "change_6h": 1.0,
     "change_24h": 0.2,
     "forecast_drop": 3.4,
     "forecast_drop_at": "Fri 11, 16:00",
-    "forecast_drop_in_h": 28.0,
+    "forecast_drop_in_h": 27.7,
     "level": "vigilancia",
     "trend": "subiendo",
     "series": [
@@ -592,9 +592,9 @@
     "ciclo_diario": 7.1
   },
   "temperatura": {
-    "ahora": 22.3,
-    "sensacion": 24.7,
-    "humedad": 64,
+    "ahora": 22.6,
+    "sensacion": 25.4,
+    "humedad": 63,
     "maxima": 23.8,
     "minima": 14.6,
     "serie": [
@@ -726,9 +726,10 @@
     ]
   },
   "rayos": {
-    "total_hora": 0,
+    "total_hora": 1,
     "bloques": 4,
-    "fase": "despejado"
+    "fase": "vigilando",
+    "dist_km": 46.2
   },
   "performance": {
     "15": {
