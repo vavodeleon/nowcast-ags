@@ -1,31 +1,31 @@
 {
-  "issued_utc": "2026-09-12T14:15:42+00:00",
-  "issued_local": "2026-09-12 08:15",
+  "issued_utc": "2026-09-12T14:30:42+00:00",
+  "issued_local": "2026-09-12 08:30",
   "probabilities": {
     "15": 0.02,
     "30": 0.048,
     "45": 0.035,
-    "60": 0.049,
+    "60": 0.054,
     "90": 0.029,
-    "120": 0.069,
-    "180": 0.089
+    "120": 0.108,
+    "180": 0.13
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 288.1,
-    "contraste": -2.0,
+    "bt_encima": 289.1,
+    "contraste": -1.5,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": 0.0,
+    "precip_observada": null,
     "forma": "despejado",
     "lloviendo": false,
     "corroborado_por": "",
     "estado": "Despejado"
   },
-  "motion_speed_kmh": 22.2,
+  "motion_speed_kmh": 17.0,
   "motion_from": "sur",
-  "motion_confidence": 0.63,
-  "growth": 0.889,
+  "motion_confidence": 0.797,
+  "growth": 0.79,
   "cell_eta_min": null,
   "cell_km": null,
   "cape": 2030.0,
@@ -45,12 +45,12 @@
   },
   "model_probs_1h": {
     "ecmwf_ifs025": 0.0,
-    "gfs_seamless": 0.26,
+    "gfs_seamless": 0.34,
     "icon_seamless": 0.0,
-    "gem_seamless": 0.05
+    "gem_seamless": 0.01
   },
   "confidence": "buena",
-  "calibration_n": 25874,
+  "calibration_n": 25881,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -63,18 +63,18 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 355.7,
+  "motion_bearing": 1.6,
   "pressure": {
-    "now_msl": 1018.4,
-    "now_surface": 816.6,
+    "now_msl": 1018.8,
+    "now_surface": 816.7,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1800,
       "edad_min": 0.1,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2471,
-      "amplitud_diaria": 5.56,
+      "factor": 1.2475,
+      "amplitud_diaria": 5.54,
       "ventanas": [
         "change_1h",
         "change_3h"
@@ -82,13 +82,13 @@
     },
     "change_1h": -0.2,
     "change_3h": -0.7,
-    "change_6h": -1.2,
-    "change_24h": -2.0,
+    "change_6h": -0.6,
+    "change_24h": -1.4,
     "forecast_drop": 1.7,
     "forecast_drop_at": "Sat 12, 10:00",
-    "forecast_drop_in_h": 1.7,
+    "forecast_drop_in_h": 1.5,
     "level": "tranquilo",
-    "trend": "bajando",
+    "trend": "estable",
     "series": [
       {
         "t": "11 09:00",
@@ -592,9 +592,9 @@
     "ciclo_diario": 6.8
   },
   "temperatura": {
-    "ahora": 17.5,
-    "sensacion": 18.6,
-    "humedad": 86,
+    "ahora": 18.0,
+    "sensacion": 19.1,
+    "humedad": 83,
     "maxima": 25.5,
     "minima": 15.5,
     "serie": [
