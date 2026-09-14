@@ -1,19 +1,19 @@
 {
-  "issued_utc": "2026-09-14T09:30:49+00:00",
-  "issued_local": "2026-09-14 03:30",
+  "issued_utc": "2026-09-14T09:45:45+00:00",
+  "issued_local": "2026-09-14 03:45",
   "probabilities": {
-    "15": 0.184,
-    "30": 0.2,
-    "45": 0.178,
+    "15": 0.183,
+    "30": 0.201,
+    "45": 0.157,
     "60": 0.138,
-    "90": 0.138,
-    "120": 0.115,
-    "180": 0.08
+    "90": 0.137,
+    "120": 0.114,
+    "180": 0.079
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 251.4,
-    "contraste": 14.1,
+    "bt_encima": 251.1,
+    "contraste": 16.7,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
     "precip_observada": null,
@@ -22,10 +22,10 @@
     "corroborado_por": "",
     "estado": "Nublado"
   },
-  "motion_speed_kmh": 4.9,
-  "motion_from": "oeste",
-  "motion_confidence": 0.022,
-  "growth": 1.361,
+  "motion_speed_kmh": 3.6,
+  "motion_from": "suroeste",
+  "motion_confidence": 0.339,
+  "growth": 1.181,
   "cell_eta_min": null,
   "cell_km": null,
   "cape": 720.0,
@@ -50,7 +50,7 @@
     "gem_seamless": 0.25
   },
   "confidence": "baja",
-  "calibration_n": 27085,
+  "calibration_n": 27092,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -63,30 +63,30 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 75.1,
+  "motion_bearing": 53.5,
   "pressure": {
     "now_msl": 1019.1,
-    "now_surface": 816.4,
+    "now_surface": 816.3,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1800,
-      "edad_min": 0.3,
+      "edad_min": 0.2,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2483,
-      "amplitud_diaria": 5.18,
+      "factor": 1.2484,
+      "amplitud_diaria": 5.19,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
     "change_1h": -0.2,
-    "change_3h": 0.3,
+    "change_3h": 0.1,
     "change_6h": 1.5,
     "change_24h": 1.9,
     "forecast_drop": 2.0,
     "forecast_drop_at": "Mon 14, 19:00",
-    "forecast_drop_in_h": 15.5,
+    "forecast_drop_in_h": 15.2,
     "level": "tranquilo",
     "trend": "subiendo",
     "series": [
@@ -592,7 +592,7 @@
     "ciclo_diario": 8.2
   },
   "temperatura": {
-    "ahora": 15.2,
+    "ahora": 15.1,
     "sensacion": 15.8,
     "humedad": 96,
     "maxima": 25.7,
@@ -726,16 +726,16 @@
     ]
   },
   "rayos": {
-    "total_hora": 2029,
+    "total_hora": 1566,
     "bloques": 4,
     "fase": "despejado",
-    "dist_km": 154.9
+    "dist_km": 153.6
   },
   "performance": {
     "15": {
       "n": 1969,
       "brier": 0.1071,
-      "skill_vs_climatologia": 0.31,
+      "skill_vs_climatologia": 0.309,
       "acierto_binario": 0.823,
       "frecuencia_lluvia": 0.192
     },
