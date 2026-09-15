@@ -1,19 +1,19 @@
 {
-  "issued_utc": "2026-09-15T10:30:50+00:00",
-  "issued_local": "2026-09-15 04:30",
+  "issued_utc": "2026-09-15T10:46:04+00:00",
+  "issued_local": "2026-09-15 04:46",
   "probabilities": {
     "15": 0.109,
-    "30": 0.126,
-    "45": 0.126,
+    "30": 0.125,
+    "45": 0.105,
     "60": 0.129,
     "90": 0.125,
     "120": 0.106,
-    "180": 0.069
+    "180": 0.068
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 240.3,
-    "contraste": 15.0,
+    "bt_encima": 249.6,
+    "contraste": 7.6,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
     "precip_observada": null,
@@ -22,10 +22,10 @@
     "corroborado_por": "",
     "estado": "Nublado"
   },
-  "motion_speed_kmh": 16.1,
+  "motion_speed_kmh": 16.8,
   "motion_from": "este",
-  "motion_confidence": 0.286,
-  "growth": 0.654,
+  "motion_confidence": 0.528,
+  "growth": 0.854,
   "cell_eta_min": null,
   "cell_km": null,
   "cape": 1220.0,
@@ -49,8 +49,8 @@
     "icon_seamless": 0.05,
     "gem_seamless": 0.48
   },
-  "confidence": "baja",
-  "calibration_n": 27785,
+  "confidence": "buena",
+  "calibration_n": 27792,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -63,30 +63,30 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 277.2,
+  "motion_bearing": 288.0,
   "pressure": {
     "now_msl": 1019.2,
-    "now_surface": 817.8,
+    "now_surface": 817.9,
     "fuente": "sensor local",
     "sensor": {
-      "muestras": 1798,
-      "edad_min": 0.8,
+      "muestras": 1799,
+      "edad_min": 0.0,
       "cadencia_s": 60,
       "horas": 30.0,
       "factor": 1.2462,
-      "amplitud_diaria": 5.38,
+      "amplitud_diaria": 5.39,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": -0.0,
-    "change_3h": 0.3,
+    "change_1h": 0.0,
+    "change_3h": 0.2,
     "change_6h": -0.1,
     "change_24h": 0.7,
     "forecast_drop": 2.1,
     "forecast_drop_at": "Tue 15, 18:00",
-    "forecast_drop_in_h": 13.5,
+    "forecast_drop_in_h": 13.2,
     "level": "tranquilo",
     "trend": "estable",
     "series": [
@@ -592,9 +592,9 @@
     "ciclo_diario": 7.6
   },
   "temperatura": {
-    "ahora": 14.9,
-    "sensacion": 15.1,
-    "humedad": 97,
+    "ahora": 15.0,
+    "sensacion": 15.0,
+    "humedad": 96,
     "maxima": 25.0,
     "minima": 14.9,
     "serie": [
@@ -726,59 +726,60 @@
     ]
   },
   "rayos": {
-    "total_hora": 26,
+    "total_hora": 17,
     "bloques": 4,
-    "fase": "despejado"
+    "fase": "despejado",
+    "dist_km": 286.4
   },
   "performance": {
     "15": {
-      "n": 1962,
-      "brier": 0.1104,
+      "n": 1961,
+      "brier": 0.1105,
       "skill_vs_climatologia": 0.312,
       "acierto_binario": 0.817,
       "frecuencia_lluvia": 0.201
     },
     "30": {
-      "n": 1961,
-      "brier": 0.1113,
-      "skill_vs_climatologia": 0.307,
+      "n": 1960,
+      "brier": 0.1114,
+      "skill_vs_climatologia": 0.306,
       "acierto_binario": 0.822,
       "frecuencia_lluvia": 0.201
     },
     "45": {
-      "n": 1960,
+      "n": 1959,
       "brier": 0.1133,
       "skill_vs_climatologia": 0.293,
       "acierto_binario": 0.81,
       "frecuencia_lluvia": 0.201
     },
     "60": {
-      "n": 1959,
-      "brier": 0.112,
+      "n": 1958,
+      "brier": 0.1121,
       "skill_vs_climatologia": 0.302,
       "acierto_binario": 0.82,
       "frecuencia_lluvia": 0.201
     },
     "90": {
-      "n": 1957,
-      "brier": 0.1128,
+      "n": 1956,
+      "brier": 0.1129,
       "skill_vs_climatologia": 0.298,
       "acierto_binario": 0.826,
       "frecuencia_lluvia": 0.201
     },
     "120": {
-      "n": 1955,
-      "brier": 0.1091,
+      "n": 1954,
+      "brier": 0.1092,
       "skill_vs_climatologia": 0.322,
       "acierto_binario": 0.833,
       "frecuencia_lluvia": 0.202
     },
     "180": {
-      "n": 1951,
-      "brier": 0.1107,
+      "n": 1950,
+      "brier": 0.1108,
       "skill_vs_climatologia": 0.312,
       "acierto_binario": 0.829,
-      "frecuencia_lluvia": 0.201
+      "frecuencia_lluvia": 0.202
     }
   }
 }
