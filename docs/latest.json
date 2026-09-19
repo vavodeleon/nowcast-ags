@@ -1,9 +1,9 @@
 {
-  "issued_utc": "2026-09-19T18:00:44+00:00",
-  "issued_local": "2026-09-19 12:00",
+  "issued_utc": "2026-09-19T18:15:43+00:00",
+  "issued_local": "2026-09-19 12:15",
   "probabilities": {
-    "15": 0.101,
-    "30": 0.137,
+    "15": 0.114,
+    "30": 0.136,
     "45": 0.125,
     "60": 0.142,
     "90": 0.135,
@@ -12,8 +12,8 @@
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 287.6,
-    "contraste": 2.3,
+    "bt_encima": 283.0,
+    "contraste": 6.1,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
     "precip_observada": 0.0,
@@ -50,7 +50,7 @@
     "gem_seamless": 0.0
   },
   "confidence": "baja",
-  "calibration_n": 30676,
+  "calibration_n": 30683,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -65,28 +65,28 @@
   ],
   "motion_bearing": null,
   "pressure": {
-    "now_msl": 1017.6,
-    "now_surface": 817.8,
+    "now_msl": 1017.5,
+    "now_surface": 817.7,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1799,
-      "edad_min": 0.2,
+      "edad_min": 0.1,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2443,
+      "factor": 1.2444,
       "amplitud_diaria": 4.33,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": 0.2,
-    "change_3h": -0.0,
+    "change_1h": 0.1,
+    "change_3h": -0.2,
     "change_6h": 0.2,
     "change_24h": -1.4,
     "forecast_drop": 4.2,
     "forecast_drop_at": "Sat 19, 15:00",
-    "forecast_drop_in_h": 3.0,
+    "forecast_drop_in_h": 2.7,
     "level": "vigilancia",
     "trend": "estable",
     "series": [
@@ -592,9 +592,9 @@
     "ciclo_diario": 7.7
   },
   "temperatura": {
-    "ahora": 24.1,
-    "sensacion": 25.8,
-    "humedad": 45,
+    "ahora": 24.4,
+    "sensacion": 26.1,
+    "humedad": 43,
     "maxima": 26.6,
     "minima": 14.2,
     "serie": [
@@ -726,9 +726,10 @@
     ]
   },
   "rayos": {
-    "total_hora": 0,
+    "total_hora": 2,
     "bloques": 4,
-    "fase": "despejado"
+    "fase": "despejado",
+    "dist_km": 275.8
   },
   "performance": {
     "15": {
