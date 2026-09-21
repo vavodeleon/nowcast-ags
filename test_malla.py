@@ -77,36 +77,40 @@ print("\nB. No se reprocesa lo mismo dos veces")
 chk("la segunda pasada no incorpora nada", malla.procesar() == 0)
 chk("y sigue habiendo una sola fila", len(store.read_observations()) == 1)
 
-print("\nC. Una respuesta sobre OTRO día se descarta")
-# Es un dato verdadero al que no se le puede asignar una hora. La malla guarda
-# `fecha` aparte precisamente porque puedes contestar por la mañana sobre la
-# tormenta de anoche; meter eso en la franja de las 9 AM enseñaria una
-# mentira con cara de verdad.
-antes = len(store.read_observations())
-mete(ahora - timedelta(minutes=5), 1,
-     fecha=(ahora - timedelta(days=1)).astimezone(config.TZ).strftime("%Y-%m-%d"))
-chk("no se incorpora", malla.procesar() == 0)
-chk("no se añadió ninguna fila", len(store.read_observations()) == antes)
-chk("pero el cursor avanzó, para no rechazarla en cada corrida",
-    malla._cursor() >= int((ahora - timedelta(minutes=5)).timestamp()))
+print("\nC. Una respuesta VIEJA entra igual: `ts` es la hora del hecho")
+# La primera version las descartaba pasadas 12 horas, y eso tiraba diez de las
+# once respuestas acumuladas. El limite protegia de un problema inexistente:
+# los comandos hablan del momento en que escribes, asi que la hora no hay que
+# reconstruirla.
+hace_5_dias = ahora - timedelta(days=5)
+mete(hace_5_dias, 1)
+chk("se incorpora una de hace cinco días", malla.procesar(desde=0) >= 1)
+vieja = [f for f in store.read_observations()
+         if f["valid_utc"] == store.round_slot(hace_5_dias)]
+chk("en su propia franja, no en la de hoy", len(vieja) == 1, f"{len(vieja)}")
+chk("marcada como llovió", vieja and vieja[0]["rained"] == "1")
 
-print("\nD. Una respuesta demasiado vieja tampoco entra")
-antes = len(store.read_observations())
-mete(ahora - timedelta(hours=malla.EDAD_MAXIMA_H + 3), 1)
-# Va con ts anterior al cursor, asi que ni se lee; se prueba la funcion.
-chk("_instante la rechaza",
-    malla._instante(int((ahora - timedelta(hours=malla.EDAD_MAXIMA_H + 3))
-                        .timestamp()), "") is None)
-chk("sin añadir filas", len(store.read_observations()) == antes)
+print("\nD. Lo que sí se rechaza: lo imposible")
+# `fecha` y `ts` que no coinciden: uno de los dos está mal y no se sabe cuál.
+chk("fecha incoherente con la marca de tiempo",
+    malla._instante(int((ahora - timedelta(hours=3)).timestamp()),
+                    "1999-01-01") is None)
+# Marca en el futuro: reloj del nodo mal puesto. Guardarlo envenenaría una
+# franja que todavía no ha pasado.
+chk("marca en el futuro",
+    malla._instante(int((ahora + timedelta(hours=6)).timestamp()), "") is None)
+chk("pero unos minutos de deriva se toleran",
+    malla._instante(int((ahora + timedelta(minutes=10)).timestamp()),
+                    (ahora + timedelta(minutes=10)).astimezone(config.TZ)
+                    .strftime("%Y-%m-%d")) is not None)
 
 print("\nE. Un 'no llovió' vale igual que un 'sí'")
 # La tasa base en Aguascalientes es ~14%: los 'no' son la mayoria de los datos
 # y son los que impiden que el sistema aprenda a decir siempre que si.
 # Posterior a todo lo anterior a proposito. El cursor es el `ts` mas alto ya
 # visto, asi que una fila con marca ANTERIOR no se vuelve a leer nunca. En la
-# malla eso no pasa -`ts` es el momento en que llego el mensaje y solo crece-,
-# pero conviene que quede escrito: si algun dia alguien rellenara respuestas
-# viejas a mano en la base, el nowcast no las veria.
+# malla eso no pasa -`ts` solo crece-, y para el caso en que si importe existe
+# `procesar(desde=0)`, que es lo que se usa tras cambiar una regla.
 hace_10 = ahora - timedelta(minutes=2)
 mete(hace_10, 0)
 chk("se incorpora", malla.procesar() == 1)

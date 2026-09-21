@@ -25,18 +25,31 @@ mal alineada no da ningun error, solo empeora el sistema sin motivo aparente.
 El esquema esta ahora confirmado en los dos lados, y `store.append_observations`
 sustituye por prioridad de fuente en vez de escribir una fila de mas.
 
-## La decision no obvia: a que instante pertenece un "llovio"
+## A que instante pertenece un "llovio": preguntado y contestado
 
-`respuestas` guarda `ts` (cuando contestaste) y `fecha` (el dia del que
-hablabas). El aprendizaje del nowcast es por bloques de 15 minutos, no por dia:
-"el jueves llovio" no dice nada sobre las 96 franjas del jueves, y en
-Aguascalientes -500 mm en tres meses- una tarde de tormenta y una mañana seca
-son el mismo dia calendario.
+Aclarado el 20 de septiembre de 2026, y no era lo que yo habia supuesto. Los
+dos comandos -`llovio` y `no llovio`- hablan del **momento en que escribes**, no
+del dia. Y se usan para una cosa muy concreta: **cuando el sistema dice una cosa
+y el cielo dice otra**.
 
-Asi que se usa `ts`, el momento en que escribiste, y **solo si `fecha` es el dia
-de ese mismo momento**. Si contestaste hoy sobre ayer, la fila se ignora: es un
-dato verdadero al que no se le puede asignar una hora, y meterlo en la franja
-equivocada enseñaria una mentira con cara de verdad.
+De ahi salen dos consecuencias, una buena y una incomoda.
+
+**La buena: no hay limite de antiguedad.** Mi primera version descartaba las
+respuestas de mas de 12 horas por miedo a no poder asignarles una hora. Con
+esta aclaracion la hora no hay que reconstruirla: `ts` *es* la hora. Esa regla
+tiraba diez de las once respuestas acumuladas -el 91% del dato mas escaso del
+proyecto- por un problema que no existia. Solo se comprueba que `fecha` y `ts`
+hablen del mismo dia, como cordura contra una fila escrita a mano.
+
+**La incomoda: la muestra esta enriquecida con errores por construccion.** Nadie
+escribe "la app acerto". Estas filas son, por definicion, los momentos en que se
+equivoco. Eso no las hace menos verdaderas -corregir una etiqueta mal puesta
+siempre mejora los datos- pero si invalida usarlas para *comparar fuentes entre
+si*, que era justo el plan para resolver la circularidad de Open-Meteo. Ver la
+nota de `evaluar.py` en la seccion 4-ter.
+
+Para arbitrar de verdad hace falta una muestra que **el sistema** elija, no tu:
+preguntar a ratos al azar, no solo cuando algo salio mal.
 """
 from __future__ import annotations
 
@@ -51,10 +64,14 @@ log = logging.getLogger(__name__)
 
 _CLAVE_CURSOR = "malla_ultima_respuesta_ts"
 
-# Mas viejo que esto y ya no se incorpora. No es desconfianza del dato: es que
-# el momento al que pertenece deja de ser reconstruible, y una franja de 15
-# minutos elegida a ojo vale menos que nada.
-EDAD_MAXIMA_H = 12
+# No hay limite de antiguedad: `ts` es la hora del hecho, no la de la captura.
+# Lo unico que se rechaza es lo imposible. Un mensaje con marca en el futuro es
+# un reloj mal puesto en el nodo o una fila escrita a mano, y en los dos casos
+# guardarlo envenena una franja que todavia no ha pasado.
+#
+# Media hora de margen porque el nodo no tiene RTC con bateria: se pone en hora
+# por el GPS o por el Pi, y puede irse unos minutos.
+MARGEN_FUTURO_H = 0.5
 
 
 def _cursor() -> int:
@@ -102,27 +119,35 @@ def _instante(ts: int, fecha: str) -> datetime | None:
     except (TypeError, ValueError, OSError):
         return None
     edad_h = (datetime.now(timezone.utc) - t).total_seconds() / 3600
-    if edad_h > EDAD_MAXIMA_H or edad_h < -0.5:
-        log.info("respuesta de la malla descartada por edad (%.1f h)", edad_h)
+    if edad_h < -MARGEN_FUTURO_H:
+        log.warning("respuesta de la malla con marca en el futuro (%.1f h): "
+                    "revisar la hora del nodo", -edad_h)
         return None
     # `fecha` la escribe la malla en hora local; se compara en hora local.
+    # No es para filtrar respuestas viejas -las viejas valen igual, `ts` es la
+    # hora del hecho- sino cordura: si los dos campos no coinciden, uno de los
+    # dos esta mal y no se sabe cual.
     if fecha:
         local = t.astimezone(config.TZ).strftime("%Y-%m-%d")
         if str(fecha).strip()[:10] != local:
-            log.info("respuesta de la malla sobre %s contestada el %s: "
-                     "verdadera pero sin hora asignable, se ignora",
-                     fecha, local)
+            log.warning("respuesta de la malla incoherente: fecha %s pero "
+                        "marca de tiempo del %s; se ignora", fecha, local)
             return None
     return t
 
 
-def procesar() -> int:
+def procesar(desde: int | None = None) -> int:
     """Incorpora las respuestas nuevas de la malla. Devuelve cuantas.
 
     El cursor se guarda **aunque una fila se descarte**: si no, cada corrida
-    volveria a leer y a rechazar la misma respuesta de anteayer para siempre.
+    volveria a leer y a rechazar la misma fila incoherente para siempre.
+
+    'desde' fuerza el punto de partida, para releer el historico despues de
+    cambiar las reglas de interpretacion. Sin eso, un arreglo como el de hoy
+    -quitar el limite de 12 horas- no recuperaria nada: las filas ya estaban
+    por debajo del cursor.
     """
-    filas = leer(_cursor())
+    filas = leer(_cursor() if desde is None else desde)
     if not filas:
         return 0
 
@@ -158,3 +183,25 @@ def procesar() -> int:
     if ultimo:
         _guardar_cursor(ultimo)
     return len(nuevas)
+
+
+if __name__ == "__main__":
+    # `python -m nowcast.malla --todo` relee la tabla entera desde el principio.
+    #
+    # Es idempotente: las filas que ya estan no se duplican -el instante es la
+    # clave- y las que ya tenian una observacion humana no se pisan. Asi que
+    # correrlo dos veces no hace nada la segunda, que es la propiedad que hace
+    # que sea seguro ejecutarlo a mano sin pensarlo mucho.
+    import argparse
+    import sys
+
+    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    p.add_argument("--todo", action="store_true",
+                   help="releer desde el principio, ignorando el cursor")
+    args = p.parse_args()
+
+    logging.basicConfig(level=logging.INFO,
+                        format="%(levelname)s %(name)s: %(message)s")
+    n = procesar(desde=0 if args.todo else None)
+    print(f"{n} confirmacion(es) incorporadas")
+    sys.exit(0)

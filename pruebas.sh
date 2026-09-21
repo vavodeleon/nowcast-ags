@@ -9,6 +9,32 @@
 cd "$(cd "$(dirname "$0")" && pwd)"
 PY="./.venv/bin/python"; [ -x "$PY" ] || PY="python3"
 
+# Sin dependencias, once suites fallan con ModuleNotFoundError y la salida se
+# lee como "el codigo esta roto" cuando lo que falta es el entorno. Son dos
+# cosas distintas y tienen que verse distintas: un diagnostico que confunde
+# "no puedo probarlo" con "esta mal" es peor que no tenerlo.
+if ! "$PY" -c "import numpy, h5py, requests" 2>/dev/null; then
+  echo "  No hay entorno de pruebas en esta máquina."
+  "$PY" -c "import numpy" 2>/dev/null || echo "    falta numpy"
+  "$PY" -c "import h5py"  2>/dev/null || echo "    falta h5py"
+  "$PY" -c "import requests" 2>/dev/null || echo "    falta requests"
+  echo
+  echo "  Esto NO dice nada sobre el código. Para probarlo de verdad:"
+  echo "    en el Pi:   cd /mnt/datos/nowcast-ags && bash pruebas.sh"
+  echo "    en el Mac:  python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt"
+  echo
+  echo "  Mientras tanto, las suites que no necesitan nada:"
+  for t in test_archivo test_migracion test_malla test_workflow; do
+    printf "  %-16s " "$t"
+    if salida="$(CLIMA_DB="" "$PY" "$t.py" 2>&1)"; then
+      echo "$(echo "$salida" | tail -1)"
+    else
+      echo "FALLÓ"; echo "$salida" | tail -20 | sed 's/^/      /'
+    fi
+  done
+  exit 1
+fi
+
 # La suite no debe tocar nada de la maquina. En el Raspberry existe el
 # barometro de la malla, y sin esto una prueba de presion sintetica acaba
 # leyendo la presion real de la casa y fallando por motivos ajenos.
