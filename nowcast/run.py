@@ -8,8 +8,8 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
-from . import (archivo, calibrate, config, engine, feedback, lightning, notify, overhead,
-               salud,
+from . import (archivo, calibrate, config, engine, feedback, lightning, malla,
+               notify, overhead, salud,
                pressure, render, sources, store, verify)
 
 log = logging.getLogger(__name__)
@@ -152,8 +152,22 @@ def build_forecast() -> dict:
         # rondando el umbral cambiaria de estado cada quince minutos.
         tormenta = lightning.evaluar(rayos, notify._fase_previa())
         rayos_resumen["fase"] = tormenta.fase
-        if tormenta.dist_cercano_km is not None:
-            rayos_resumen["dist_km"] = round(tormenta.dist_cercano_km, 1)
+        # SIEMPRE presente, null cuando no hay dato. Antes se omitia la clave,
+        # y omitir no es lo mismo que decir "no se": quien lee el JSON con un
+        # `.get("dist_km", 0)` -que es lo natural- obtiene 0 km, o sea "encima
+        # de ti", que es la alerta mas alarmante del sistema. Un centinela
+        # numerico para "sin dato" produce falsos positivos en la peor linea
+        # posible; `null` revienta ruidosamente, que es lo que hace falta.
+        #
+        # Y no puede confundirse con una tormenta de verdad a 0 km: el pixel de
+        # GOES mide 2.44 km, asi que la distancia minima medible ronda 1 km y
+        # nunca es exactamente cero.
+        rayos_resumen["dist_km"] = (round(tormenta.dist_cercano_km, 1)
+                                    if tormenta.dist_cercano_km is not None
+                                    else None)
+        rayos_resumen["dist_min_hora_km"] = (
+            round(tormenta.dist_min_hora_km, 1)
+            if tormenta.dist_min_hora_km is not None else None)
         # Registrar la fase ANTERIOR: sin eso no hay forma de saber por que
         # un aviso salio o no salio, porque se avisa por transicion.
         log.info("tormenta: %s (antes %s), mas cercano %s km, "
@@ -164,7 +178,11 @@ def build_forecast() -> dict:
                  tormenta.destellos_hora)
     except Exception as exc:
         log.error("rayos fallaron: %s", exc)
-        rayos_resumen = {"total_hora": 0, "bloques": 0}
+        # Con las mismas claves que la ruta buena: un consumidor no deberia
+        # tener que distinguir "fallaron los rayos" de "no hubo rayos" para
+        # saber que campos existen.
+        rayos_resumen = {"total_hora": 0, "bloques": 0, "fase": "despejado",
+                         "dist_km": None, "dist_min_hora_km": None}
 
     # ¿Que pasa AHORA sobre la ciudad? Requiere corroboracion: el infrarrojo
     # solo no distingue una celda que llueve del yunque de una tormenta lejana.
@@ -385,6 +403,16 @@ def main() -> None:
         salud.procesar()
     except Exception as exc:
         log.error("no se pudieron procesar las respuestas de salud: %s", exc)
+
+    # 0-ter. y las correcciones que llegaron por radio. Van ANTES de verify
+    #        a proposito: asi la observacion humana del instante ya esta puesta
+    #        cuando Open-Meteo opine sobre esa misma franja, y no depende de
+    #        que la sustitucion por prioridad funcione. Que funcione igual, y
+    #        haya prueba de ello, es el cinturon; esto es el tirante.
+    try:
+        malla.procesar()
+    except Exception as exc:
+        log.error("no se pudieron procesar las respuestas de la malla: %s", exc)
 
     # 1. verificar lo que ya paso (esto alimenta el aprendizaje)
     try:

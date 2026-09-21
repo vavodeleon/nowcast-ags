@@ -46,6 +46,10 @@ import numpy as np
 from nowcast import config, store
 
 
+# Las dos fuentes de verdad que no salieron de un modelo numérico.
+INDEPENDIENTES = {"manual", "malla"}
+
+
 def _num(v):
     try:
         return float(v)
@@ -60,9 +64,11 @@ def cargar() -> dict[int, list[tuple[float, int, dict]]]:
         valid = o.get("valid_utc")
         llovio = _num(o.get("rained"))
         if valid and llovio is not None:
-            # Si hay varias observaciones del mismo instante, la manual gana:
-            # es la única que vio el cielo de verdad.
-            if valid not in obs or o.get("source") == "manual":
+            # Si hay varias observaciones del mismo instante, gana la humana:
+            # es la única que vio el cielo de verdad. "manual" llega por la
+            # página o por la notificación; "malla" por radio, que es la que
+            # sigue funcionando en el apagón. Mismo ojo, distinto camino.
+            if valid not in obs or o.get("source") in INDEPENDIENTES:
                 obs[valid] = (int(llovio), str(o.get("source") or "?"))
 
     por_lead: dict[int, list] = defaultdict(list)
@@ -82,8 +88,18 @@ def brier(ps: np.ndarray, ys: np.ndarray) -> float:
     return float(np.mean((ps - ys) ** 2))
 
 
+def es_independiente(fuente: str) -> bool:
+    """¿La verdad de esta fila viene de una persona, no de un modelo?
+
+    La distinción es el hallazgo central de este archivo: el análisis de
+    Open-Meteo es un producto derivado de modelos numéricos, y los modelos que
+    se evalúan son de esa familia. Solo estas dos fuentes son independientes.
+    """
+    return str(fuente or "").strip() in INDEPENDIENTES
+
+
 def solo_manuales(datos: list) -> list:
-    return [d for d in datos if "manual" in d[2].get("_verdad", "")]
+    return [d for d in datos if es_independiente(d[2].get("_verdad", ""))]
 
 
 def informe_lead(lead: int, datos: list) -> dict:
@@ -245,7 +261,7 @@ def main() -> int:
     for v, n in sorted(verdades.items(), key=lambda kv: -kv[1]):
         print(f"     {v:<24} {n:>6} casos")
     om = sum(n for v, n in verdades.items() if "openmeteo" in v)
-    manual = sum(n for v, n in verdades.items() if "manual" in v)
+    manual = sum(n for v, n in verdades.items() if es_independiente(v))
     if om and om / max(sum(verdades.values()), 1) > 0.5:
         print("\n   ATENCIÓN: la verdad viene del análisis de Open-Meteo, que es")
         print("   un producto derivado de modelos numéricos. Los 'modelos' que")

@@ -103,18 +103,82 @@ def append_predictions(rows: list[dict]) -> None:
             w.writerow(row)
 
 
+# Quien gana cuando dos fuentes describen el MISMO instante.
+#
+# El orden no es arbitrario: es orden de independencia. `evaluar.py` descubrio
+# que la "verdad" de Open-Meteo es un producto derivado de modelos numericos, y
+# que los modelos que se evaluan son de esa misma familia. Se califican con un
+# examen que ellos escribieron. Una persona que vio el cielo -por la pagina, por
+# la notificacion o por radio- es la unica verdad independiente que existe aqui.
+#
+# 'manual' y 'malla' valen lo mismo a proposito: los dos son el mismo ojo humano
+# por dos caminos distintos. El camino no cambia la calidad del dato.
+PRIORIDAD_FUENTE = {"manual": 3, "malla": 3, "ir+openmeteo": 2, "openmeteo": 1}
+
+
+def _prioridad(fuente) -> int:
+    return PRIORIDAD_FUENTE.get(str(fuente or "").strip(), 0)
+
+
 def append_observations(rows: list[dict]) -> None:
+    """Incorpora observaciones. Una fuente mejor SUSTITUYE a una peor.
+
+    Hasta el 20 de septiembre esto solo añadia lo que faltaba: cualquier fila
+    para un instante que ya tuviera dato se descartaba en silencio. Parecia
+    inofensivo porque las confirmaciones humanas suelen llegar antes que la
+    verificacion de Open-Meteo, que corre horas despues.
+
+    Pero al reves tambien pasa -confirmas por radio una tormenta de anoche, o
+    contestas al aviso a la mañana siguiente- y entonces se tiraba justo el
+    unico dato que no es circular, sin un solo error en ningun log. El sintoma
+    habria sido que las confirmaciones "no sirven de nada", con `evaluar.py`
+    diciendo que hay 35 manuales y ninguna cambiando un veredicto.
+    """
     if not rows:
         return
     _ensure(config.OBSERVATIONS_CSV, OBS_FIELDS)
-    existing = {r["valid_utc"] for r in read_observations()}
-    fresh = [r for r in rows if r["valid_utc"] not in existing]
-    if not fresh:
-        return
-    with open(config.OBSERVATIONS_CSV, "a", newline="", encoding="utf-8") as fh:
-        w = csv.DictWriter(fh, fieldnames=OBS_FIELDS, extrasaction="ignore")
-        for row in fresh:
-            w.writerow(row)
+    actuales = {r["valid_utc"]: r for r in read_observations()}
+
+    nuevas, mejoras = [], {}
+    for row in rows:
+        vieja = actuales.get(row["valid_utc"])
+        if vieja is None:
+            nuevas.append(row)
+            actuales[row["valid_utc"]] = row
+        elif _prioridad(row.get("source")) > _prioridad(vieja.get("source")):
+            mejoras[row["valid_utc"]] = row
+            log.info("observacion de %s sustituye a la de %s en %s",
+                     row.get("source"), vieja.get("source"), row["valid_utc"])
+
+    if mejoras:
+        _reescribir_observaciones(mejoras)
+    if nuevas:
+        with open(config.OBSERVATIONS_CSV, "a", newline="",
+                  encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=OBS_FIELDS,
+                               extrasaction="ignore")
+            for row in nuevas:
+                w.writerow(row)
+
+
+def _reescribir_observaciones(mejoras: dict[str, dict]) -> None:
+    """Sustituye filas por instante, con el mismo cuidado que la migracion.
+
+    Se escribe al lado y se renombra: si el proceso muere a mitad, el archivo
+    original queda intacto. Reescribir en sitio un archivo con miles de pares
+    de aprendizaje dentro no es algo que convenga hacer de otra forma.
+    """
+    ruta = config.OBSERVATIONS_CSV
+    tmp = ruta + ".sustituyendo"
+    with open(ruta, newline="", encoding="utf-8") as viejo_fh, \
+            open(tmp, "w", newline="", encoding="utf-8") as nuevo_fh:
+        lector = csv.DictReader(viejo_fh)
+        escritor = csv.DictWriter(nuevo_fh, fieldnames=OBS_FIELDS,
+                                  extrasaction="ignore")
+        escritor.writeheader()
+        for fila in lector:
+            escritor.writerow(mejoras.get(fila.get("valid_utc", ""), fila))
+    os.replace(tmp, ruta)
 
 
 def read_predictions() -> list[dict]:

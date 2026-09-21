@@ -229,7 +229,7 @@ def maybe_alert(result: dict) -> bool:
         detalle = f" ({corrobora})" if corrobora else ""
         lines.append(f"Está lloviendo ahora{detalle}.")
         if fase == "encima" and rayos.get("dist_km") is not None:
-            lines.append(f"Rayos a {rayos['dist_km']:.0f} km.")
+            lines.append(f"Rayos a {_km(rayos['dist_km'])}.")
         if best_p >= config.ALERT_PROB_THRESHOLD and best_lead:
             lines.append(f"Sigue probable las próximas {best_lead} min "
                          f"({best_p * 100:.0f}%).")
@@ -274,6 +274,18 @@ def _guardar_fase(fase: str) -> None:
     store.save_json(config.STATE_JSON, state)
 
 
+def _km(d: float) -> str:
+    """Una distancia en texto, sin inventar precision ni perderla.
+
+    `f"{d:.0f} km"` convierte 0.4 km en "0 km", que se lee como "sin dato" -o
+    peor, como un centinela- justo en la linea mas alarmante del sistema. Y
+    "a 0 km" no es como nadie describe una tormenta encima.
+    """
+    if d < 1:
+        return "menos de 1 km"
+    return f"{d:.0f} km"
+
+
 def maybe_storm_alert(t) -> bool:
     """Avisa de tormenta electrica cercana, para dar tiempo a prepararse.
 
@@ -299,7 +311,7 @@ def maybe_storm_alert(t) -> bool:
             and config.NTFY_TOPIC_SALUD
             and _cooldown_ok_hours("tormenta_escalada",
                                    config.RAYOS_ESCALADA_COOLDOWN_H)):
-        cuerpo = [f"La tormenta se metió hasta {dist_ahora:.0f} km."]
+        cuerpo = [f"La tormenta se metió hasta {_km(dist_ahora)}."]
         if t.destellos_cerca:
             cuerpo.append(f"{t.destellos_cerca} destellos cerca en los "
                           "últimos 15 minutos.")
@@ -326,7 +338,7 @@ def maybe_storm_alert(t) -> bool:
     if fase == "acercandose" and previa in ("despejado", "vigilando") \
             and dist is not None \
             and _cooldown_ok_hours("tormenta_lejos", config.RAYOS_COOLDOWN_H):
-        cuerpo = [f"Hay rayos a unos {dist:.0f} km y la actividad viene hacia aca."]
+        cuerpo = [f"Hay rayos a unos {_km(dist)} y la actividad viene hacia aca."]
         if t.tendencia_km is not None:
             # Los bloques son de 15 min, asi que la tendencia por bloque
             # multiplicada por 4 da la velocidad de aproximacion por hora.
@@ -345,7 +357,7 @@ def maybe_storm_alert(t) -> bool:
     # --- ya esta encima: los truenos se oyen
     elif fase == "encima" and previa != "encima" and dist is not None \
             and _cooldown_ok_hours("tormenta_cerca", config.RAYOS_COOLDOWN_H):
-        cuerpo = [f"Rayos a {dist:.0f} km. A esta distancia los truenos ya se oyen."]
+        cuerpo = [f"Rayos a {_km(dist)}. A esta distancia los truenos ya se oyen."]
         if t.destellos_cerca:
             cuerpo.append(f"{t.destellos_cerca} destellos cerca en los "
                           "ultimos 15 minutos.")

@@ -280,6 +280,12 @@ def fetch_temperature() -> dict:
             continue
         serie.append({
             "t": ts[11:16],
+            # La fecha va explicita porque otro sistema depende de esta serie
+            # para los avisos de helada, y con solo "HH:MM" tiene que adivinar
+            # el cruce de medianoche contando horas. Adivinar funciona hasta
+            # que la serie empieza a una hora distinta, y entonces los avisos
+            # se desplazan un dia sin que nada falle.
+            "fecha": ts[:10],
             "temp": round(float(temps[i]), 1),
             "sensacion": (round(float(sens[i]), 1)
                           if i < len(sens) and sens[i] is not None else None),
