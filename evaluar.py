@@ -82,6 +82,10 @@ def brier(ps: np.ndarray, ys: np.ndarray) -> float:
     return float(np.mean((ps - ys) ** 2))
 
 
+def solo_manuales(datos: list) -> list:
+    return [d for d in datos if "manual" in d[2].get("_verdad", "")]
+
+
 def informe_lead(lead: int, datos: list) -> dict:
     ps = np.array([d[0] for d in datos], dtype=float)
     ys = np.array([d[1] for d in datos], dtype=float)
@@ -130,7 +134,7 @@ def por_fuente(datos: list) -> dict:
                         ("p_radar", "radar")):
         pares = [(_num(f.get(col)), y) for _p, y, f in datos]
         pares = [(p, y) for p, y in pares if p is not None]
-        if len(pares) < 30:
+        if len(pares) < 15:
             continue
         ps = np.array([p for p, _ in pares])
         ys = np.array([y for _, y in pares], dtype=float)
@@ -251,6 +255,32 @@ def main() -> int:
         print(f"\n   Observaciones independientes (tuyas): {manual}")
         print("   Con unas decenas de esas, el veredicto sería limpio.")
 
+    print("\n4-ter. SKILL SOLO CON TUS CONFIRMACIONES — y por qué es pesimista")
+    man = solo_manuales(ref["datos"])
+    if len(man) >= 20:
+        rm = informe_lead(ref["lead"], man)
+        print(f"\n   {len(man)} casos juzgados por ti, plazo {ref['lead']} min:")
+        print(f"     lluvia observada:  {_pc(rm['base'])}  "
+              f"(tasa base general: {_pc(ref['base'])})")
+        print(f"     separación:        {_pc(rm['separacion'])}")
+        print(f"     skill:             {rm['skill']:+.3f}   "
+              f"(con Open-Meteo: {ref['skill']:+.3f})")
+        print("\n   OJO con este número. No son 35 momentos al azar: son los")
+        print("   momentos en que decidiste responder, y uno responde sobre todo")
+        print("   cuando el sistema se equivoca o cuando acaba de avisar. La")
+        print("   muestra está enriquecida con errores, así que este skill es una")
+        print("   COTA PESIMISTA, no una medición limpia.")
+        if abs(rm["base"] - ref["base"]) > 0.15:
+            print(f"\n   Y la tasa de lluvia en tus casos ({_pc(rm['base'])}) se aleja")
+            print(f"   bastante de la general ({_pc(ref['base'])}): el sesgo es real.")
+        else:
+            print(f"\n   Aun así, la tasa de lluvia en tus casos ({_pc(rm['base'])}) se")
+            print(f"   parece a la general ({_pc(ref['base'])}), así que el sesgo")
+            print("   parece moderado. Buena señal.")
+    else:
+        print(f"\n   Solo {len(man)} confirmaciones tuyas en este plazo; hacen")
+        print("   falta ~20 para decir algo.")
+
     print("\n5. QUÉ FUENTE CARGA LA INFORMACIÓN")
     fuentes = por_fuente(ref["datos"])
     if fuentes:
@@ -268,6 +298,18 @@ def main() -> int:
             print(f"\n   La mezcla ({ref['brier']:.4f}) mejora a la mejor fuente sola.")
     else:
         print("   Sin datos suficientes por fuente todavía.")
+
+    if len(man) >= 20:
+        fm = por_fuente(man)
+        if fm:
+            print(f"\n   Las mismas fuentes, juzgadas SOLO por ti ({len(man)} casos):")
+            print(f"   {'fuente':>12} {'casos':>7} {'Brier':>8} {'separación':>11}")
+            for nombre, d in sorted(fm.items(), key=lambda kv: kv[1]["brier"]):
+                print(f"   {nombre:>12} {d['n']:>7} {d['brier']:>8.4f} "
+                      f"{_pc(d['separacion']):>11}")
+            print("\n   Aquí Open-Meteo no se califica a sí mismo. Si el orden")
+            print("   cambia respecto a la tabla de arriba, la ventaja de los")
+            print("   modelos era en parte circularidad.")
 
     print("\n5-bis. LOS PESOS QUE HA APRENDIDO")
     cal = store.load_json(config.CALIBRATION_JSON, {}) or {}
