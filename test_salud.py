@@ -167,6 +167,61 @@ chk("compara la caída media con y sin dolor",
     r["caida_3h_con_dolor"] is not None and r["caida_3h_sin_dolor"] is not None,
     f"con {r['caida_3h_con_dolor']} / sin {r['caida_3h_sin_dolor']}")
 
+print("\nH-bis. La alerta de lluvia también pregunta, y su respuesta es VERDAD")
+# El hallazgo de evaluar.py: la "verdad" sale del análisis de Open-Meteo y
+# los modelos evaluados son de la misma familia. Una confirmación suya es la
+# única verdad independiente, y por eso entra como source="manual".
+config.OBSERVATIONS_CSV = os.path.join(tmp, "obs.csv")
+config.NTFY_TOPIC = "lluvia-de-prueba"
+enviados.clear()
+notify._cooldown_ok = lambda c, m=None: True
+notify.maybe_alert({
+    "probabilities": {"60": 0.8}, "cell_eta_min": 30, "motion_speed_kmh": 30,
+    "motion_from": "SO", "confidence": "buena",
+    "ahora": {"lloviendo": False}, "rayos": {},
+})
+chk("la alerta de lluvia sale", len(enviados) == 1, f"{len(enviados)}")
+acc = enviados[0].get("actions", "") if enviados else ""
+chk("lleva botones de confirmación", "Si llovio" in acc and "No llovio" in acc, acc[:60])
+chk("responden por el canal de respuestas", "respuestas-de-prueba" in acc)
+chk("el cuerpo dice 'lluvia', no 'dolor'",
+    "body=lluvia:si" in acc and "dolor" not in acc)
+
+# Ella contesta que no llovió.
+import re as _re
+ts = _re.search(r"body=lluvia:si @([0-9T:.\-+]+)", acc).group(1)
+http.get_text = lambda url, **k: json.dumps(
+    {"id": "lluvia1", "time": 1788150000, "event": "message",
+     "topic": "t", "message": f"lluvia:no @{ts}"})
+chk("el Pi la recoge", salud.procesar() == 1)
+observaciones = store.read_observations()
+chk("queda como observación", len(observaciones) == 1, f"{len(observaciones)}")
+if observaciones:
+    o = observaciones[-1]
+    chk("marcada como NO llovió", o["rained"] == "0", o["rained"])
+    chk("y con procedencia manual", o["source"] == "manual", o["source"])
+    print(f"\n     Observación independiente registrada: {dict(o)}")
+
+print("\nH-ter. Un solo lector para los dos tipos de respuesta")
+# Dos lectores sobre el mismo canal se pisarían: el primero avanza el cursor
+# y el segundo nunca ve lo suyo.
+http.get_text = lambda url, **k: (
+    json.dumps({"id":"m1","time":1788150100,"event":"message","topic":"t",
+                "message":"lluvia:si @2026-08-31T05:00:00+00:00"}) + "\n"
+    + json.dumps({"id":"m2","time":1788150200,"event":"message","topic":"t",
+                  "message":"dolor:si @2026-08-31T05:00:00+00:00"}))
+antes_obs = len(store.read_observations())
+store.append_salud({"ts_aviso":"2026-08-31T05:00:00+00:00","tipo":"ahora",
+                    "change_1h":"-1.6","change_3h":"-2.6","change_24h":"-1",
+                    "nivel":"alto","fuente":"modelo","dolor":"","ts_respuesta":""})
+n = salud.procesar()
+chk("las dos respuestas se incorporan en una pasada", n == 2, f"{n}")
+chk("la de lluvia fue a observaciones",
+    len(store.read_observations()) == antes_obs + 1)
+chk("y la de dolor a salud",
+    any(f["dolor"] == "si" and f["ts_aviso"].startswith("2026-08-31T05")
+        for f in store.read_salud()))
+
 print("\nI. Un episodio de presión es UN caso, no tres")
 # Caso real de la primera noche de uso: tres avisos en el mismo segundo por
 # una sola bajada de presión, mas una cuarta tres segundos despues, mas la

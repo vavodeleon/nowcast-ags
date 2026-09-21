@@ -42,6 +42,10 @@ log = logging.getLogger(__name__)
 # "dolor:si @2026-08-30T19:31:00+00:00", tolerante con acentos y espacios.
 _RESPUESTA = re.compile(r"dolor\s*:\s*(si|sí|no)\b\s*@?\s*([0-9T:.\-+]*)",
                         re.IGNORECASE)
+# "lluvia:no @2026-08-30T19:31:00+00:00" — la confirmacion de lluvia viaja
+# por el MISMO canal. Ver el comentario de procesar() sobre por que.
+_RESPUESTA_LLUVIA = re.compile(
+    r"lluvia\s*:\s*(si|sí|no)\b\s*@?\s*([0-9T:.\-+]*)", re.IGNORECASE)
 
 _CLAVE_ULTIMO = "salud_ultimo_id"
 
@@ -88,7 +92,17 @@ def _mensajes() -> list[dict]:
 
 
 def procesar() -> int:
-    """Incorpora las respuestas nuevas. Devuelve cuantas."""
+    """Incorpora las respuestas nuevas. Devuelve cuantas.
+
+    Atiende DOS tipos de respuesta por el mismo canal: "dolor:si|no" del
+    canal de salud y "lluvia:si|no" de las alertas de lluvia.
+
+    Un solo lector a proposito. El canal se consume con un cursor -el id del
+    ultimo mensaje visto- y dos lectores independientes se pisarian: el
+    primero avanzaria el cursor y el segundo no vería nunca los mensajes que
+    le tocaban. Con un lector y dos destinos, cada respuesta llega a su sitio
+    y ninguna se pierde.
+    """
     if not config.NTFY_TOPIC_RESPUESTAS:
         return 0
 
@@ -109,6 +123,14 @@ def procesar() -> int:
             continue
         ultimo = mid or ultimo
         cuerpo = f"{m.get('title', '')} {m.get('message', '')}"
+
+        # --- confirmacion de lluvia: va a las observaciones, no a salud
+        lluvia = _RESPUESTA_LLUVIA.search(cuerpo)
+        if lluvia:
+            if _registrar_lluvia(lluvia.group(1), lluvia.group(2).strip()):
+                incorporadas += 1
+            continue
+
         enc = _RESPUESTA.search(cuerpo)
         if not enc:
             log.info("salud: respuesta con formato inesperado, se ignora")
@@ -205,3 +227,36 @@ def resumen() -> dict:
                                  if f.get("dolor")
                                  and f.get("tipo") != "prueba"]) - len(filas),
     }
+
+
+def _registrar_lluvia(respuesta: str, ts: str) -> bool:
+    """Una confirmacion tuya vale mas que el analisis de Open-Meteo.
+
+    El motivo esta en `evaluar.py`: la "verdad" contra la que se mide el
+    sistema sale del analisis de Open-Meteo, que es un producto derivado de
+    modelos numericos... y los modelos que se evaluan son de la misma
+    familia. Se les califica con un examen que ellos escribieron, y eso
+    infla su aparente ventaja sobre el infrarrojo.
+
+    Una respuesta tuya es la unica verdad independiente que existe aqui.
+    Por eso entra con source="manual", que gana a cualquier otra para el
+    mismo instante.
+    """
+    llovio = 0 if respuesta.lower() == "no" else 1
+    try:
+        t = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone.utc)
+    except ValueError:
+        t = datetime.now(timezone.utc)
+    try:
+        store.append_observations([{
+            "valid_utc": store.round_slot(t), "rained": llovio,
+            "mm": "", "peak_score": "", "source": "manual",
+        }])
+    except Exception as exc:
+        log.error("no se pudo registrar la confirmacion de lluvia: %s", exc)
+        return False
+    log.info("lluvia confirmada por ti: %s a las %s",
+             "si" if llovio else "no", ts)
+    return True

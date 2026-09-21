@@ -32,7 +32,10 @@ def chk(nombre: str, condicion: bool, detalle: str = "") -> None:
         ok = False
 
 
-print("A. Sin límite, se leen todos los archivos")
+print("A. Sin límite, se leen todos los archivos (y ninguno dos veces)")
+# El listado se consulta para DOS horas y el simulacro devuelve la misma
+# lista en ambas. Que salgan 45 y no 90 comprueba que no se descarga dos
+# veces la misma clave, que con el enlace lento costaria el doble.
 # Se simula el bucket: 45 archivos, cada descarga tarda un poco.
 ARCHIVOS = 45
 pedidos: list[str] = []

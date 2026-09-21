@@ -198,6 +198,29 @@ En la página, el mismo problema pide lo contrario. Un límite corto detecta una
 conexión **colgada**, pero una **saturada** solo es lenta y merece paciencia:
 el primer intento espera 8 s y el segundo 25.
 
+### Medir antes que añadir
+
+`python evaluar.py` responde si el sistema predice algo o repite la
+climatología. Tres preguntas en orden: **¿separa?** (probabilidad media los
+días que llovió frente a los que no), **¿es nítido?** (un 51% eterno está
+calibrado y es inútil), y **¿le gana a la climatología?** (skill score).
+
+Primera medición real, con 4,500 casos: **skill +0.30 en todos los plazos**,
+bien calibrado, buena nitidez. Sí aporta.
+
+Pero destapó dos cosas incómodas.
+
+**La verdad está contaminada.** Las observaciones salen del análisis de
+Open-Meteo, que es un producto derivado de modelos numéricos — y los
+"modelos" que el sistema evalúa como fuente son de la misma familia. Se les
+califica con un examen que ellos escribieron. Por eso las alertas de lluvia
+ahora llevan botones **Sí llovió / No llovió**: una respuesta tuya entra como
+`source="manual"` y es la única verdad independiente que existe aquí.
+
+**Los modelos le ganan al infrarrojo** (Brier 0.084 contra 0.123), y la mezcla
+es peor que los modelos solos. Puede ser real o puede ser la circularidad de
+arriba; con unas decenas de confirmaciones manuales se sabrá.
+
 ### El canal de salud también aprende
 
 La lluvia se verifica sola: horas después se le puede preguntar a Open-Meteo

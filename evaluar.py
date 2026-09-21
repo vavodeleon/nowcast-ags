@@ -55,7 +55,7 @@ def _num(v):
 
 def cargar() -> dict[int, list[tuple[float, int, dict]]]:
     """Cruza predicciones con observaciones. Devuelve {lead: [(p, llovio, fila)]}."""
-    obs: dict[str, int] = {}
+    obs: dict[str, tuple[int, str]] = {}
     for o in store.read_observations():
         valid = o.get("valid_utc")
         llovio = _num(o.get("rained"))
@@ -63,7 +63,7 @@ def cargar() -> dict[int, list[tuple[float, int, dict]]]:
             # Si hay varias observaciones del mismo instante, la manual gana:
             # es la única que vio el cielo de verdad.
             if valid not in obs or o.get("source") == "manual":
-                obs[valid] = int(llovio)
+                obs[valid] = (int(llovio), str(o.get("source") or "?"))
 
     por_lead: dict[int, list] = defaultdict(list)
     for p in store.read_predictions():
@@ -72,7 +72,9 @@ def cargar() -> dict[int, list[tuple[float, int, dict]]]:
         valid = p.get("valid_utc")
         if lead is None or pf is None or valid not in obs:
             continue
-        por_lead[int(lead)].append((pf, obs[valid], p))
+        llovio, fuente_verdad = obs[valid]
+        p = dict(p, _verdad=fuente_verdad)
+        por_lead[int(lead)].append((pf, llovio, p))
     return dict(sorted(por_lead.items()))
 
 
@@ -141,14 +143,14 @@ def por_fuente(datos: list) -> dict:
     return salida
 
 
-def presion_vs_lluvia(datos: list) -> dict | None:
+def presion_vs_lluvia(datos: list, col: str = "pres_3h") -> dict | None:
     """La hipótesis abierta: ¿la caída de presión anticipa la lluvia AQUÍ?
 
     Nació de un caso: el 30 de agosto el aviso de presión salió 30 minutos
     antes de la lluvia y 90 antes del aviso de lluvia. Un caso no es
     evidencia; esto la busca.
     """
-    pares = [(_num(f.get("pres_3h")), y) for _p, y, f in datos]
+    pares = [(_num(f.get(col)), y) for _p, y, f in datos]
     pares = [(v, y) for v, y in pares if v is not None]
     if len(pares) < 30:
         return {"n": len(pares), "suficientes": False}
@@ -159,8 +161,8 @@ def presion_vs_lluvia(datos: list) -> dict | None:
         return {"n": len(vs), "suficientes": False}
     return {
         "n": len(vs), "suficientes": True,
-        "presion_3h_si_llovio": float(con.mean()),
-        "presion_3h_si_no": float(sin.mean()),
+        "presion_si_llovio": float(con.mean()),
+        "presion_si_no": float(sin.mean()),
         "diferencia": float(con.mean() - sin.mean()),
     }
 
@@ -231,6 +233,24 @@ def main() -> int:
     for a, b, n, dicho, real in fiabilidad(ref["ps"], ref["ys"]):
         print(f"   {_pc(a):>5}-{_pc(b):<6} {n:>7} {_pc(dicho):>8} {_pc(real):>8}")
 
+    print("\n4-bis. ¿DE DÓNDE SALE LA VERDAD? — el sesgo que puede engañarnos")
+    verdades = {}
+    for _p, _y, f in ref["datos"]:
+        v = f.get("_verdad", "?")
+        verdades[v] = verdades.get(v, 0) + 1
+    for v, n in sorted(verdades.items(), key=lambda kv: -kv[1]):
+        print(f"     {v:<24} {n:>6} casos")
+    om = sum(n for v, n in verdades.items() if "openmeteo" in v)
+    manual = sum(n for v, n in verdades.items() if "manual" in v)
+    if om and om / max(sum(verdades.values()), 1) > 0.5:
+        print("\n   ATENCIÓN: la verdad viene del análisis de Open-Meteo, que es")
+        print("   un producto derivado de modelos numéricos. Los 'modelos' que")
+        print("   se evalúan abajo son de la MISMA familia. Parte de su ventaja")
+        print("   puede ser circularidad y no habilidad: se les califica con un")
+        print("   examen que ellos escribieron.")
+        print(f"\n   Observaciones independientes (tuyas): {manual}")
+        print("   Con unas decenas de esas, el veredicto sería limpio.")
+
     print("\n5. QUÉ FUENTE CARGA LA INFORMACIÓN")
     fuentes = por_fuente(ref["datos"])
     if fuentes:
@@ -238,8 +258,29 @@ def main() -> int:
         for nombre, d in sorted(fuentes.items(), key=lambda kv: kv[1]["brier"]):
             print(f"   {nombre:>12} {d['n']:>7} {d['brier']:>8.4f} "
                   f"{_pc(d['separacion']):>11}")
+        mejor_sola = min(fuentes.values(), key=lambda d: d["brier"])
+        nombre_mejor = min(fuentes, key=lambda k: fuentes[k]["brier"])
+        if mejor_sola["brier"] < ref["brier"] - 0.001:
+            print(f"\n   La mezcla (Brier {ref['brier']:.4f}) es PEOR que")
+            print(f"   {nombre_mejor} sola ({mejor_sola['brier']:.4f}).")
+            print("   Los pesos no se han movido lo suficiente hacia la fuente buena.")
+        else:
+            print(f"\n   La mezcla ({ref['brier']:.4f}) mejora a la mejor fuente sola.")
     else:
         print("   Sin datos suficientes por fuente todavía.")
+
+    print("\n5-bis. LOS PESOS QUE HA APRENDIDO")
+    cal = store.load_json(config.CALIBRATION_JSON, {}) or {}
+    pesos = cal.get("weights") or {}
+    if pesos:
+        print(f"\n   {'plazo':>7} {'radar':>8} {'infrarr.':>9} {'modelos':>9}")
+        for lead in sorted(pesos, key=lambda k: int(k)):
+            w = pesos[lead]
+            print(f"   {lead:>5} m {w.get('radar', 0):>8.2f} "
+                  f"{w.get('ir', 0):>9.2f} {w.get('models', 0):>9.2f}")
+        print("\n   Arrancaron en radar 0.15 / infrarrojo 0.60 / modelos 0.25.")
+    else:
+        print("   Todavía usa los pesos por omisión.")
 
     print("\n6. LA CURVA DE CALIBRACIÓN, ¿SE APLANÓ?")
     curvas = curva_calibracion()
@@ -256,11 +297,24 @@ def main() -> int:
         print("   Todavía no hay curva aprendida.")
 
     print("\n7. LA HIPÓTESIS ABIERTA: ¿la presión anticipa la lluvia aquí?")
+    print("   Se mira en cada plazo y en dos ventanas: un frente se anuncia")
+    print("   antes, así que la señal debería verse mejor a plazos largos.\n")
+    print(f"   {'plazo':>7} {'ventana':>9} {'casos':>7} {'llovió':>9} "
+          f"{'no llovió':>10} {'dif.':>8}")
+    for col, etiqueta in (("pres_1h", "1 h"), ("pres_3h", "3 h")):
+        for r in informes:
+            d = presion_vs_lluvia(r["datos"], col)
+            if not d or not d.get("suficientes"):
+                continue
+            print(f"   {r['lead']:>5} m {etiqueta:>9} {d['n']:>7} "
+                  f"{d['presion_si_llovio']:>+9.2f} {d['presion_si_no']:>+10.2f} "
+                  f"{d['diferencia']:>+8.2f}")
+    print()
     pr = presion_vs_lluvia(ref["datos"])
     if pr and pr.get("suficientes"):
         print(f"\n   Cambio de presión en 3 h, según lo que pasó ({pr['n']} casos):")
-        print(f"     cuando llovió:    {pr['presion_3h_si_llovio']:+.2f} hPa")
-        print(f"     cuando no llovió: {pr['presion_3h_si_no']:+.2f} hPa")
+        print(f"     cuando llovió:    {pr['presion_si_llovio']:+.2f} hPa")
+        print(f"     cuando no llovió: {pr['presion_si_no']:+.2f} hPa")
         print(f"     diferencia:       {pr['diferencia']:+.2f} hPa")
         if abs(pr["diferencia"]) < 0.3:
             print("\n   Diferencia pequeña: por ahora no parece anticipar nada.")

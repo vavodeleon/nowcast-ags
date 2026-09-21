@@ -251,9 +251,14 @@ def maybe_alert(result: dict) -> bool:
         elif trend < 0.85:
             lines.append("La celda se esta disipando")
 
+    # Se pregunta por el instante al que se refiere el aviso, no por
+    # "ahora": si ella contesta media hora despues, la respuesta tiene que
+    # quedar asociada al momento del que hablabamos.
+    ts_pregunta = store.round_slot(store.now_utc())
     ok = send(title, "\n".join(lines),
               priority="high" if best_p >= 0.75 else "default",
-              tags="cloud_with_lightning_and_rain" if best_p >= 0.75 else "umbrella")
+              tags="cloud_with_lightning_and_rain" if best_p >= 0.75 else "umbrella",
+              actions=_botones_lluvia(ts_pregunta))
     if ok:
         _mark(key)
     return ok
@@ -389,6 +394,24 @@ def _botones_salud(ts_aviso: str) -> str:
             f"body=dolor:si @{ts_aviso}, clear=true; "
             f"http, No, {url}, method=POST, "
             f"body=dolor:no @{ts_aviso}, clear=true")
+
+
+def _botones_lluvia(ts: str) -> str:
+    """Botones para confirmar si llovio de verdad.
+
+    Misma mecanica que los de salud y por el mismo canal de vuelta. Lo que
+    cambia es a donde va la respuesta: estas alimentan `observations.csv`
+    como verdad independiente, que es lo unico que puede romper la
+    circularidad de medir modelos de Open-Meteo contra el analisis de
+    Open-Meteo.
+    """
+    if not config.NTFY_TOPIC_RESPUESTAS:
+        return ""
+    url = f"{config.NTFY_SERVER.rstrip('/')}/{config.NTFY_TOPIC_RESPUESTAS}"
+    return (f"http, Si llovio, {url}, method=POST, "
+            f"body=lluvia:si @{ts}, clear=true; "
+            f"http, No llovio, {url}, method=POST, "
+            f"body=lluvia:no @{ts}, clear=true")
 
 
 def _registrar_aviso_salud(state, tipo: str, ts_aviso: str) -> None:

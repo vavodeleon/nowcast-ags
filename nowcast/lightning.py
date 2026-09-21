@@ -113,7 +113,15 @@ def fetch_recent(minutos: int = 15,
               ahora.replace(minute=0, second=0, microsecond=0)}:
         claves.extend(_list_glm(h))
 
-    ventana = [(t, k) for t, k in claves if desde <= t <= ahora]
+    # Sin clave repetida: se consulta el listado de dos horas y un archivo
+    # en el borde puede aparecer en ambas. Bajarlo dos veces seria pagar la
+    # misma descarga dos veces, y con el enlace lento eso se nota.
+    vistas: set[str] = set()
+    ventana = []
+    for t, k in claves:
+        if desde <= t <= ahora and k not in vistas:
+            vistas.add(k)
+            ventana.append((t, k))
     ventana.sort()
     if not ventana:
         log.info("sin archivos GLM en la ventana")
