@@ -3,9 +3,14 @@
 Dos cosas se aprenden de los aciertos y errores acumulados:
 
 1. PESOS POR FUENTE. Cada fuente (radar, infrarrojo, modelos numericos) recibe
-   un peso proporcional a su destreza reciente, medida con el Brier score.
-   Si en Aguascalientes el infrarrojo le gana a los modelos —que es lo que tu
-   experiencia sugiere— el sistema lo descubre solo y le sube el peso.
+   un peso proporcional a su capacidad de SEPARAR: cuanto mas alto dice cuando
+   llueve que cuando no. Si en Aguascalientes el infrarrojo le gana a los
+   modelos —que es lo que tu experiencia sugiere— el sistema lo descubre solo y
+   le sube el peso. Con los datos de septiembre de 2026 descubrio lo contrario,
+   que es justamente para lo que sirve medir.
+
+   Antes se repartia por el inverso del Brier y era casi un empate permanente;
+   el porque esta explicado donde se calcula, que es donde hace falta leerlo.
 
 2. CALIBRACION DE PROBABILIDAD. Una regresion isotonica (PAVA) mapea el score
    crudo a una probabilidad honesta. Es la diferencia entre "el sistema dice
@@ -26,6 +31,10 @@ from . import config, store
 log = logging.getLogger(__name__)
 
 MIN_SAMPLES = 40          # por debajo de esto no hay senal, solo ruido
+# Separacion minima para que una fuente cuente. Por debajo de un punto
+# porcentual no se distingue de cero, y cerca de cero el signo lo decide el
+# redondeo, no la meteorologia.
+SEPARACION_MINIMA = 0.01
 HALF_LIFE_DAYS = 45.0     # el pasado lejano pesa menos: el clima cambia de estacion
 SOURCES = ["radar", "ir", "models"]
 
@@ -71,6 +80,40 @@ def _brier(p: np.ndarray, y: np.ndarray, w: np.ndarray) -> float:
     return float(np.average((p - y) ** 2, weights=w))
 
 
+def _separacion(p: np.ndarray, y: np.ndarray, w: np.ndarray) -> float:
+    """Cuanto mas alto dice cuando llueve que cuando no.
+
+    La pregunta anterior a cualquier calibracion: ¿esta fuente distingue algo?
+    Si la media de lo que dice es la misma llueva o no, no hay nada que
+    calibrar -ninguna transformacion de un numero constante produce
+    informacion- y da igual lo bueno que parezca su Brier.
+
+    Se devuelve 0.0 cuando no se puede medir, que para el reparto de pesos
+    significa "no cuenta". Es lo prudente: una fuente sin casos de lluvia
+    todavia no ha demostrado nada.
+    """
+    con, sin = y == 1, y == 0
+    if not con.any() or not sin.any():
+        return 0.0
+    wc, ws = w[con], w[sin]
+    if wc.sum() <= 0 or ws.sum() <= 0:
+        return 0.0
+    return float(np.average(p[con], weights=wc) - np.average(p[sin], weights=ws))
+
+
+def _recomponer(probs: dict, usables: dict, pesos: dict) -> float:
+    """La mezcla que saldria HOY de unas probabilidades ya guardadas.
+
+    Replica lo que hace `run.py`: una fuente que no podia opinar no vota, y su
+    peso se reparte entre las demas. "No veo tan lejos" no es "no va a llover".
+    """
+    w = {s: (pesos.get(s, 0.0) if usables.get(s) else 0.0) for s in SOURCES}
+    total = sum(w.values())
+    if total <= 0:
+        return 0.0
+    return float(sum(probs.get(s, 0.0) * w[s] / total for s in SOURCES))
+
+
 def build_calibration() -> dict:
     """Recalcula pesos y curvas de calibracion desde el historial."""
     from datetime import datetime
@@ -95,7 +138,12 @@ def build_calibration() -> dict:
             p_final = float(row.get("p_final") or 0.0)
         except (TypeError, ValueError):
             continue
-        by_lead[lead].append((ts, probs, p_final, y))
+        # Los pesos APLICADOS en su momento. Un cero significa "esta fuente no
+        # podia opinar de este horizonte" (fuera de imagen, sin cobertura), y
+        # eso hay que respetarlo al recomponer la mezcla mas abajo: no es lo
+        # mismo que la fuente dijera 0%.
+        usables = {s: float(row.get(f"w_{s}") or 0.0) > 0 for s in SOURCES}
+        by_lead[lead].append((ts, probs, p_final, y, usables))
 
     weights: dict[str, dict[str, float]] = {}
     curves: dict[str, dict] = {}
@@ -110,14 +158,16 @@ def build_calibration() -> dict:
         tw = _time_weights(times, now_ts)
 
         # ---- destreza por fuente
-        briers = {}
+        briers, separaciones = {}, {}
         for src in SOURCES:
             p = np.array([r[1].get(src, 0.0) for r in rows])
             briers[src] = _brier(p, y, tw)
+            separaciones[src] = _separacion(p, y, tw)
         climatology = _brier(np.full_like(y, float(np.average(y, weights=tw))), y, tw)
         skill[key] = {
             "n": len(rows),
             "brier": {s: round(v, 4) for s, v in briers.items()},
+            "separacion": {s: round(v, 4) for s, v in separaciones.items()},
             "brier_final": round(_brier(np.array([r[2] for r in rows]), y, tw), 4),
             "brier_climatology": round(climatology, 4),
         }
@@ -128,10 +178,47 @@ def build_calibration() -> dict:
         if len(rows) < MIN_SAMPLES:
             continue
 
-        # ---- pesos: inverso del Brier, normalizado, suavizado hacia el prior
-        inv = {s: 1.0 / max(briers[s], 1e-3) for s in SOURCES}
-        total_inv = sum(inv.values())
-        learned = {s: inv[s] / total_inv for s in SOURCES}
+        # ---- pesos: por capacidad de DISTINGUIR, no por Brier
+        #
+        # Hasta el 21 de septiembre de 2026 esto era `1/Brier` normalizado, y
+        # medido resulto casi inutil. Dos razones, las dos de fondo:
+        #
+        # 1. El Brier no tiene recorrido. Su techo para un pronostico inutil es
+        #    la tasa base -0.125 aqui- y su piso practico ronda 0.084. Todo el
+        #    rango entre "no sirve de nada" y "es lo mejor que tenemos" es un
+        #    factor de 1.5, asi que el inverso reparte 0.44 / 0.30 / 0.26 pase
+        #    lo que pase. El radar, con separacion medida de 0.0% -es decir,
+        #    literalmente ninguna informacion- se llevaba un cuarto del voto.
+        #
+        # 2. El Brier mezcla dos cosas: si acierta y si esta bien calibrado. Y
+        #    la calibracion la arregla despues la isotonica sobre la MEZCLA.
+        #    Penalizar aqui a una fuente por estar mal calibrada es castigarla
+        #    por un defecto que el siguiente paso corrige de todas formas.
+        #
+        # Lo que hace falta de una fuente antes de calibrar es que SEPARE: que
+        # diga numeros distintos cuando llueve y cuando no. Eso es la
+        # separacion, y su recorrido es honesto: 0.0% el radar, 18.6% el
+        # infrarrojo, 33.5% los modelos. Una fuente que no separa pesa cero, y
+        # eso es lo correcto: no es que valga poco, es que no aporta nada.
+        #
+        # El minimo no es cosmetico. Una fuente constante no separa exactamente
+        # cero: separa -2.8e-17, polvo de coma flotante, y el SIGNO de ese polvo
+        # decidia entre "vuelvo al prior" y "un tercio para cada una". Dos
+        # repartos muy distintos a merced del orden en que numpy sumo unos
+        # flotantes. Lo encontro una prueba que fallaba a veces, que es la peor
+        # forma de encontrarlo y la unica que habia.
+        #
+        # Con un umbral en 1% ademas se dice algo cierto: medio punto de
+        # separacion no es una senal debil, es ruido con formato de senal.
+        utiles = {s: (separaciones[s] if separaciones[s] >= SEPARACION_MINIMA
+                      else 0.0) for s in SOURCES}
+        suma = sum(utiles.values())
+        if suma <= 0:
+            # Ninguna fuente distingue nada en este horizonte. Repartir por
+            # separacion seria dividir entre cero; se vuelve al prior y ya.
+            learned = dict(DEFAULT_WEIGHTS)
+        else:
+            learned = {s: utiles[s] / suma for s in SOURCES}
         # confianza en lo aprendido crece con el numero de muestras
         alpha = min(1.0, len(rows) / 400.0)
         weights[key] = {
@@ -139,9 +226,20 @@ def build_calibration() -> dict:
             for s in SOURCES
         }
 
-        # ---- curva de calibracion sobre la probabilidad combinada
-        p_final = np.array([r[2] for r in rows])
-        xs, ys = _pava(p_final, y, tw)
+        # ---- curva de calibracion sobre la mezcla RECOMPUESTA
+        #
+        # No sobre el `p_final` que se guardo: ese se calculo con los pesos que
+        # habia ese dia. Si hoy los pesos cambian, la curva quedaria ajustada a
+        # una mezcla que ya no se produce, y con vida media de 45 dias esa
+        # contaminacion dura meses. Peor: el sintoma seria que el sistema
+        # empeora justo despues de mejorar los pesos, que es la clase de
+        # observacion que hace desandar un cambio bueno.
+        #
+        # Recomponerla es posible porque cada fila guarda las tres
+        # probabilidades por separado. Asi la curva describe siempre la mezcla
+        # de HOY.
+        raw = np.array([_recomponer(r[1], r[4], weights[key]) for r in rows])
+        xs, ys = _pava(raw, y, tw)
         # comprimir a como maximo 25 puntos para que el JSON no crezca
         if len(xs) > 25:
             idx = np.linspace(0, len(xs) - 1, 25).astype(int)
