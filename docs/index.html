@@ -260,6 +260,7 @@
       techos de las nubes: entre más frío, más alta y más cargada está la nube.
       Los círculos marcan 50, 100 y 150 km alrededor de la ciudad.
     </p>
+    <p class="nota" id="nota-deriva" hidden></p>
     <p class="nota" id="nota-cono" hidden>
       <b>La franja de colores</b> es por dónde pasaría la celda que viene. Se
       va ensanchando hacia la ciudad porque cuanto más lejos tiene que viajar,
@@ -697,6 +698,22 @@ function pintarCono(d){
               : c.intensidad >= 0.4 ? "#f08232" : "#f5d250";
   const nota = q("#nota-cono");
   if (nota) nota.hidden = false;
+  // De dónde sale la trayectoria. Importa decirlo: son dos medidas distintas
+  // de dos partes distintas de la misma nube, y no dan lo mismo.
+  const nd = q("#nota-deriva");
+  if (nd){
+    if (d.deriva && d.deriva.usada){
+      nd.hidden = false;
+      nd.innerHTML = "<b>⚡ Trayectoria medida con los rayos.</b> Los rayos " +
+        "salen del núcleo de la tormenta, que es lo que llueve. El satélite " +
+        "infrarrojo solo ve el techo de la nube, y el viento de arriba se lo " +
+        "lleva por otro lado: por eso, cuando hay descargas, se sigue el " +
+        "núcleo. Aquí va del " + d.deriva.desde + " a " +
+        Math.round(d.deriva.kmh) + " km/h.";
+    } else {
+      nd.hidden = true;
+    }
+  }
   capaCono = L.layerGroup().addTo(mapa);
   L.polygon(izq.concat(der.reverse()), {
     color: color, weight: 1.5, opacity: .75, fillColor: color,
@@ -767,7 +784,8 @@ function pintarMapa(d){
       className:"", iconSize:[0,0], iconAnchor:[0,0], html:
       `<div style="background:${css("--pin")};color:${css("--pin-txt")};padding:3px 10px;border-radius:99px;
         font:600 11px -apple-system,sans-serif;white-space:nowrap;
-        position:absolute;transform:translate(-50%,-50%)">vienen del ${d.motion_from}</div>`
+        position:absolute;transform:translate(-50%,-50%)">vienen del ${d.motion_from}${
+          d.deriva && d.deriva.usada ? " ⚡" : ""}</div>`
     })}).addTo(mapa);
   }
 

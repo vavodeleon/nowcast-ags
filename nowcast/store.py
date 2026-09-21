@@ -46,6 +46,10 @@ PRED_FIELDS = [
     # forma de saber si ayudo es comparar las dos series sobre los mismos casos,
     # y para eso hay que haberlas guardado desde el primer dia.
     "p_ir_crudo", "ir_tend", "ir_compac",
+    # La deriva del nucleo, medida con descargas. Se guarda tambien cuando no
+    # se usa -confianza baja- para poder medir despues cuanto discrepa del
+    # infrarrojo sin tener que esperar a otra temporada.
+    "deriva_desde", "deriva_kmh", "deriva_conf",
 ]
 
 log = logging.getLogger(__name__)

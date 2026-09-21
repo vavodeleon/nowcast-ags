@@ -127,6 +127,20 @@ fuente_run = open("nowcast/run.py", encoding="utf-8").read()
 chk("y vale null entero cuando no hay celda",
     'if primary and primary.nearest_cell_lat is not None else None' in fuente_run)
 
+print("\nD-ter. La trayectoria dice de dónde sale")
+# Dos medidas distintas de dos partes distintas de la misma nube. Un rumbo sin
+# procedencia no se puede auditar seis semanas despues.
+ejemplo["motion_fuente"] = "rayos (nucleo)"
+ejemplo["deriva"] = {"desde": "suroeste", "bearing": 45.0, "kmh": 22.0,
+                     "confianza": 0.71, "destellos": 140, "usada": True}
+ejemplo["motion_ir_from"] = "oeste"
+chk("motion_fuente", "motion_fuente" in ejemplo)
+chk("la del infrarrojo se conserva aunque no se use",
+    "motion_ir_from" in ejemplo)
+chk("y `usada` dice si mandó", ejemplo["deriva"]["usada"] is True)
+chk("el umbral existe y no es cero", config.DERIVA_CONFIANZA_MIN > 0.2,
+    str(config.DERIVA_CONFIANZA_MIN))
+
 print("\nE. temperatura.serie lleva fecha explícita")
 # Sin fecha, la malla reconstruye el cruce de medianoche contando horas. Los
 # avisos de helada necesitan el minimo QUE VIENE, no el del dia calendario.

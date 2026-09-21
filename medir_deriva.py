@@ -1,0 +1,229 @@
+"""¿El infrarrojo está siguiendo el yunque en vez de la tormenta?
+
+    python medir_deriva.py
+
+## La hipótesis
+
+Álvaro, 21 de septiembre de 2026, mirando el cono contra las tormentas reales:
+
+  «está apuntando completamente a otro lado, parece que solo estamos
+   calculando el movimiento de la parte superior que se lleva el wind shear,
+   los rayos son los que nos dan la verdadera trayectoria no?»
+
+Tiene fundamento físico y es un problema conocido del nowcasting por satélite.
+El infrarrojo mide el **techo** de la nube, a 10–14 km de altura. Ese techo lo
+arrastra el viento en altura, que con cizalladura va bastante más rápido y a
+menudo en otra dirección que la celda de abajo. El yunque se estira hacia donde
+sopla arriba mientras la celda que llueve va a su aire.
+
+Los rayos salen del **núcleo convectivo**. Donde hay descargas está la celda de
+verdad, no su sombrero.
+
+## Cómo se mide sin esperar
+
+No hace falta instrumentar nada nuevo: los dos datos ya están guardados.
+
+- `data/predictions.csv` tiene `motion_from` y `motion_speed_kmh` de cada
+  corrida: el movimiento según el infrarrojo.
+- `docs/hist/<día>/<HHMM>.r.json` tiene los rayos de cada instante, siete días
+  hacia atrás. Dos archivos consecutivos dan el desplazamiento del centroide,
+  o sea el movimiento según el núcleo.
+
+Se comparan en los instantes en que existen los dos. Si la diferencia angular
+es pequeña, la hipótesis es falsa y el problema está en otra parte. Si es
+grande y **sistemática** -siempre hacia el mismo lado- es cizalladura.
+
+Lo que hay que mirar no es solo el promedio del ángulo, sino si el sesgo tiene
+dirección: un error que apunta siempre al mismo lado se corrige; uno que va
+para todos lados es ruido y se trata distinto.
+"""
+from __future__ import annotations
+
+import json
+import math
+import os
+import sys
+from datetime import datetime, timedelta, timezone
+
+from nowcast import config, lightning, store
+
+RAIZ = os.path.join(os.path.dirname(config.LATEST_JSON), "hist")
+
+
+def _rumbo_a_grados(nombre: str) -> float | None:
+    """'noroeste' -> 315. Es de DONDE viene, no hacia dónde va."""
+    puntos = {"norte": 0, "noreste": 45, "este": 90, "sureste": 135,
+              "sur": 180, "suroeste": 225, "oeste": 270, "noroeste": 315}
+    return puntos.get((nombre or "").strip().lower())
+
+
+def _diferencia(a: float, b: float) -> float:
+    """Diferencia angular con signo, en [-180, 180]. Positivo = b a la derecha."""
+    return (b - a + 180.0) % 360.0 - 180.0
+
+
+def cuadros_con_rayos() -> list[tuple[datetime, list]]:
+    """Todos los instantes archivados que tienen descargas."""
+    salida = []
+    if not os.path.isdir(RAIZ):
+        return salida
+    for dia in sorted(os.listdir(RAIZ)):
+        carpeta = os.path.join(RAIZ, dia)
+        if not os.path.isdir(carpeta):
+            continue
+        for nombre in sorted(os.listdir(carpeta)):
+            if not nombre.endswith(".r.json"):
+                continue
+            hhmm = nombre[:4]
+            try:
+                local = datetime.strptime(f"{dia} {hhmm}", "%Y-%m-%d %H%M")
+                t = local.replace(tzinfo=config.TZ).astimezone(timezone.utc)
+                with open(os.path.join(carpeta, nombre), encoding="utf-8") as fh:
+                    puntos = json.load(fh)
+            except (ValueError, OSError, json.JSONDecodeError):
+                continue
+            if puntos:
+                salida.append((t, puntos))
+    return salida
+
+
+def deriva_en(cuadros: list, i: int) -> lightning.Deriva:
+    """Deriva usando el cuadro i y los anteriores dentro de una hora."""
+    t0 = cuadros[i][0]
+    ventana = [(t, p) for t, p in cuadros[max(0, i - 4):i + 1]
+               if timedelta(0) <= t0 - t <= timedelta(minutes=60)]
+    if len(ventana) < 2:
+        return lightning.Deriva(None, 0.0, 0.0, 0, 0)
+    return lightning.deriva({"bloques": [
+        {"t": t.isoformat(), "puntos": p, "total": len(p)} for t, p in ventana]})
+
+
+def motion_ir() -> dict[str, tuple[float, float]]:
+    """{instante redondeado: (rumbo_desde_grados, km/h)} según el infrarrojo."""
+    salida = {}
+    for fila in store.read_predictions():
+        # Todas las filas de una corrida comparten el movimiento; basta una.
+        if (fila.get("lead_min") or "") != "15":
+            continue
+        g = _rumbo_a_grados(fila.get("motion_from"))
+        try:
+            v = float(fila.get("motion_speed_kmh") or 0)
+        except ValueError:
+            continue
+        if g is None:
+            continue
+        try:
+            t = datetime.fromisoformat(fila["issued_utc"])
+        except (KeyError, ValueError):
+            continue
+        salida[store.round_slot(t)] = (g, v)
+    return salida
+
+
+def main() -> int:
+    print("=" * 66)
+    print("¿EL INFRARROJO SIGUE EL YUNQUE EN VEZ DE LA TORMENTA?")
+    print("=" * 66)
+
+    cuadros = cuadros_con_rayos()
+    if len(cuadros) < 3:
+        print(f"\nSolo {len(cuadros)} cuadros archivados con rayos.")
+        print("Hace falta al menos una tormenta eléctrica en los últimos")
+        print("7 días para poder comparar. Vuelve a correrlo después de una.")
+        return 0
+
+    ir = motion_ir()
+    print(f"\nCuadros con descargas archivados: {len(cuadros)}")
+    print(f"Corridas con movimiento del infrarrojo: {len(ir)}")
+
+    casos = []
+    for i in range(len(cuadros)):
+        d = deriva_en(cuadros, i)
+        if d.bearing_deg is None or d.confianza < 0.25:
+            continue
+        clave = store.round_slot(cuadros[i][0])
+        if clave not in ir:
+            continue
+        g_ir, v_ir = ir[clave]
+        # El infrarrojo reporta de DÓNDE viene; la deriva, hacia dónde va.
+        # Se comparan en la misma convención o el resultado sale a 180°.
+        desde_rayos = (d.bearing_deg + 180.0) % 360.0
+        casos.append({
+            "t": cuadros[i][0], "ir_desde": g_ir, "ir_kmh": v_ir,
+            "rayos_desde": desde_rayos, "rayos_kmh": d.speed_kmh,
+            "dif": _diferencia(g_ir, desde_rayos),
+            "conf": d.confianza, "destellos": d.destellos,
+        })
+
+    if len(casos) < 5:
+        print(f"\nSolo {len(casos)} instantes con las dos medidas a la vez.")
+        print("No alcanza para decir nada. La deriva por rayos necesita")
+        print("varios bloques seguidos con descargas, o sea una tormenta")
+        print("de verdad, no un par de rayos sueltos.")
+        for c in casos:
+            print(f"   {c['t']:%m-%d %H:%M}  IR del {c['ir_desde']:.0f}°  "
+                  f"rayos del {c['rayos_desde']:.0f}°  "
+                  f"dif {c['dif']:+.0f}°")
+        return 0
+
+    print(f"\n1. LOS CASOS ({len(casos)} instantes con tormenta eléctrica)\n")
+    print(f"   {'cuando':>12} {'IR desde':>9} {'rayos desde':>12} "
+          f"{'dif':>6} {'IR km/h':>8} {'rayos km/h':>11} {'dest.':>6}")
+    for c in casos[:25]:
+        print(f"   {c['t']:%m-%d %H:%M} {c['ir_desde']:>8.0f}° "
+              f"{c['rayos_desde']:>11.0f}° {c['dif']:>+5.0f}° "
+              f"{c['ir_kmh']:>8.0f} {c['rayos_kmh']:>11.0f} "
+              f"{c['destellos']:>6}")
+    if len(casos) > 25:
+        print(f"   ... y {len(casos) - 25} más")
+
+    difs = [c["dif"] for c in casos]
+    n = len(difs)
+    medio = sum(difs) / n
+    absol = sum(abs(d) for d in difs) / n
+    grandes = sum(1 for d in difs if abs(d) > 45)
+    v_ir = sum(c["ir_kmh"] for c in casos) / n
+    v_ra = sum(c["rayos_kmh"] for c in casos) / n
+
+    print("\n2. EL VEREDICTO\n")
+    print(f"   diferencia media (con signo):  {medio:+.0f}°")
+    print(f"   diferencia media (absoluta):   {absol:.0f}°")
+    print(f"   casos con más de 45° de error: {grandes} de {n}")
+    print(f"   velocidad media: infrarrojo {v_ir:.0f} km/h, "
+          f"rayos {v_ra:.0f} km/h")
+
+    print()
+    if absol < 25:
+        print("   Las dos fuentes coinciden. La hipótesis de la cizalladura")
+        print("   NO se sostiene con estos datos, y si el cono apunta mal el")
+        print("   motivo está en otra parte. Conviene mirar la selección de")
+        print("   la celda antes que el movimiento.")
+    else:
+        print("   Hay discrepancia grande y real entre lo que ve el techo de")
+        print("   la nube y lo que hace el núcleo.")
+        if abs(medio) > absol * 0.5:
+            lado = "la derecha" if medio > 0 else "la izquierda"
+            print(f"   Y es SISTEMÁTICA: el infrarrojo se desvía hacia {lado}")
+            print(f"   en promedio {abs(medio):.0f}°. Un sesgo con dirección")
+            print("   se corrige; el ruido sin dirección, no.")
+        else:
+            print("   Pero NO es sistemática: el error va para todos lados.")
+            print("   Eso apunta más a ruido de la correlación de fase que a")
+            print("   cizalladura, y la corrección tendría que ser otra.")
+        if v_ir > v_ra * 1.3:
+            print(f"\n   Además el infrarrojo va {v_ir / max(v_ra, 1):.1f} "
+                  "veces más rápido que el núcleo,")
+            print("   que es exactamente lo que hace el viento en altura con")
+            print("   un yunque. Es la firma de la cizalladura.")
+
+    print("\n3. QUÉ SIGNIFICA PARA EL CONO\n")
+    print("   El rumbo decide dos cosas: qué celda se considera 'que viene")
+    print("   hacia acá' y por dónde se dibuja la franja. Un error de 60°")
+    print("   a 80 km de distancia son ~80 km de desvío en el punto de")
+    print("   llegada: la diferencia entre mojarse y no.")
+    print("=" * 66)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

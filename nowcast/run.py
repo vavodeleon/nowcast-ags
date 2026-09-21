@@ -184,6 +184,44 @@ def build_forecast() -> dict:
         rayos_resumen = {"total_hora": 0, "bloques": 0, "fase": "despejado",
                          "dist_km": None, "dist_min_hora_km": None}
 
+    # --- La deriva medida con rayos manda sobre la del infrarrojo
+    #
+    # Lo noto Alvaro mirando el cono contra las tormentas reales: apuntaba a
+    # otro lado. El infrarrojo sigue el techo de la nube y con cizalladura ese
+    # techo va a lo suyo. Donde hay descargas esta la celda de verdad.
+    #
+    # Solo se sustituye cuando hay tormenta electrica y la medida es firme.
+    # La mayor parte del tiempo no hay rayos y no cambia nada; aparece
+    # justamente cuando hay algo de lo que avisar.
+    deriva = None
+    try:
+        deriva = lightning.deriva(rayos) if bloques_rayos else None
+    except Exception as exc:
+        log.error("no se pudo medir la deriva por rayos: %s", exc)
+    usa_deriva = (deriva is not None and deriva.bearing_deg is not None
+                  and deriva.confianza >= config.DERIVA_CONFIANZA_MIN)
+    if usa_deriva and ir_frames:
+        km_px = ir_frames[-1].km_per_px
+        rad = math.radians(deriva.bearing_deg)
+        norte_km_min = deriva.speed_kmh / 60.0 * math.cos(rad)
+        este_km_min = deriva.speed_kmh / 60.0 * math.sin(rad)
+        mov_rayos = engine.Motion(
+            vy_px_min=-norte_km_min / km_px,   # la fila crece hacia el sur
+            vx_px_min=este_km_min / km_px,
+            speed_kmh=deriva.speed_kmh,
+            bearing_deg=deriva.bearing_deg,
+            confidence=deriva.confianza)
+        for nc in (ir_nc, radar_nc):
+            if nc is not None:
+                engine.recolocar_celda(
+                    nc, ir_frames if nc is ir_nc else radar_frames, mov_rayos)
+        log.info("deriva por rayos: del %s a %.0f km/h (confianza %.2f, "
+                 "%s destellos); el infrarrojo decia del %s a %.0f km/h",
+                 deriva.from_direction, deriva.speed_kmh, deriva.confianza,
+                 deriva.destellos,
+                 (ir_nc.motion.from_direction if ir_nc else "?"),
+                 (ir_nc.motion.speed_kmh if ir_nc else 0))
+
     # ¿Que pasa AHORA sobre la ciudad? Requiere corroboracion: el infrarrojo
     # solo no distingue una celda que llueve del yunque de una tormenta lejana.
     precip_obs = None
@@ -298,6 +336,9 @@ def build_forecast() -> dict:
             "motion_speed_kmh": round(motion.speed_kmh, 1),
             "motion_from": motion.from_direction,
             "motion_conf": round(motion.confidence, 3),
+            "deriva_desde": deriva.from_direction if usa_deriva else "",
+            "deriva_kmh": deriva.speed_kmh if usa_deriva else "",
+            "deriva_conf": (deriva.confianza if deriva is not None else ""),
             "growth": round(growth, 3),
             "cell_eta_min": (radar_nc or ir_nc).nearest_cell_eta_min if (radar_nc or ir_nc) else "",
             "cell_km": (radar_nc or ir_nc).nearest_cell_km if (radar_nc or ir_nc) else "",
@@ -321,9 +362,31 @@ def build_forecast() -> dict:
         "probabilities": probabilities,
         "raining_now": round(primary.current_score, 3) if primary else 0.0,
         "ahora": ahora.to_dict(),
-        "motion_speed_kmh": round(motion.speed_kmh, 1),
-        "motion_from": motion.from_direction,
-        "motion_confidence": round(motion.confidence, 3),
+        # Cuando los rayos hablan, mandan ellos. El significado del campo no
+        # cambia -"de donde vienen las celdas"- asi que la malla sigue
+        # imprimiendolo igual; lo que cambia es que ahora es cierto. De donde
+        # sale lo dice `motion_fuente`, porque un dato sin procedencia no se
+        # puede auditar despues.
+        "motion_speed_kmh": round(
+            (deriva.speed_kmh if usa_deriva else motion.speed_kmh), 1),
+        "motion_from": (deriva.from_direction if usa_deriva
+                        else motion.from_direction),
+        "motion_confidence": round(
+            (deriva.confianza if usa_deriva else motion.confidence), 3),
+        "motion_fuente": "rayos (nucleo)" if usa_deriva else "infrarrojo (topes)",
+        "deriva": ({"desde": deriva.from_direction,
+                    "bearing": round(deriva.bearing_deg, 1),
+                    "kmh": deriva.speed_kmh,
+                    "confianza": deriva.confianza,
+                    "destellos": deriva.destellos,
+                    "usada": usa_deriva}
+                   if deriva is not None and deriva.bearing_deg is not None
+                   else None),
+        # El del infrarrojo se conserva SIEMPRE, aunque no se use. Sin las dos
+        # series no se puede medir despues cuanto discrepan, que es justo la
+        # pregunta que abrio todo esto.
+        "motion_ir_from": motion.from_direction,
+        "motion_ir_kmh": round(motion.speed_kmh, 1),
         "growth": round(growth, 3),
         "cell_eta_min": primary.nearest_cell_eta_min if primary else None,
         "cell_km": primary.nearest_cell_km if primary else None,
@@ -354,8 +417,9 @@ def build_forecast() -> dict:
         "lat": config.LAT,
         "lon": config.LON,
         "map_bounds": map_bounds,
-        "motion_bearing": (round(motion.bearing_deg, 1)
-                           if motion.bearing_deg is not None else None),
+        "motion_bearing": (round(deriva.bearing_deg, 1) if usa_deriva
+                           else (round(motion.bearing_deg, 1)
+                                 if motion.bearing_deg is not None else None)),
         "pressure": pressure.to_dict(pres),
         "temperatura": temperatura,
         "rayos": rayos_resumen,

@@ -188,3 +188,12 @@ BAROMETRO_MAX_EDAD_MIN = 30
 HTTP_TIMEOUT = 30
 HTTP_RETRIES = 3
 USER_AGENT = "nowcast-ags/1.0 (personal precipitation nowcasting)"
+
+# Confianza minima de la deriva por rayos para que sustituya al infrarrojo.
+#
+# 0.45 no es un numero redondo elegido a ojo: por debajo de ahi la medida
+# viene de uno o dos saltos entre bloques, o de menos de cuarenta descargas,
+# y un rumbo asi es peor que el del infrarrojo -que al menos promedia sobre
+# todo el campo-. El criterio es el de siempre en este proyecto: preferir la
+# fuente vieja a una nueva que todavia no ha demostrado nada.
+DERIVA_CONFIANZA_MIN = 0.45

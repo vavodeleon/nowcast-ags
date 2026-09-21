@@ -339,3 +339,171 @@ def evaluar(datos: dict, fase_previa: str = "despejado") -> Tormenta:
 
     return Tormenta(actual, dist_min_hora, destellos_cerca, destellos_hora,
                     tendencia, acercandose, minutos_sin, fase)
+
+
+# ---------------------------------------------------------------------------
+# La deriva REAL de la tormenta, medida con los rayos.
+#
+# El motor estima el movimiento por correlacion de fase sobre el infrarrojo, y
+# el infrarrojo ve el TECHO de la nube, a 10-14 km de altura. Ese techo lo
+# arrastra el viento en altura, que con cizalladura va mucho mas rapido y a
+# menudo en otra direccion que la celda de abajo. El yunque se estira hacia
+# donde sopla arriba mientras la celda que llueve va a su aire.
+#
+# Los rayos, en cambio, salen del nucleo convectivo. Donde hay descargas esta
+# la celda de verdad, no su sombrero. Seguir el centroide de las descargas
+# entre bloques de 15 minutos da la traslacion del nucleo.
+#
+# Alvaro lo noto mirando el cono contra las tormentas reales, antes de que
+# ninguna medicion lo dijera.
+#
+# Esto NO sustituye al infrarrojo: sin rayos no hay deriva, y la mayor parte
+# del tiempo no hay rayos. Es una correccion que aparece exactamente cuando
+# hay una tormenta electrica, que es cuando importa acertar.
+# ---------------------------------------------------------------------------
+
+# Radio para seguir el MISMO complejo entre bloques. Con 60 km una celda a
+# 60 km/h se sigue sin problema (15 km por bloque) y no se salta a otra
+# tormenta del otro lado del dominio.
+RADIO_SEGUIMIENTO_KM = 60.0
+MIN_DESTELLOS = 4          # menos que esto es ruido, no un centroide
+
+
+@dataclass
+class Deriva:
+    """Traslacion del nucleo convectivo, medida con descargas."""
+    bearing_deg: float | None    # hacia donde va
+    speed_kmh: float
+    confianza: float             # 0-1
+    pares: int                   # cuantos saltos entre bloques se usaron
+    destellos: int
+
+    @property
+    def from_direction(self) -> str:
+        if self.bearing_deg is None:
+            return "sin movimiento definido"
+        origen = (self.bearing_deg + 180.0) % 360.0
+        puntos = ["norte", "noreste", "este", "sureste",
+                  "sur", "suroeste", "oeste", "noroeste"]
+        return puntos[int((origen + 22.5) % 360 // 45)]
+
+
+def _mas_activo(puntos):
+    """El punto con mas descargas: un ancla que esta seguro dentro de una celda."""
+    mejor, cuenta = None, -1.0
+    for p in puntos or []:
+        n = float(p[2]) if len(p) > 2 else 1.0
+        if n > cuenta:
+            mejor, cuenta = (float(p[0]), float(p[1])), n
+    return mejor
+
+
+def _centroide(puntos, cerca_de=None, radio_km=RADIO_SEGUIMIENTO_KM):
+    """Centroide ponderado por numero de destellos, opcionalmente local.
+
+    'cerca_de' es lo que evita el fallo obvio: con dos tormentas en el
+    dominio, el centroide global cae entre las dos y se mueve segun cual
+    descargue mas, que no es el movimiento de ninguna.
+    """
+    tot = wlat = wlon = 0.0
+    for p in puntos or []:
+        lat, lon = float(p[0]), float(p[1])
+        n = float(p[2]) if len(p) > 2 else 1.0
+        if cerca_de is not None:
+            dlat = (lat - cerca_de[0]) * 111.0
+            dlon = ((lon - cerca_de[1]) * 111.0
+                    * math.cos(math.radians(cerca_de[0])))
+            if math.hypot(dlat, dlon) > radio_km:
+                continue
+        wlat += lat * n
+        wlon += lon * n
+        tot += n
+    if tot <= 0:
+        return None, 0.0
+    return (wlat / tot, wlon / tot), tot
+
+
+def deriva(datos: dict) -> Deriva:
+    """Velocidad y rumbo del nucleo, a partir del historial de bloques."""
+    bloques = sorted(datos.get("bloques") or [], key=lambda b: b.get("t", ""))
+    con_rayos = [b for b in bloques if (b.get("puntos") or [])]
+    if len(con_rayos) < 2:
+        return Deriva(None, 0.0, 0.0, 0, 0)
+
+    vectores, total_destellos = [], 0.0
+    anterior = None
+    for b in con_rayos:
+        t = b.get("t")
+        try:
+            tt = datetime.fromisoformat(t)
+            if tt.tzinfo is None:
+                tt = tt.replace(tzinfo=timezone.utc)
+        except (TypeError, ValueError):
+            continue
+        # El primer centroide NO puede ser global. Con dos tormentas en el
+        # dominio -pasa a diario en temporada- el centro de masa cae en el
+        # hueco entre las dos, donde no hay nada, y el seguimiento arranca
+        # anclado a un punto vacio: o no encuentra rayos cerca y se calla, o
+        # peor, oscila entre las dos segun cual descargue mas y publica un
+        # rumbo que no es el de ninguna.
+        #
+        # Se ancla en el grupo mas activo: el punto con mas descargas. No es
+        # el centro exacto de la celda, pero esta DENTRO de una celda, que es
+        # lo unico que hace falta para que el radio de seguimiento agarre la
+        # tormenta correcta.
+        ref = anterior[1] if anterior else _mas_activo(b.get("puntos"))
+        c, n = _centroide(b.get("puntos"), cerca_de=ref)
+        if c is None or n < MIN_DESTELLOS:
+            continue
+        if anterior is not None:
+            t0, c0, _n0 = anterior
+            dt = (tt - t0).total_seconds() / 60.0
+            if 0 < dt <= 45:
+                norte = (c[0] - c0[0]) * 111.0
+                este = ((c[1] - c0[1]) * 111.0
+                        * math.cos(math.radians(c0[0])))
+                vectores.append((norte / dt, este / dt, n))
+                total_destellos += n
+        anterior = (tt, c, n)
+
+    if not vectores:
+        return Deriva(None, 0.0, 0.0, 0, int(total_destellos))
+
+    # Mediana ponderada por destellos: un bloque con tres descargas no manda
+    # sobre uno con doscientas.
+    vs = sorted(vectores, key=lambda v: math.hypot(v[0], v[1]))
+    peso_total = sum(v[2] for v in vs)
+    acum, med = 0.0, vs[-1]
+    for v in vs:
+        acum += v[2]
+        if acum >= peso_total / 2:
+            med = v
+            break
+    vn, ve = med[0], med[1]
+    speed_kmh = math.hypot(vn, ve) * 60.0
+
+    # Una celda no viaja a 150 km/h. Si sale eso, el seguimiento salto de una
+    # tormenta a otra y el dato no vale.
+    if speed_kmh > 110.0:
+        return Deriva(None, 0.0, 0.0, len(vectores), int(total_destellos))
+
+    bearing = ((math.degrees(math.atan2(ve, vn)) + 360.0) % 360.0
+               if speed_kmh > 2.0 else None)
+
+    # Confianza: cuantos saltos coinciden entre si, y cuantos destellos los
+    # respaldan. Un solo salto con cinco rayos no es una medicion.
+    if len(vectores) >= 2:
+        media_n = sum(v[0] for v in vectores) / len(vectores)
+        media_e = sum(v[1] for v in vectores) / len(vectores)
+        disp = sum(math.hypot(v[0] - media_n, v[1] - media_e)
+                   for v in vectores) / len(vectores)
+        acuerdo = 1.0 / (1.0 + disp * 60.0 / 25.0)
+    else:
+        acuerdo = 0.35
+    # 80 descargas repartidas en varios bloques es una tormenta de verdad.
+    # Con 15 el centroide se mueve por donde cayo un rayo suelto, no por
+    # donde va la celda, y la confianza tiene que decirlo.
+    respaldo = min(1.0, total_destellos / 80.0)
+    conf = float(max(0.0, min(1.0, acuerdo * respaldo)))
+    return Deriva(bearing, round(speed_kmh, 1), round(conf, 3),
+                  len(vectores), int(total_destellos))

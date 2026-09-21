@@ -451,6 +451,35 @@ def run_nowcast(frames: list[Frame]) -> Nowcast | None:
     return nc
 
 
+def recolocar_celda(nc: Nowcast, frames: list[Frame], motion: Motion) -> None:
+    """Vuelve a elegir la celda que viene, con otro vector de movimiento.
+
+    Existe porque hay dos medidas del movimiento y una es mejor que la otra
+    para esta pregunta concreta. La correlacion de fase sobre el infrarrojo
+    sigue el TECHO de la nube, que a 10-14 km de altura lo arrastra el viento
+    en altura; con cizalladura el yunque se va por su lado mientras la celda
+    que llueve va por el suyo. Los rayos salen del nucleo, asi que su deriva
+    es la de la tormenta.
+
+    Solo se recalcula la celda y su cono. El resto del pronostico -los scores
+    por horizonte- sigue con el movimiento del infrarrojo a proposito: ahi se
+    advecta el campo de topes nubosos, y para mover topes nubosos el viento
+    de los topes nubosos es el correcto.
+    """
+    if not frames:
+        return
+    latest = frames[-1]
+    signal = to_signal(latest)
+    cy, cx = latest.center_px
+    nc.nearest_cell_km = None
+    nc.nearest_cell_eta_min = None
+    nc.nearest_cell_intensity = 0.0
+    nc.nearest_cell_lat = None
+    nc.nearest_cell_lon = None
+    nc.nearest_cell_radio_km = None
+    _find_incoming_cell(nc, signal, motion, cy, cx, latest.km_per_px, latest)
+
+
 def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
                         cy: float, cx: float, km_per_px: float,
                         frame=None) -> None:
