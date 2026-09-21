@@ -360,6 +360,22 @@ def evaluar(datos: dict, fase_previa: str = "despejado") -> Tormenta:
 # Esto NO sustituye al infrarrojo: sin rayos no hay deriva, y la mayor parte
 # del tiempo no hay rayos. Es una correccion que aparece exactamente cuando
 # hay una tormenta electrica, que es cuando importa acertar.
+#
+# ## Lo que la medicion dijo de esta idea, al dia siguiente
+#
+# Medido el 22 de septiembre de 2026 sobre 340 tormentas archivadas: el rumbo
+# del infrarrojo cambia **8 grados** entre cuadros consecutivos y el de este
+# estimador **59**. Una celda real gira menos de 25; el azar, 90.
+#
+# O sea que el infrarrojo es la serie estable y esta es la ruidosa. La idea
+# fisica sigue siendo correcta -los rayos estan en el nucleo- pero un centroide
+# ponderado no sigue una celda: brinca entre las celdas de un mismo complejo,
+# que nacen y mueren cada veinte minutos.
+#
+# Por eso `deriva_persistente()` existe y por eso esta medida solo manda cuando
+# se repite a si misma. Rara vez lo hara, y eso es correcto: mas vale un
+# estimador que se calla casi siempre que uno que gira noventa grados con cara
+# de certeza. Mejorarlo pide seguir cumulos, no su centro de masa.
 # ---------------------------------------------------------------------------
 
 # Radio para seguir el MISMO complejo entre bloques. Con 60 km una celda a

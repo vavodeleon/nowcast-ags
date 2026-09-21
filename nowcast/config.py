@@ -206,4 +206,20 @@ DERIVA_CONFIANZA_MIN = 0.45
 # 1.5 px el error de rumbo ronda los 20 grados. Dos pixeles es donde el angulo
 # empieza a significar algo. Medido contra 380 tormentas: con el umbral viejo
 # -0.2 px- el rumbo del satelite era indistinguible del azar.
-MOTION_MIN_PX = 2.0
+# PROVISIONAL, y conviene que se sepa. Empezo en 2.0 el 21/09/2026 por el
+# argumento de "medio pixel de ruido"; al dia siguiente la medida de
+# persistencia dijo que el rumbo del infrarrojo cambia **8 grados** entre
+# cuadros consecutivos en 340 tormentas reales. Ocho grados no es ruido: es una
+# de las series mas estables de todo el sistema.
+#
+# El error de mi razonamiento fue contar un solo desplazamiento. La mediana
+# ponderada promedia hasta veinte estimaciones por corrida -cinco regiones por
+# cuatro pares de cuadros- y veinte medidas de 0.4 px resuelven una direccion
+# bastante mejor que una.
+#
+# Asi que se baja a 1.0 px (~10 km/h): sigue cerrando la zona donde el
+# desplazamiento es una fraccion de pixel, sin tirar la informacion buena de
+# los dias tranquilos. El numero definitivo sale de la seccion 2-ter de
+# `medir_deriva.py` cuando haya unos dias de `motion_bearing` en grados: hoy
+# esa tabla se lee a traves de sectores de 45 y no se puede afinar mas.
+MOTION_MIN_PX = 1.0

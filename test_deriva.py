@@ -178,8 +178,14 @@ chk("con 4 px sí lo hay", rapido.bearing_deg is not None)
 chk("y apunta al este", rapido.bearing_deg is not None
     and abs(((rapido.bearing_deg - 90 + 180) % 360) - 180) < 20,
     f"{rapido.bearing_deg:.0f}°" if rapido.bearing_deg else "—")
-chk("el umbral está en píxeles, no en km/h", config.MOTION_MIN_PX >= 1.5,
-    str(config.MOTION_MIN_PX))
+# El umbral se movio de 2.0 a 1.0 el 22/09/2026 cuando la persistencia medida
+# dijo que el rumbo del infrarrojo cambia 8 grados entre cuadros: eso no es
+# ruido y 2 px estaba tirando informacion buena. Lo que la prueba fija no es el
+# valor -es provisional y saldra de la seccion 2-ter de medir_deriva.py- sino
+# que exista, que se exprese en pixeles y que cierre el medio pixel.
+chk("el umbral existe y se expresa en píxeles",
+    0.75 <= config.MOTION_MIN_PX <= 3.0, str(config.MOTION_MIN_PX))
+chk("y cierra la zona de medio píxel", config.MOTION_MIN_PX > 0.5)
 
 print("\nJ. Sin rumbo no se señala ninguna celda")
 # Elegir una celda sin saber hacia dónde va es inventar justo la parte que

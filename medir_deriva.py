@@ -245,24 +245,62 @@ def main() -> int:
     print("   Referencia: una celda real cambia menos de ~25° en 15 minutos.")
     print("   Una serie al azar cambia ~90°.")
     print()
+    # Los umbrales de antes -60 grados- contradecian la referencia impresa dos
+    # lineas mas arriba: aprobaban como "persistente" una serie que cambia 59
+    # grados entre cuadros, o sea mas cerca del azar (90) que de una celda
+    # real (menos de 25). Corregido el 22/09/2026 porque la salida real lo
+    # dejo en evidencia: infrarrojo 8 grados, rayos 59, y el veredicto decia
+    # que las dos median algo.
+    FIABLE, RUIDO = 25.0, 50.0
     if p_ir is not None and p_ra is not None:
-        if p_ir > 60 and p_ra > 60:
+        if p_ir > RUIDO and p_ra > RUIDO:
             print("   LAS DOS SON RUIDO. No hay de dónde sacar una trayectoria")
             print("   fiable con lo que hay: ni el techo de la nube a esta")
             print("   resolución, ni el centroide de descargas de esta forma.")
             print("   Lo honesto es no dibujar cono cuando no se puede medir,")
             print("   que es lo que hace ahora el umbral de resolución.")
-        elif p_ir > 60:
+        elif p_ir > RUIDO:
             print("   El INFRARROJO es el que no mide. Los rayos son")
             print("   persistentes, así que su deriva sí describe algo.")
-        elif p_ra > 60:
+        elif p_ra > RUIDO:
             print("   Los RAYOS son los que no miden así. El centroide salta")
             print("   entre celdas de un mismo complejo. El infrarrojo es más")
             print("   estable de lo que parecía: hay que mejorar el seguimiento")
             print("   de descargas antes de dejar que mande sobre nada.")
-        else:
+        elif p_ir <= FIABLE and p_ra <= FIABLE:
             print("   Las dos son persistentes, así que las dos miden algo real")
             print("   y distinto. Entonces la cizalladura vuelve a la mesa.")
+        else:
+            cual = "el infrarrojo" if p_ir > FIABLE else "los rayos"
+            print(f"   Zona intermedia: {cual} está entre lo fiable y el ruido.")
+            print("   Mide algo, pero no lo suficiente para dirigir un cono.")
+
+    print("\n2-ter. ¿HACE FALTA EL UMBRAL DE RESOLUCIÓN? — el infrarrojo por velocidad")
+    print("\n   Si el rumbo del satélite fuera ruido subpíxel, los casos lentos")
+    print("   tendrían que saltar mucho más que los rápidos. Si son igual de")
+    print("   estables, el umbral que puse el 21/09 sobra y está tirando")
+    print("   información buena los días tranquilos.")
+    print()
+    print("   (La mediana ponderada promedia hasta 20 estimaciones por corrida")
+    print("   -cinco regiones por cuatro pares de cuadros-, así que puede")
+    print("   resolver mejor que un solo desplazamiento de 0.4 px.)\n")
+    tramos = [(0, 1.0), (1.0, 2.0), (2.0, 4.0), (4.0, 99.0)]
+    print(f"   {'desplazamiento':>18} {'casos':>7} {'cambio medio':>14}")
+    for lo, hi in tramos:
+        sel = [c for c in casos
+               if lo <= c["ir_kmh"] * 15 / 60 / 2.44 < hi]
+        p, nn = persistencia([(c["t"], c["ir_desde"]) for c in sel])
+        etiq = f"{lo:.0f}-{hi:.0f} px" if hi < 99 else f">{lo:.0f} px"
+        if p is None:
+            print(f"   {etiq:>18} {len(sel):>7} {'sin pares seguidos':>14}")
+        else:
+            print(f"   {etiq:>18} {len(sel):>7} {p:>13.0f}°")
+    print()
+    print("   OJO con esta tabla: `motion_from` viene cuantizado en sectores de")
+    print("   45°, así que dos rumbos parecidos salen como cambio de 0°. Eso")
+    print("   hace que TODAS las filas parezcan más estables de lo que son.")
+    print("   Desde el 21/09 se guarda `motion_bearing` en grados; con unos")
+    print("   días de esa columna, esta tabla se podrá leer sin el descuento.")
 
     print("\n3. QUÉ SIGNIFICA PARA EL CONO\n")
     lentos = sum(1 for c in casos if c["ir_kmh"] * 15 / 60 / 2.44 < 2.0)
