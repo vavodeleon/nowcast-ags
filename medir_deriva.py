@@ -216,7 +216,61 @@ def main() -> int:
             print("   que es exactamente lo que hace el viento en altura con")
             print("   un yunque. Es la firma de la cizalladura.")
 
+    print("\n2-bis. ¿CUÁL DE LAS DOS ES LA QUE NO MIDE?\n")
+    print("   Noventa grados de diferencia media es exactamente lo que dan dos")
+    print("   ángulos independientes al azar. Así que la pregunta deja de ser")
+    print("   'cuánto discrepan' y pasa a ser 'cuál de las dos es ruido'.")
+    print()
+    print("   El desempate es la PERSISTENCIA. Una tormenta real no gira 90°")
+    print("   en quince minutos: su rumbo cambia despacio. El ruido, no.")
+    print("   Se mide cuánto cambia cada serie entre estimaciones seguidas.\n")
+
+    def persistencia(pares):
+        """Cambio angular medio entre estimaciones consecutivas."""
+        cambios = []
+        for (t0, a0), (t1, a1) in zip(pares, pares[1:]):
+            dt = (t1 - t0).total_seconds() / 60.0
+            if 10 <= dt <= 20:
+                cambios.append(abs(_diferencia(a0, a1)))
+        return (sum(cambios) / len(cambios), len(cambios)) if cambios else (None, 0)
+
+    p_ir, n_ir = persistencia([(c["t"], c["ir_desde"]) for c in casos])
+    p_ra, n_ra = persistencia([(c["t"], c["rayos_desde"]) for c in casos])
+    print(f"   {'serie':>14} {'cambio medio entre cuadros':>28} {'casos':>7}")
+    if p_ir is not None:
+        print(f"   {'infrarrojo':>14} {p_ir:>27.0f}° {n_ir:>7}")
+    if p_ra is not None:
+        print(f"   {'rayos':>14} {p_ra:>27.0f}° {n_ra:>7}")
+    print()
+    print("   Referencia: una celda real cambia menos de ~25° en 15 minutos.")
+    print("   Una serie al azar cambia ~90°.")
+    print()
+    if p_ir is not None and p_ra is not None:
+        if p_ir > 60 and p_ra > 60:
+            print("   LAS DOS SON RUIDO. No hay de dónde sacar una trayectoria")
+            print("   fiable con lo que hay: ni el techo de la nube a esta")
+            print("   resolución, ni el centroide de descargas de esta forma.")
+            print("   Lo honesto es no dibujar cono cuando no se puede medir,")
+            print("   que es lo que hace ahora el umbral de resolución.")
+        elif p_ir > 60:
+            print("   El INFRARROJO es el que no mide. Los rayos son")
+            print("   persistentes, así que su deriva sí describe algo.")
+        elif p_ra > 60:
+            print("   Los RAYOS son los que no miden así. El centroide salta")
+            print("   entre celdas de un mismo complejo. El infrarrojo es más")
+            print("   estable de lo que parecía: hay que mejorar el seguimiento")
+            print("   de descargas antes de dejar que mande sobre nada.")
+        else:
+            print("   Las dos son persistentes, así que las dos miden algo real")
+            print("   y distinto. Entonces la cizalladura vuelve a la mesa.")
+
     print("\n3. QUÉ SIGNIFICA PARA EL CONO\n")
+    lentos = sum(1 for c in casos if c["ir_kmh"] * 15 / 60 / 2.44 < 2.0)
+    print(f"   {lentos} de {n} casos tienen el satélite por debajo de 2 px de")
+    print("   desplazamiento entre cuadros, o sea por debajo de su propia")
+    print("   resolución. Ahí el rumbo no se puede medir, y desde el")
+    print("   21/09/2026 ya no se publica: sin rumbo no hay cono.")
+    print()
     print("   El rumbo decide dos cosas: qué celda se considera 'que viene")
     print("   hacia acá' y por dónde se dibuja la franja. Un error de 60°")
     print("   a 80 km de distancia son ~80 km de desvío en el punto de")

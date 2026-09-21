@@ -15,6 +15,10 @@ PRED_FIELDS = [
     "w_radar", "w_ir", "w_models",
     "score_radar", "score_ir",
     "motion_speed_kmh", "motion_from", "motion_conf", "growth",
+    # El rumbo en grados, no solo el sector de 45 grados de `motion_from`.
+    # Comparar dos rumbos a traves de su nombre mete +-22.5 grados de ruido de
+    # cuantizacion en cada uno, y eso ya es un tercio del efecto que se busca.
+    "motion_bearing",
     "cell_eta_min", "cell_km", "cell_intensity",
     "cape", "radar_coverage",
     # Presion en el momento de emitir. No entra en el pronostico: se guarda

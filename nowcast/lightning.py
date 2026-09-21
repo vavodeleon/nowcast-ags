@@ -507,3 +507,48 @@ def deriva(datos: dict) -> Deriva:
     conf = float(max(0.0, min(1.0, acuerdo * respaldo)))
     return Deriva(bearing, round(speed_kmh, 1), round(conf, 3),
                   len(vectores), int(total_destellos))
+
+
+_CLAVE_DERIVA = "deriva_previa"
+
+
+def deriva_persistente(d: "Deriva") -> bool:
+    """¿Este rumbo coincide con el de hace quince minutos?
+
+    La comprobacion que faltaba, y la medicion del 21 de septiembre de 2026 es
+    la que la pidio. En 380 tormentas reales el rumbo por rayos saltaba entre
+    bloques consecutivos -94 grados, luego 334, luego 86- y eso no lo hace una
+    tormenta: lo hace un centroide brincando entre celdas de un mismo complejo.
+
+    Una celda real gira despacio. Si dos estimaciones seguidas no se parecen,
+    al menos una es ruido, y no hay forma de saber cual. Se exige acuerdo antes
+    de dejar que el dato mande sobre el cono.
+
+    El estado se guarda aqui y no en quien llama porque es de esta medida:
+    quien la usa no tiene por que saber que necesita memoria.
+    """
+    previa = store.load_json(config.STATE_JSON, {}).get(_CLAVE_DERIVA) or {}
+    estado = store.load_json(config.STATE_JSON, {})
+    ahora = {"bearing": d.bearing_deg, "ts": datetime.now(timezone.utc).isoformat()}
+    estado[_CLAVE_DERIVA] = ahora
+    store.save_json(config.STATE_JSON, estado)
+
+    if d.bearing_deg is None or previa.get("bearing") is None:
+        return False
+    try:
+        t_prev = datetime.fromisoformat(previa["ts"])
+        if t_prev.tzinfo is None:
+            t_prev = t_prev.replace(tzinfo=timezone.utc)
+    except (KeyError, ValueError):
+        return False
+    edad_min = (datetime.now(timezone.utc) - t_prev).total_seconds() / 60.0
+    # Mas de media hora sin medir y ya no son estimaciones consecutivas: la
+    # tormenta pudo cambiar de verdad en ese hueco.
+    if not (0 < edad_min <= 35):
+        return False
+    dif = abs((d.bearing_deg - float(previa["bearing"]) + 180.0) % 360.0 - 180.0)
+    if dif > 45.0:
+        log.info("la deriva por rayos giro %.0f grados en %.0f min: no es "
+                 "persistente, no se usa", dif, edad_min)
+        return False
+    return True

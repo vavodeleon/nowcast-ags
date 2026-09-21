@@ -198,8 +198,19 @@ def build_forecast() -> dict:
         deriva = lightning.deriva(rayos) if bloques_rayos else None
     except Exception as exc:
         log.error("no se pudo medir la deriva por rayos: %s", exc)
+    # Dos filtros, no uno. La confianza mide si ESTA estimacion se sostiene
+    # sola; la persistencia, si coincide con la de hace quince minutos. La
+    # medicion del 21/09/2026 mostro que hacen falta las dos: habia casos con
+    # mil descargas -confianza alta- cuyo rumbo saltaba noventa grados entre
+    # cuadros seguidos. Confianza alta y ruido puro no son incompatibles.
     usa_deriva = (deriva is not None and deriva.bearing_deg is not None
                   and deriva.confianza >= config.DERIVA_CONFIANZA_MIN)
+    if deriva is not None:
+        try:
+            usa_deriva = usa_deriva and lightning.deriva_persistente(deriva)
+        except Exception as exc:
+            log.error("no se pudo comprobar la persistencia: %s", exc)
+            usa_deriva = False
     if usa_deriva and ir_frames:
         km_px = ir_frames[-1].km_per_px
         rad = math.radians(deriva.bearing_deg)
@@ -336,6 +347,8 @@ def build_forecast() -> dict:
             "motion_speed_kmh": round(motion.speed_kmh, 1),
             "motion_from": motion.from_direction,
             "motion_conf": round(motion.confidence, 3),
+            "motion_bearing": (round(motion.bearing_deg, 1)
+                               if motion.bearing_deg is not None else ""),
             "deriva_desde": deriva.from_direction if usa_deriva else "",
             "deriva_kmh": deriva.speed_kmh if usa_deriva else "",
             "deriva_conf": (deriva.confianza if deriva is not None else ""),

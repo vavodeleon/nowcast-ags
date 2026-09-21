@@ -140,5 +140,80 @@ chk("que no es el del yunque", nucleo.from_direction != "oeste")
 print(f"\n     núcleo por rayos: viene del {nucleo.from_direction}, "
       f"{nucleo.speed_kmh:.0f} km/h")
 
+print("\nI. El satélite calla cuando no alcanza a medir")
+# El hallazgo del 21 de septiembre de 2026. GOES da un cuadro cada 15 min con
+# 2.44 km/px: una celda a 7 km/h recorre 0.7 px entre cuadros y la correlacion
+# de fase no puede dar direccion. El umbral viejo era 2 km/h -0.2 px- asi que
+# el rumbo salia igual, inventado, con cara de dato.
+import numpy as np
+from nowcast import config, engine
+from nowcast.sources import Frame
+
+N = 160
+KM_PX = 2.44
+
+
+def campo(cy, cx):
+    yy, xx = np.mgrid[0:N, 0:N]
+    bt = np.full((N, N), 290.0)
+    bt -= 70 * np.exp(-((yy - cy) ** 2 + (xx - cx) ** 2) / (2 * 9.0 ** 2))
+    return bt.astype(np.float32)
+
+
+def cuadros(desplaz_px_por_cuadro):
+    base = datetime(2026, 9, 21, 20, 0, tzinfo=timezone.utc)
+    return [Frame(time=base + timedelta(minutes=15 * i),
+                  data=campo(80, 60 + desplaz_px_por_cuadro * i),
+                  km_per_px=KM_PX, center_lat=LAT0, center_lon=LON0, kind="ir")
+            for i in range(4)]
+
+
+lento = engine.estimate_motion(cuadros(0.4))
+chk("con 0.4 px por cuadro no hay rumbo", lento.bearing_deg is None,
+    str(lento.bearing_deg))
+chk("y se dice con palabras",
+    lento.from_direction == "sin movimiento definido", lento.from_direction)
+rapido = engine.estimate_motion(cuadros(4.0))
+chk("con 4 px sí lo hay", rapido.bearing_deg is not None)
+chk("y apunta al este", rapido.bearing_deg is not None
+    and abs(((rapido.bearing_deg - 90 + 180) % 360) - 180) < 20,
+    f"{rapido.bearing_deg:.0f}°" if rapido.bearing_deg else "—")
+chk("el umbral está en píxeles, no en km/h", config.MOTION_MIN_PX >= 1.5,
+    str(config.MOTION_MIN_PX))
+
+print("\nJ. Sin rumbo no se señala ninguna celda")
+# Elegir una celda sin saber hacia dónde va es inventar justo la parte que
+# importa: cuál de todas viene y cuándo. Antes se elegía igual.
+nc = engine.run_nowcast(cuadros(0.4))
+chk("no hay celda que venga", nc is not None and nc.nearest_cell_km is None,
+    str(nc.nearest_cell_km) if nc else "sin nowcast")
+chk("ni cono", nc is not None and nc.nearest_cell_radio_km is None)
+nc2 = engine.run_nowcast(cuadros(4.0))
+chk("con movimiento medible sí se evalúan celdas",
+    nc2 is not None and nc2.motion.bearing_deg is not None)
+
+print("\nK. Un rumbo que salta no se usa aunque venga con mil rayos")
+# La otra mitad del hallazgo. En los datos reales habia casos con 1,400
+# descargas -confianza maxima- cuyo rumbo cambiaba 90 grados entre cuadros
+# consecutivos. Confianza alta y ruido puro no son incompatibles: la confianza
+# mide si ESTA estimacion se sostiene sola, no si coincide con la anterior.
+import os
+import tempfile
+from nowcast import store as _store
+config.STATE_JSON = os.path.join(tempfile.mkdtemp(), "estado.json")
+
+firme = lightning.deriva(tormenta(90, 40, destellos=200))
+chk("la primera vez no hay con qué comparar",
+    lightning.deriva_persistente(firme) is False)
+chk("la segunda, con el mismo rumbo, sí",
+    lightning.deriva_persistente(firme) is True)
+girada = lightning.deriva(tormenta(200, 40, destellos=200))
+chk("un giro de 110° se rechaza",
+    lightning.deriva_persistente(girada) is False)
+chk("y deja su propio rumbo como referencia para la siguiente",
+    lightning.deriva_persistente(girada) is True)
+chk("aunque la confianza sea alta", girada.confianza > 0.5,
+    f"{girada.confianza:.2f}")
+
 print("\n" + ("TODO EN ORDEN" if ok else "HAY FALLOS"))
 sys.exit(0 if ok else 1)

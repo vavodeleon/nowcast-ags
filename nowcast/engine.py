@@ -158,10 +158,37 @@ def estimate_motion(frames: list[Frame]) -> Motion:
         scale = 120.0 / speed_kmh
         vy, vx, speed_kmh = vy * scale, vx * scale, 120.0
 
+    # --- el limite de resolucion, que estaba callado
+    #
+    # Medido el 21 de septiembre de 2026 con 380 tormentas reales: el rumbo
+    # del infrarrojo y el de los rayos discrepaban 91 grados de media. Noventa
+    # grados es exactamente lo que dan dos angulos INDEPENDIENTES AL AZAR. No
+    # eran dos medidas distintas de lo mismo: al menos una no medía nada.
+    #
+    # El motivo es aritmetica de pixeles. GOES da un cuadro cada 15 minutos con
+    # 2.44 km por pixel, asi que una celda a 7 km/h se desplaza 0.7 px entre
+    # cuadros. Por debajo de un pixel la correlacion de fase no puede dar una
+    # direccion: devuelve el ruido del refinamiento subpixel, y lo devuelve con
+    # la misma cara de dato que un desplazamiento de veinte pixeles.
+    #
+    # Antes el umbral era 2 km/h, o sea 0.2 px: tres cuartas partes de los
+    # casos medidos caian en la zona donde el rumbo es inventado. De ahi que el
+    # cono apuntara "completamente a otro lado", que es como lo describio
+    # Alvaro antes de que ningun numero lo dijera.
+    #
+    # Ahora se exigen MOTION_MIN_PX pixeles de desplazamiento. Por debajo, el
+    # rumbo es None: no hay direccion que dar, y decirlo es la respuesta
+    # correcta. Cuesta quedarse sin cono los dias tranquilos; el precio de la
+    # alternativa es una flecha segura de si misma apuntando a cualquier lado.
+    dt_tipico = 15.0
+    desplaz_px = math.hypot(vy, vx) * dt_tipico
     bearing = None
-    if speed_kmh > 2.0:
+    if desplaz_px >= config.MOTION_MIN_PX:
         # fila crece hacia el sur -> componente norte = -vy
         bearing = (math.degrees(math.atan2(vx, -vy)) + 360.0) % 360.0
+    elif speed_kmh > 2.0:
+        log.info("movimiento de %.0f km/h = %.1f px en 15 min: por debajo de "
+                 "la resolucion, no se publica rumbo", speed_kmh, desplaz_px)
 
     spread = float(np.std(arr[:, 0]) + np.std(arr[:, 1]))
     agreement = 1.0 / (1.0 + spread * km_per_px * 60.0 / 15.0)
@@ -484,6 +511,11 @@ def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
                         cy: float, cx: float, km_per_px: float,
                         frame=None) -> None:
     """Identifica la celda significativa mas cercana que viene hacia ti."""
+    # Sin rumbo no hay "hacia ti". Elegir una celda igualmente seria inventar
+    # la parte que importa: cual de todas viene, y cuando. Mejor no señalar
+    # ninguna que señalar una al azar con un cono de aspecto convincente.
+    if motion.bearing_deg is None:
+        return
     threshold = 0.35
     mask = signal >= threshold
     if not mask.any():

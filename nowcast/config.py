@@ -197,3 +197,13 @@ USER_AGENT = "nowcast-ags/1.0 (personal precipitation nowcasting)"
 # todo el campo-. El criterio es el de siempre en este proyecto: preferir la
 # fuente vieja a una nueva que todavia no ha demostrado nada.
 DERIVA_CONFIANZA_MIN = 0.45
+
+
+# Desplazamiento minimo, en pixeles, para que la correlacion de fase pueda dar
+# un rumbo. Con 2.44 km/px y cuadros cada 15 min, 2 px son ~20 km/h.
+#
+# No es prudencia: por debajo de un pixel no hay direccion que extraer, y a
+# 1.5 px el error de rumbo ronda los 20 grados. Dos pixeles es donde el angulo
+# empieza a significar algo. Medido contra 380 tormentas: con el umbral viejo
+# -0.2 px- el rumbo del satelite era indistinguible del azar.
+MOTION_MIN_PX = 2.0
