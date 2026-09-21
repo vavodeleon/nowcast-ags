@@ -165,6 +165,18 @@ SALUD_CSV = os.path.join(ROOT, "data", "salud.csv")
 # porque la pagina solo baja los cuadros del dia que se este mirando.
 HIST_DIAS = 7
 
+# --- Presupuesto de tiempo por corrida ---------------------------------
+# El servicio muere a los 900 s (TimeoutStartSec). Una corrida normal tarda
+# ~70 s, pero con el enlace de casa saturado -alguien subiendo archivos a la
+# nube- se midieron 893 s: siete segundos de que systemd la matara a media
+# ejecucion, con git posiblemente a medio confirmar.
+#
+# La respuesta correcta no es subir el limite, es DEGRADAR. Pasado este
+# presupuesto la corrida renuncia a lo opcional -los rayos que falten, el
+# archivado del historial- y publica el pronostico igual. Mas vale un
+# pronostico sin capa de rayos que ningun pronostico.
+PRESUPUESTO_S = 300
+
 # --- Barometro fisico de la malla LoRa --------------------------------
 # El servicio de Meshtastic guarda aqui las lecturas del sensor. Es una
 # fuente OPCIONAL: si el archivo no existe, el sistema usa Open-Meteo y

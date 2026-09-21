@@ -331,9 +331,9 @@ const espera = () => new Promise((r) => process.nextTick(r));
   await espera(); await espera(); await espera();
   chk("sin red sí culpa a la descarga",
     /no se pudo descargar/i.test(el("sello").textContent), el("sello").textContent);
-  chk("y prueba los dos modos de caché antes de rendirse",
+  chk("y prueba los dos intentos antes de rendirse",
     /no-store/.test(el("diag-texto").textContent)
-    && /normal/.test(el("diag-texto").textContent));
+    && /paciente/.test(el("diag-texto").textContent));
   redCaida = false;
 
   console.log("\nJ. Una red que se CUELGA (el fallo real en datos móviles)");
@@ -352,8 +352,8 @@ const espera = () => new Promise((r) => process.nextTick(r));
   chk("mientras se cuelga, aún no hay veredicto",
     /cargando/i.test(el("titular").textContent), el("titular").textContent);
 
-  await avanzar(8000);          // vence el límite del primer intento
-  await avanzar(8000);          // y el del segundo
+  await avanzar(8000);          // vence el límite del primer intento (impaciente)
+  await avanzar(25000);         // y el del segundo (paciente)
   await enMarcha;
   await espera(); await espera();
 
@@ -375,9 +375,19 @@ const espera = () => new Promise((r) => process.nextTick(r));
     console.log("     " + linea);
   redColgada = false;
 
-  console.log("\nJ-bis. La red de seguridad de los 12 segundos");
+  console.log("\nJ-bis. La red de seguridad se deriva de los dos intentos");
+  // No puede avisar ANTES de que el segundo intento haya tenido su
+  // oportunidad: estaba fijada en 12 s y al alargar el intento paciente a
+  // 25 quedó anunciando un fallo con la petición todavía viva.
+  const alarma = temporizadores.find(t => t.ms >= 20000 && t.ms < 60000);
+  chk("hay una red de seguridad", !!alarma,
+    alarma ? `a los ${alarma.ms / 1000} s` : "no encontrada");
+  chk("y espera más que los dos intentos juntos",
+    alarma && alarma.ms > 8000 + 25000,
+    alarma ? `${alarma.ms} ms vs 33000 ms de intentos` : "");
   el("titular").textContent = "Cargando...";
-  await avanzar(12000);
+  if (alarma) { alarma.hecho = false; }
+  await avanzar(alarma ? alarma.ms : 40000);
   chk("un 'Cargando' que no cambia acaba avisando",
     !/cargando/i.test(el("titular").textContent), el("titular").textContent);
 

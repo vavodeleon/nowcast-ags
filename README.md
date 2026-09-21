@@ -171,6 +171,33 @@ El tablero muestra el Brier score y la comparación contra climatología. Un
 **skill score positivo** significa que el sistema le gana a simplemente decir
 "llueve el X% de los días". Ese es el número que importa.
 
+### Cuando el internet va lento, degrada en vez de morir
+
+Medido el 31 de agosto con la subida de casa saturada: una corrida que
+normalmente tarda **70 s** tardó **893 s**. El servicio muere a los 900
+(`TimeoutStartSec`), así que estuvo a siete segundos de que systemd la matara
+a media ejecución, con git posiblemente a medio confirmar.
+
+El mecanismo es bufferbloat: los acuses de recibo de TCP quedan atrapados
+detrás de la cola de subida, así que la **bajada** se estrangula aunque nadie
+la use. Y como `nowcast.service` es *oneshot*, systemd no arranca una corrida
+nueva mientras la anterior sigue viva — de ahí que las actualizaciones pasaran
+de 15 a 30 minutos.
+
+Subir el límite habría sido la respuesta fácil y equivocada: solo cambia el
+síntoma. La respuesta es un **presupuesto de tiempo** (`PRESUPUESTO_S`, 300 s):
+pasado ese punto la corrida renuncia a lo opcional —los archivos de rayos que
+falten, el archivado del historial, la temperatura— y publica el pronóstico
+igual. Los rayos son ~45 de las ~53 peticiones de una corrida, y se leen **del
+más reciente al más viejo**: si hay que cortar, lo que se pierde es lo antiguo,
+que es lo que menos dice sobre dónde está la tormenta ahora.
+
+`latest.json` publica `duracion_s` y `degradado` para que se note cuándo pasó.
+
+En la página, el mismo problema pide lo contrario. Un límite corto detecta una
+conexión **colgada**, pero una **saturada** solo es lenta y merece paciencia:
+el primer intento espera 8 s y el segundo 25.
+
 ### El canal de salud también aprende
 
 La lluvia se verifica sola: horas después se le puede preguntar a Open-Meteo
@@ -342,6 +369,7 @@ test_tormenta.py avisos de rayos: distancias, histéresis, transiciones
 test_presion.py  la ventana de 1 h contra la marea atmosférica
 test_barometro.py el sensor de la malla: unidades, ruido y respaldo
 test_salud.py    el bucle de respuestas: botones, recogida y resumen
+test_presupuesto.py degradar por tiempo en vez de morir por timeout
 test_migracion.py añadir columnas sin corromper el historial
 test_archivo.py  el historial: guardado, índice y poda
 test_pagina.js   la página, con DOM y red falsos (necesita node)

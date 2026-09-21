@@ -19,6 +19,7 @@ import io
 import logging
 import math
 import re
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -94,8 +95,16 @@ def _flashes(raw: bytes) -> list[tuple[float, float]]:
     return list(zip(lat[cerca].tolist(), lon[cerca].tolist()))
 
 
-def fetch_recent(minutos: int = 15) -> list[tuple[float, float]]:
-    """Destellos de los ultimos N minutos alrededor de la ciudad."""
+def fetch_recent(minutos: int = 15,
+                 limite: float | None = None) -> list[tuple[float, float]]:
+    """Destellos de los ultimos N minutos alrededor de la ciudad.
+
+    'limite' es un instante de time.monotonic() pasado el cual se deja de
+    descargar y se devuelve lo que haya. Son ~45 archivos por corrida, la
+    gran mayoria de las peticiones que hace el sistema; con el enlace lento
+    son tambien la mayor parte del tiempo. Media capa de rayos es mucho
+    mejor que una corrida que muere por tiempo agotado.
+    """
     ahora = datetime.now(timezone.utc)
     desde = ahora - timedelta(minutes=minutos)
 
@@ -112,15 +121,24 @@ def fetch_recent(minutos: int = 15) -> list[tuple[float, float]]:
 
     puntos: list[tuple[float, float]] = []
     fallos = 0
-    for _t, key in ventana:
+    leidos = 0
+    # Del mas reciente al mas viejo: si hay que cortar, lo que se pierde es
+    # lo antiguo, que es lo que menos importa para saber donde esta la
+    # tormenta ahora.
+    for _t, key in reversed(ventana):
+        if limite is not None and time.monotonic() > limite:
+            log.warning("rayos: presupuesto agotado, %s de %s archivos leidos",
+                        leidos, len(ventana))
+            break
         raw = http.get_bytes(f"{BUCKET}/{key}", timeout=30)
+        leidos += 1
         if not raw:
             fallos += 1
             continue
         puntos.extend(_flashes(raw))
 
-    log.info("rayos: %s destellos cerca en %s archivos (%s fallaron)",
-             len(puntos), len(ventana), fallos)
+    log.info("rayos: %s destellos cerca en %s de %s archivos (%s fallaron)",
+             len(puntos), leidos, len(ventana), fallos)
     return puntos
 
 
@@ -137,7 +155,7 @@ def _agrupar(puntos: list[tuple[float, float]]) -> list[list]:
             for (a, b), n in ordenado]
 
 
-def update() -> dict:
+def update(limite: float | None = None) -> dict:
     """Añade el bloque actual y descarta lo que ya pasó de una hora."""
     ahora = datetime.now(timezone.utc)
     previo = store.load_json(config.LIGHTNING_JSON, {}) or {}
@@ -148,7 +166,7 @@ def update() -> dict:
         log.info("el bloque %s ya estaba registrado", etiqueta)
     else:
         try:
-            puntos = fetch_recent(15)
+            puntos = fetch_recent(15, limite=limite)
         except Exception as exc:
             log.error("descarga de rayos fallo: %s", exc)
             puntos = []

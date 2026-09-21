@@ -95,6 +95,17 @@ def _confidence_label(radar_nc, ir_nc, cov: dict) -> str:
 def build_forecast() -> dict:
     """Corre el ciclo completo y devuelve el pronostico."""
     issued = store.now_utc()
+
+    # Presupuesto de tiempo. Ver el comentario de PRESUPUESTO_S en config.py:
+    # con el enlace saturado una corrida llego a 893 s, a siete segundos del
+    # limite de systemd. Pasado el presupuesto se renuncia a lo opcional en
+    # vez de arriesgar que maten la corrida a media escritura.
+    import time as _time
+    limite = _time.monotonic() + config.PRESUPUESTO_S
+
+    def queda(margen: float = 0.0) -> bool:
+        return _time.monotonic() < limite - margen
+
     cal = store.load_json(config.CALIBRATION_JSON, {})
 
     cov = sources.radar_coverage()
@@ -120,17 +131,20 @@ def build_forecast() -> dict:
         pres = pressure.PressureState()
 
     # temperatura (seccion aparte de la pagina)
-    try:
-        temperatura = sources.fetch_temperature()
-    except Exception as exc:
-        log.error("temperatura fallo: %s", exc)
-        temperatura = {}
+    temperatura = {}
+    if queda():
+        try:
+            temperatura = sources.fetch_temperature()
+        except Exception as exc:
+            log.error("temperatura fallo: %s", exc)
+    else:
+        log.warning("presupuesto agotado: se omite la temperatura")
 
     # rayos detectados por el GLM
     bloques_rayos = []
     tormenta = None
     try:
-        rayos = lightning.update()
+        rayos = lightning.update(limite=limite)
         bloques_rayos = rayos.get("bloques", [])
         rayos_resumen = {"total_hora": rayos.get("total_hora", 0),
                          "bloques": len(bloques_rayos)}
@@ -178,12 +192,16 @@ def build_forecast() -> dict:
         # Archivar para la animacion y el historial. Se copia el PNG que ya se
         # genero en vez de reproyectar otra vez: en un Pi 3 eso cuesta varios
         # segundos y daria exactamente lo mismo.
-        try:
-            puntos_ahora = bloques_rayos[-1].get("puntos") if bloques_rayos else None
-            archivo.guardar(issued, ruta_png, map_bounds, puntos_ahora)
-            archivo.podar()
-        except Exception as exc:
-            log.error("no se pudo archivar el cuadro: %s", exc)
+        if queda():
+            try:
+                puntos_ahora = (bloques_rayos[-1].get("puntos")
+                                if bloques_rayos else None)
+                archivo.guardar(issued, ruta_png, map_bounds, puntos_ahora)
+                archivo.podar()
+            except Exception as exc:
+                log.error("no se pudo archivar el cuadro: %s", exc)
+        else:
+            log.warning("presupuesto agotado: no se archiva este cuadro")
 
     # el movimiento que reportamos es el de la fuente mas confiable
     motion = None
@@ -304,6 +322,8 @@ def build_forecast() -> dict:
         "pressure": pressure.to_dict(pres),
         "temperatura": temperatura,
         "rayos": rayos_resumen,
+        "duracion_s": round(_time.monotonic() - (limite - config.PRESUPUESTO_S), 1),
+        "degradado": not queda(),
         "_tormenta": tormenta,
     }
     result["_rows"] = rows

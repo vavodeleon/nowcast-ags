@@ -912,7 +912,17 @@ function anotar(texto){
 // prefiere QUIC sobre UDP y muchas celulares lo degradan sin cerrar la
 // conexión, así que nadie avisa de nada. Con un límite de tiempo, el intento
 // se aborta, el segundo suele salir por TCP, y si tampoco, al menos se dice.
+// Dos límites distintos, porque son dos problemas distintos.
+//
+// 8 s detecta una conexión COLGADA: la que ni responde ni falla, que es lo
+// que hacía la red móvil. Pero una conexión SATURADA no está colgada, solo
+// es lenta: con la subida de casa al tope se midieron corridas del Pi de
+// 893 s en vez de 70. Con un único límite corto, la página diría "no se
+// pudo descargar" cuando en realidad solo hacía falta esperar.
+//
+// Así que el primer intento es impaciente y el segundo es paciente.
 const ESPERA_MAX_MS = 8000;
+const ESPERA_PACIENTE_MS = 25000;
 
 async function conLimite(url, opciones, ms){
   const ctrl = new AbortController();
@@ -929,14 +939,14 @@ async function pedirLatest(ahora){
   // en modo normal, que además reintenta la conexión y suele salir por otra
   // vía si la primera se colgó.
   const intentos = [
-    ["no-store", {cache: "no-store"}],
-    ["normal",   {}],
+    ["no-store", {cache: "no-store"}, ESPERA_MAX_MS],
+    ["paciente", {},                  ESPERA_PACIENTE_MS],
   ];
   let ultimoFallo;
-  for (const [nombre, opciones] of intentos){
+  for (const [nombre, opciones, espera] of intentos){
     const t0 = Date.now();
     try {
-      const r = await conLimite("latest.json?t=" + ahora, opciones, ESPERA_MAX_MS);
+      const r = await conLimite("latest.json?t=" + ahora, opciones, espera);
       if (!r.ok) throw new Error("HTTP " + r.status);
       const datos = await r.json();
       if (nombre !== "no-store")
@@ -945,7 +955,7 @@ async function pedirLatest(ahora){
     } catch (e) {
       ultimoFallo = e;
       const motivo = e.name === "AbortError"
-        ? `se colgó, abortada a los ${ESPERA_MAX_MS / 1000} s`
+        ? `se colgó, abortada a los ${espera / 1000} s`
         : (e.message || e);
       anotar(`descarga falló (${nombre}, ${Date.now() - t0} ms): ${motivo}`);
     }
@@ -1050,17 +1060,22 @@ document.addEventListener("DOMContentLoaded", () => {
   intentar("las capas", conectarCapas);
   intentar("el reproductor", conectarReproductor);
 
-  // Red de seguridad: si a los 12 segundos el titular sigue diciendo
-  // "Cargando...", algo se atascó de una forma que no previmos. Mejor
-  // decirlo que dejar al usuario mirando un mensaje que no cambia nunca.
+  // Red de seguridad: si pasado todo el margen el titular sigue diciendo
+  // "Cargando...", algo se atascó de una forma que no previmos.
+  //
+  // El plazo se DERIVA de los dos intentos en vez de fijarse a mano. Estaba
+  // en 12 s fijos, y al alargar el segundo intento a 25 quedó avisando de
+  // un fallo mientras la petición seguía viva y aún podía tener éxito. Un
+  // número suelto que otro número invalida en silencio.
+  const MARGEN_TOTAL_MS = ESPERA_MAX_MS + ESPERA_PACIENTE_MS + 5000;
   setTimeout(() => {
     const t = q("#titular");
     if (t && /cargando/i.test(t.textContent)) {
       t.textContent = "No se pudo cargar el dato";
       q("#icono").textContent = "📡";
-      anotar("seguía en 'Cargando...' a los 12 s");
+      anotar(`seguía en 'Cargando...' a los ${MARGEN_TOTAL_MS / 1000} s`);
     }
-  }, 12000);
+  }, MARGEN_TOTAL_MS);
 
   // Lo importante va antes que lo accesorio, y sin nada que pueda impedirlo.
   actualizar("arranque");
