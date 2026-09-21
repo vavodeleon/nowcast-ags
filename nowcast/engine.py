@@ -181,6 +181,80 @@ def _weighted_median(values: np.ndarray, weights: np.ndarray) -> float:
     return float(v[int(np.searchsorted(cum, 0.5))])
 
 
+def _compacidad(signal: np.ndarray, cy: float, cx: float,
+                km_per_px: float) -> float:
+    """¿Es un nucleo convectivo o un manto liso? 1 nucleo, 0 yunque.
+
+    El problema de fondo del infrarrojo, ya nombrado en `overhead.py` para el
+    presente pero no para el pronostico: el IR mide la temperatura del TECHO de
+    la nube, y el yunque de una tormenta a 100 km esta igual de frio que la
+    celda que la genero. Igual de frio, muchisimo mas extenso, y no moja.
+
+    Con un umbral de temperatura no se distinguen: hay que mirar la FORMA. Un
+    nucleo es compacto -muy frio en el centro, bastante mas templado a 60-90 km-
+    y un yunque es plano: todo su entorno esta igual de frio.
+
+    Medido el 21 de septiembre de 2026, esto no era una preocupacion teorica: en
+    las 36 correcciones humanas el infrarrojo tenia separacion **-19.3%**, o sea
+    que decia MAS probabilidad cuando no llovia. Estaba cantando yunques.
+    """
+    nucleo, _ = _sample_disc_full(signal, cy, cx, max(2.0, 15.0 / km_per_px))
+    r_int, r_ext = 60.0 / km_per_px, 95.0 / km_per_px
+    h, w = signal.shape
+    y0, y1 = int(max(0, cy - r_ext)), int(min(h, cy + r_ext + 1))
+    x0, x1 = int(max(0, cx - r_ext)), int(min(w, cx + r_ext + 1))
+    if y0 >= y1 or x0 >= x1:
+        return 1.0
+    yy, xx = np.ogrid[y0:y1, x0:x1]
+    d2 = (yy - cy) ** 2 + (xx - cx) ** 2
+    anillo = signal[y0:y1, x0:x1][(d2 >= r_int ** 2) & (d2 <= r_ext ** 2)]
+    if anillo.size < 20:
+        # Sin anillo suficiente no se puede opinar de la forma. Devolver 1.0
+        # -"asumimos nucleo"- es lo conservador aqui: deja el score como
+        # estaba en vez de castigarlo por falta de datos.
+        return 1.0
+    contraste = float(nucleo - np.mean(anillo))
+    # 0.5 en unidades de senal son ~7.5 K, la mitad del contraste que
+    # `overhead.py` exige para llamar nucleo a algo. Escala, no umbral: aqui
+    # interesa graduar, no decidir.
+    return float(np.clip(contraste / 0.5, 0.0, 1.0))
+
+
+def _tendencia_lagrangiana(frames: list[Frame], cy: float, cx: float,
+                           radius_px: float, motion: Motion,
+                           lead: int) -> float:
+    """¿La nube que llegara aqui se esta enfriando, o ya venia hecha?
+
+    Se compara la parcela con SIGO MISMA un cuadro antes, siguiendo el
+    movimiento -no el pixel-. Esa distincion es la que hace que la cuenta
+    signifique algo: mirar el mismo pixel mide el paso de la nube por encima,
+    que es la adveccion que el motor ya modela aparte.
+
+    Una celda convectiva enfria su tope varios grados cada quince minutos
+    mientras crece. Un yunque ya frio no cambia. Y una celda en disipacion se
+    calienta. Es la version LOCAL de `growth_rate`, que promedia el dominio
+    entero y por eso no puede distinguir una celda que crece de otra que muere
+    a cien kilometros.
+    """
+    if len(frames) < 2:
+        return 0.0
+    dt = (frames[-1].time - frames[-2].time).total_seconds() / 60.0
+    if dt <= 0:
+        return 0.0
+    ahora = to_signal(frames[-1])
+    antes = to_signal(frames[-2])
+    # Donde estaba esa misma parcela un cuadro antes: un dt mas atras en el
+    # camino que ya se retrocedio para el plazo.
+    sy = cy - motion.vy_px_min * (lead + dt)
+    sx = cx - motion.vx_px_min * (lead + dt)
+    s_ahora, vis_a = _sample_disc_full(ahora, cy - motion.vy_px_min * lead,
+                                       cx - motion.vx_px_min * lead, radius_px)
+    s_antes, vis_b = _sample_disc_full(antes, sy, sx, radius_px)
+    if vis_a < 0.35 or vis_b < 0.35:
+        return 0.0
+    return float((s_ahora - s_antes) * (15.0 / dt))
+
+
 def growth_rate(frames: list[Frame]) -> float:
     """Tendencia de intensidad del dominio: >1 creciendo, <1 disipandose."""
     if len(frames) < 2:
@@ -205,11 +279,17 @@ def growth_rate(frames: list[Frame]) -> float:
 @dataclass
 class LeadResult:
     lead_min: int
-    score: float                  # intensidad esperada [0, 1]
+    score: float                  # intensidad esperada [0, 1], ya ajustada
     peak_dbz_equiv: float
     hit_radius_km: float          # radio del cono de incertidumbre
     in_domain: bool = True        # False = el origen cae fuera de lo que veo
     visible_fraction: float = 1.0 # cuanto del cono cae dentro de la imagen
+    # Lo que decia el brillo a secas, antes de mirar si la nube crece o si es
+    # compacta. Se conserva para poder comparar las dos versiones sobre los
+    # mismos casos en vez de creer que el ajuste ayudo.
+    score_crudo: float = 0.0
+    tendencia: float = 0.0        # +: la nube de ese parcela se esta enfriando
+    compacidad: float = 1.0       # 1 nucleo compacto, 0 manto liso (yunque)
 
 
 @dataclass
@@ -229,6 +309,19 @@ class Nowcast:
             if lead.lead_min == lead_min:
                 return lead.score
         return 0.0
+
+    def score_crudo_at(self, lead_min: int) -> float:
+        """El score sin el ajuste por crecimiento y forma. Solo para medir."""
+        for lead in self.leads:
+            if lead.lead_min == lead_min:
+                return lead.score_crudo
+        return 0.0
+
+    def detalle_at(self, lead_min: int) -> tuple[float, float]:
+        for lead in self.leads:
+            if lead.lead_min == lead_min:
+                return lead.tendencia, lead.compacidad
+        return 0.0, 1.0
 
     def sees(self, lead_min: int) -> bool:
         """¿El sistema realmente alcanza a ver el origen de ese horizonte?"""
@@ -312,7 +405,29 @@ def run_nowcast(frames: list[Frame]) -> Nowcast | None:
         adjusted = raw * (damped_growth ** min(lead / 30.0, 3.0))
 
         skill = math.exp(-lead / 150.0)           # e-folding ~2.5 h
-        score = float(np.clip(adjusted * (0.35 + 0.65 * skill), 0.0, 1.0))
+        score_crudo = float(np.clip(adjusted * (0.35 + 0.65 * skill), 0.0, 1.0))
+
+        # --- ajuste por crecimiento local y forma, solo en el infrarrojo
+        #
+        # El radar mide lluvia directamente y no tiene el problema del yunque;
+        # aplicarle esto seria castigarlo por un defecto que no tiene.
+        tendencia, compacidad, factor = 0.0, 1.0, 1.0
+        if latest.kind != "radar":
+            tendencia = _tendencia_lagrangiana(frames, cy, cx, radius_px,
+                                               motion, lead)
+            compacidad = _compacidad(signal, sy, sx, km_per_px)
+            # Monotono creciente en las dos cosas, y eso es lo unico que hace
+            # falta que sea correcto: la isotonica recalibra la mezcla despues,
+            # asi que un sesgo global de escala se absorbe solo. Lo que la
+            # calibracion NO puede arreglar es el orden, y el orden es lo que
+            # esto cambia.
+            factor = float(np.clip(0.55 + 0.9 * compacidad + 2.0 * tendencia,
+                                   0.40, 1.40))
+        # El factor se calcula DENTRO de la rama a proposito. Estaba fuera, con
+        # compacidad=1.0 de valor neutro, y eso daba 1.45 -o sea un empujon del
+        # 40% al radar, la fuente que no debia tocarse-. Un valor "neutro" que
+        # no produce factor 1.0 no es neutro; lo encontro la prueba F.
+        score = float(np.clip(score_crudo * factor, 0.0, 1.0))
 
         dbz_equiv = (config.DBZ_TRACE
                      + score * (config.DBZ_STORM - config.DBZ_TRACE))
@@ -321,7 +436,10 @@ def run_nowcast(frames: list[Frame]) -> Nowcast | None:
             peak_dbz_equiv=round(dbz_equiv, 1),
             hit_radius_km=round(radius_px * km_per_px, 1),
             in_domain=visible >= 0.35,
-            visible_fraction=round(visible, 3)))
+            visible_fraction=round(visible, 3),
+            score_crudo=score_crudo,
+            tendencia=round(tendencia, 4),
+            compacidad=round(compacidad, 3)))
 
     _find_incoming_cell(nc, signal, motion, cy, cx, km_per_px)
     return nc

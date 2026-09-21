@@ -37,6 +37,15 @@ PRED_FIELDS = [
     # medicion: con estas dos columnas se puede separar una semana mala por el
     # tiempo de una semana mala por el enlace, que hoy son indistinguibles.
     "degradado", "duracion_s",
+    # El infrarrojo en sus dos versiones: la de brillo a secas y la ajustada
+    # por crecimiento local y forma del campo. Se guardan LAS DOS a proposito.
+    #
+    # El ajuste nace de una medicion -separacion -19.3% en las correcciones
+    # humanas, el infrarrojo cantando yunques- y de una explicacion fisica que
+    # encaja. Las dos cosas juntas siguen sin ser una comprobacion: la unica
+    # forma de saber si ayudo es comparar las dos series sobre los mismos casos,
+    # y para eso hay que haberlas guardado desde el primer dia.
+    "p_ir_crudo", "ir_tend", "ir_compac",
 ]
 
 log = logging.getLogger(__name__)

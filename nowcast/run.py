@@ -242,6 +242,11 @@ def build_forecast() -> dict:
         p_radar = _logistic(radar_nc.score_at(lead)) if radar_nc else 0.0
         # el IR ve topes nubosos frios, que no siempre llueven: pendiente menor
         p_ir = _logistic(ir_nc.score_at(lead), slope=6.5, offset=-2.6) if ir_nc else 0.0
+        # La misma cuenta sin el ajuste por yunque, para poder comparar las dos
+        # sobre los mismos casos. No se usa para nada mas.
+        p_ir_crudo = (_logistic(ir_nc.score_crudo_at(lead), slope=6.5,
+                                offset=-2.6) if ir_nc else 0.0)
+        ir_tend, ir_compac = ir_nc.detalle_at(lead) if ir_nc else (0.0, 1.0)
         p_models = model_probs.get(lead, 0.0)
 
         # Sin datos de una fuente, su peso se reparte entre las demas.
@@ -287,6 +292,9 @@ def build_forecast() -> dict:
             "w_models": round(w.get("models", 0), 3),
             "score_radar": round(radar_nc.score_at(lead), 4) if radar_nc else "",
             "score_ir": round(ir_nc.score_at(lead), 4) if ir_nc else "",
+            "p_ir_crudo": round(p_ir_crudo, 4) if ir_nc else "",
+            "ir_tend": round(ir_tend, 4) if ir_nc else "",
+            "ir_compac": round(ir_compac, 3) if ir_nc else "",
             "motion_speed_kmh": round(motion.speed_kmh, 1),
             "motion_from": motion.from_direction,
             "motion_conf": round(motion.confidence, 3),

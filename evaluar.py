@@ -147,7 +147,12 @@ def por_fuente(datos: list) -> dict:
     """Brier de cada fuente por separado, sobre los mismos casos."""
     salida = {}
     for col, nombre in (("p_ir", "infrarrojo"), ("p_models", "modelos"),
-                        ("p_radar", "radar")):
+                        ("p_radar", "radar"),
+                        # El infrarrojo antes del ajuste por yunque. Aparece al
+                        # lado del ajustado a proposito: la pregunta no es si el
+                        # ajuste es razonable -lo es, y tiene fisica detras- sino
+                        # si en ESTOS casos separa mejor. Si no, sobra.
+                        ("p_ir_crudo", "infrarrojo (sin ajuste)")):
         pares = [(_num(f.get(col)), y) for _p, y, f in datos]
         pares = [(p, y) for p, y in pares if p is not None]
         if len(pares) < 15:
@@ -397,6 +402,9 @@ def main() -> int:
         print(f"\n   Solo {n} casos con presión registrada; hacen falta ~30.")
         print("   Las columnas se añadieron el 31 de agosto; hay que esperar.")
 
+    print("\n7-bis. EL AJUSTE POR YUNQUE, ¿SIRVIÓ?")
+    ajuste(ref)
+
     print("\n8. ¿MEJORÓ DESDE EL ÚLTIMO CAMBIO? — el número acumulado no lo dice")
     por_tramo(ref)
 
@@ -412,6 +420,52 @@ def main() -> int:
               f"peor {peor['lead']} min ({peor['skill']:+.3f}).")
     print("=" * 66)
     return 0
+
+
+def ajuste(ref: dict) -> None:
+    """Las dos versiones del infrarrojo, cara a cara sobre los mismos casos.
+
+    El 21 de septiembre de 2026 se le añadio al infrarrojo un ajuste por
+    compacidad del campo y por enfriamiento local, para no confundir una celda
+    con el yunque de una tormenta lejana. Tenia motivo -separacion -19.3% en las
+    correcciones humanas- y fisica que lo respalda.
+
+    Nada de eso es una comprobacion. Por eso cada fila guarda las dos
+    probabilidades, la ajustada y la cruda, y aqui se comparan. Si el ajuste no
+    separa mejor, hay que quitarlo en vez de defenderlo.
+    """
+    pares = [(_num(f.get("p_ir")), _num(f.get("p_ir_crudo")), y)
+             for _p, y, f in ref["datos"]]
+    pares = [(a, b, y) for a, b, y in pares if a is not None and b is not None]
+    if len(pares) < 40:
+        print(f"\n   Solo {len(pares)} filas con las dos versiones; el ajuste")
+        print("   empezó a registrarse el 21/09/2026 y hacen falta unos días.")
+        return
+
+    ys = np.array([p[2] for p in pares], dtype=float)
+    aj = np.array([p[0] for p in pares])
+    cr = np.array([p[1] for p in pares])
+    if not (ys == 1).any() or not (ys == 0).any():
+        print("\n   Todavía no hay casos de los dos tipos.")
+        return
+
+    def sep(v):
+        return float(v[ys == 1].mean() - v[ys == 0].mean())
+
+    print(f"\n   {len(pares)} filas, plazo {ref['lead']} min\n")
+    print(f"   {'versión':>26} {'Brier':>8} {'separación':>12}")
+    print(f"   {'con ajuste':>26} {brier(aj, ys):>8.4f} {_pc(sep(aj)):>12}")
+    print(f"   {'sin ajuste (brillo a secas)':>26} {brier(cr, ys):>8.4f} "
+          f"{_pc(sep(cr)):>12}")
+    mejor = sep(aj) - sep(cr)
+    print(f"\n   El ajuste cambia la separación en {mejor * 100:+.1f} puntos.")
+    if mejor > 0.03:
+        print("   Sirve. Distinguir la forma de la nube aporta de verdad.")
+    elif mejor < -0.03:
+        print("   NO sirve: empeora. Hay que quitarlo, no afinarlo.")
+    else:
+        print("   Indistinguible por ahora. Con más casos se verá; si se queda")
+        print("   aquí, es complejidad que no se paga y conviene retirarla.")
 
 
 def por_tramo(ref: dict, dias: int = 7) -> None:
