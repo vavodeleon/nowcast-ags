@@ -397,6 +397,9 @@ def main() -> int:
         print(f"\n   Solo {n} casos con presión registrada; hacen falta ~30.")
         print("   Las columnas se añadieron el 31 de agosto; hay que esperar.")
 
+    print("\n8. ¿MEJORÓ DESDE EL ÚLTIMO CAMBIO? — el número acumulado no lo dice")
+    por_tramo(ref)
+
     print("\n" + "=" * 66)
     peor = min(informes, key=lambda r: r["skill"])
     mejor = max(informes, key=lambda r: r["skill"])
@@ -409,6 +412,73 @@ def main() -> int:
               f"peor {peor['lead']} min ({peor['skill']:+.3f}).")
     print("=" * 66)
     return 0
+
+
+def por_tramo(ref: dict, dias: int = 7) -> None:
+    """Skill por semanas, para que un cambio se pueda ver.
+
+    Nace de un problema concreto del 21 de septiembre de 2026. Ese dia se
+    cambio el reparto de pesos entre fuentes -el radar pasó de 0.26 a 0.0, los
+    modelos de 0.44 a 0.65- y las secciones de arriba siguieron diciendo
+    exactamente lo mismo: skill +0.302.
+
+    No era un fallo. `predictions.csv` guarda la probabilidad que se publico en
+    su momento, asi que las 4,500 filas historicas se calcularon con los pesos
+    VIEJOS y ningun cambio en el motor puede alterarlas. El numero acumulado
+    mide el pasado, y cuanto mas pasado hay, mas tarda en notarse el presente:
+    con 4,500 casos dentro, una semana buena mueve el total tres milesimas.
+
+    De ahi la unica forma de ver si un cambio sirvio: mirar por tramos. Y de
+    ahi tambien la trampa que esto tiene, que conviene tener presente al leerlo:
+    la lluvia no se reparte igual entre semanas. Una semana sin una sola
+    tormenta tiene tasa base casi cero y el skill se vuelve inestable -de ahi
+    que se imprima la tasa de cada tramo al lado-. Dos tramos solo son
+    comparables si llovio parecido en los dos.
+    """
+    from datetime import datetime, timedelta
+
+    filas = []
+    for p, y, f in ref["datos"]:
+        try:
+            t = datetime.fromisoformat(f["issued_utc"])
+        except (TypeError, ValueError, KeyError):
+            continue
+        filas.append((t, p, y))
+    if len(filas) < 200:
+        print(f"\n   Solo {len(filas)} casos con fecha; hacen falta más.")
+        return
+
+    filas.sort()
+    fin = filas[-1][0]
+    print(f"\n   Plazo {ref['lead']} min, en tramos de {dias} días "
+          "(el más reciente abajo).\n")
+    print(f"   {'desde':>12} {'casos':>7} {'lluvia':>8} {'Brier':>8} "
+          f"{'clima':>8} {'skill':>8}")
+
+    tramos = []
+    inicio = fin - timedelta(days=dias)
+    while True:
+        bloque = [(p, y) for t, p, y in filas if inicio <= t < inicio + timedelta(days=dias)]
+        if bloque:
+            tramos.append((inicio, bloque))
+        if inicio <= filas[0][0]:
+            break
+        inicio -= timedelta(days=dias)
+
+    for inicio, bloque in sorted(tramos):
+        ps = np.array([b[0] for b in bloque])
+        ys = np.array([b[1] for b in bloque], dtype=float)
+        base = float(ys.mean())
+        b = brier(ps, ys)
+        bc = brier(np.full_like(ps, base), ys)
+        sk = 1.0 - b / bc if bc > 0 else 0.0
+        aviso = "  ← casi sin lluvia, no comparable" if base < 0.03 else ""
+        print(f"   {inicio.strftime('%Y-%m-%d'):>12} {len(bloque):>7} "
+              f"{_pc(base):>8} {b:>8.4f} {bc:>8.4f} {sk:>+8.3f}{aviso}")
+
+    print("\n   Un cambio en el motor solo puede verse en los tramos")
+    print("   POSTERIORES al día en que se hizo. Si el último tramo no")
+    print("   mejora en dos o tres semanas con lluvia, el cambio no sirvió.")
 
 
 def _pc(v) -> str:
