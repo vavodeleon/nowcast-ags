@@ -302,6 +302,12 @@ class Nowcast:
     nearest_cell_km: float | None = None
     nearest_cell_eta_min: float | None = None
     nearest_cell_intensity: float = 0.0
+    # Donde esta la celda y cuanto puede desviarse antes de llegar. Sin esto,
+    # la pagina solo puede escribir "a 31 km del noroeste", que es correcto y
+    # no le dice nada a quien no esta acostumbrado a leer un mapa.
+    nearest_cell_lat: float | None = None
+    nearest_cell_lon: float | None = None
+    nearest_cell_radio_km: float | None = None
     valid_time: str = ""
 
     def score_at(self, lead_min: int) -> float:
@@ -441,12 +447,13 @@ def run_nowcast(frames: list[Frame]) -> Nowcast | None:
             tendencia=round(tendencia, 4),
             compacidad=round(compacidad, 3)))
 
-    _find_incoming_cell(nc, signal, motion, cy, cx, km_per_px)
+    _find_incoming_cell(nc, signal, motion, cy, cx, km_per_px, latest)
     return nc
 
 
 def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
-                        cy: float, cx: float, km_per_px: float) -> None:
+                        cy: float, cx: float, km_per_px: float,
+                        frame=None) -> None:
     """Identifica la celda significativa mas cercana que viene hacia ti."""
     threshold = 0.35
     mask = signal >= threshold
@@ -460,7 +467,8 @@ def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
         return
 
     speed_px_min = math.hypot(motion.vy_px_min, motion.vx_px_min)
-    best: tuple[float, float, float] | None = None  # (eta, dist_km, intensidad)
+    # (eta, dist_km, intensidad, gy, gx)
+    best: tuple[float, float, float, float, float] | None = None
 
     for idx in range(1, count + 1):
         cell = labels == idx
@@ -489,7 +497,7 @@ def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
         if eta == float("inf"):
             continue
         if best is None or eta < best[0]:
-            best = (eta, dist_km, intensity)
+            best = (eta, dist_km, intensity, float(gy), float(gx))
 
     # Un ETA mas alla del horizonte util no es informacion, es aritmetica.
     # Una celda a 180 km moviendose a 10 km/h "llega en 18 horas": para
@@ -500,3 +508,29 @@ def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
         nc.nearest_cell_eta_min = round(best[0], 1)
         nc.nearest_cell_km = round(best[1], 1)
         nc.nearest_cell_intensity = round(best[2], 3)
+
+        # --- donde esta, en coordenadas, y cuanto puede desviarse
+        #
+        # La rejilla del infrarrojo esta orientada al norte en esta ventana, y
+        # a esta latitud un grado de longitud mide cos(lat) veces uno de
+        # latitud. Es una aproximacion plana, y a 100 km el error es de
+        # centenares de metros: irrelevante al lado de un cono de
+        # incertidumbre que mide decenas de kilometros. Usar algo mas fino
+        # seria precision falsa.
+        if frame is not None:
+            _eta, _d, _i, gy, gx = best
+            norte_km = (cy - gy) * km_per_px
+            este_km = (gx - cx) * km_per_px
+            lat = frame.center_lat + norte_km / 111.0
+            coslat = max(0.2, math.cos(math.radians(frame.center_lat)))
+            lon = frame.center_lon + este_km / (111.0 * coslat)
+            nc.nearest_cell_lat = round(lat, 4)
+            nc.nearest_cell_lon = round(lon, 4)
+
+        # El radio del cono con la MISMA formula que usan los horizontes, para
+        # que el dibujo y los numeros no puedan contradecirse: 5 km de error
+        # minimo mas lo que se ensancha con el recorrido, y se ensancha mas
+        # cuanto menos fiable es la estimacion de movimiento.
+        recorrido_km = speed_px_min * km_per_px * best[0]
+        spread = 0.25 + 0.5 * (1.0 - motion.confidence)
+        nc.nearest_cell_radio_km = round(5.0 + recorrido_km * spread, 1)

@@ -10,16 +10,74 @@
      celular no los alcanza, la página entera se queda en blanco. Desde wifi
      se cacheaban y por eso después funcionaba. Sirviéndolas desde GitHub
      Pages hay una sola conexión que puede fallar en vez de tres. -->
+<!-- El tema se decide ANTES de pintar nada. Este script va aquí, sin defer y
+     sin esperar a nada, a propósito: si se resolviera con el resto del JS, el
+     navegador alcanzaría a pintar un cuadro en claro y quien abre la página de
+     noche recibiría un fogonazo blanco en la cara. Son unas pocas líneas
+     bloqueantes y es el único caso de toda la página donde eso se justifica. -->
+<script id="tema-temprano">
+(function(){
+  var g;
+  try { g = localStorage.getItem("tema"); } catch(e) { g = null; }
+  // Sin elección guardada se respeta la del sistema: si el teléfono está en
+  // oscuro, la página también, sin que nadie toque nada.
+  var oscuro = g ? g === "oscuro"
+    : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  if (oscuro) document.documentElement.dataset.tema = "oscuro";
+  document.documentElement.dataset.temaFijado = g ? "1" : "0";
+})();
+</script>
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f6f9" media="(prefers-color-scheme: light)">
 <link rel="stylesheet" href="vendor/leaflet.css">
 <script src="vendor/leaflet.js" defer></script>
 <script src="vendor/chart.umd.js" defer></script>
 <style>
+  /* Un solo juego de variables para los dos temas. Las superficies y los
+     bordes que antes estaban a mano -#eef2f7, #d3dae4, #fff- ahora tambien
+     son variables: si no, el modo oscuro se ve bien en el 90% de la pagina y
+     deja parches blancos en los botones, que es peor que no tenerlo. */
   :root{
     color-scheme: light;
     --bg:#f4f6f9; --card:#fff; --line:#e3e8ef;
     --ink:#16202e; --muted:#697790;
+    --sup:#eef2f7; --sup-hover:#e4eaf2; --borde-ctrl:#d3dae4;
+    --mapa-bg:#dde4ec; --enlace:#3b6fb6;
+    --si-borde:#bcd6f5; --si-fondo:#eaf2fd; --si-texto:#1a4d8f;
+    --no-borde:#cfe6d5; --no-fondo:#edf7f0; --no-texto:#166b3f;
+    --pin:#16202e; --pin-txt:#fff;
+    --mapa-filtro:grayscale(0.85) brightness(1.08) contrast(0.85) opacity(0.75);
     --verde:#1a9c5b; --amarillo:#d99b0b; --naranja:#e2701e;
     --rojo:#d6392f; --azul:#2b6fd4; --morado:#7b3fa0;
+  }
+
+  /* Negro puro, no gris oscuro. En una pantalla OLED el pixel #000 esta
+     APAGADO: no gasta bateria y el contraste es infinito. Un #121212 -lo que
+     recomienda Material Design, pensando en pantallas LCD- enciende los tres
+     subpixeles de cada punto de toda la pagina para dar un gris que en OLED
+     no aporta nada.
+
+     Lo que si se baja es el blanco del texto: #fff puro sobre negro puro
+     produce halos y cansa. #e8ecf2 da el mismo contraste practico sin brillar.
+
+     Los colores de estado tambien suben de luminosidad. Un rojo #d6392f sobre
+     negro se lee casi marron: sobre fondo claro compite con el blanco, sobre
+     fondo negro tiene que competir con nada y necesita mas luz. */
+  :root[data-tema="oscuro"]{
+    color-scheme: dark;
+    --bg:#000; --card:#0b0d10; --line:#1d222b;
+    --ink:#e8ecf2; --muted:#95a0b3;
+    --sup:#14181f; --sup-hover:#1c222b; --borde-ctrl:#262d38;
+    --mapa-bg:#05070a; --enlace:#6ba3f0;
+    --si-borde:#1d3a5c; --si-fondo:#0d1a2b; --si-texto:#93c0f5;
+    --no-borde:#1d4432; --no-fondo:#0b1d15; --no-texto:#7fd6a6;
+    --pin:#e8ecf2; --pin-txt:#000;
+    /* El mapa base se invierte para que sea oscuro sin cambiar de proveedor.
+       El hue-rotate compensa el volteo de tono que deja el invert: sin el,
+       el verde de los parques sale rosa. */
+    --mapa-filtro:invert(1) hue-rotate(180deg) grayscale(0.75) brightness(0.82) contrast(0.95);
+    --verde:#3ed88c; --amarillo:#f0c04a; --naranja:#ff9147;
+    --rojo:#ff6b5e; --azul:#5b9bf5; --morado:#b57ce0;
   }
   *{box-sizing:border-box}
   body{margin:0;padding:16px;background:var(--bg);color:var(--ink);
@@ -35,7 +93,7 @@
   .titular{font-size:30px;font-weight:700;letter-spacing:-.5px;margin:0}
   .apoyo{font-size:17px;color:var(--muted);margin-top:8px}
   .sello{display:inline-block;margin-top:14px;padding:4px 12px;border-radius:99px;
-    font-size:13px;background:#eef2f7;color:var(--muted)}
+    font-size:13px;background:var(--sup);color:var(--muted)}
 
   /* ---------- barras por hora ---------- */
   h2{font-size:12px;text-transform:uppercase;letter-spacing:.9px;
@@ -47,27 +105,28 @@
     transition:height .4s ease}
   .col small{font-size:11px;color:var(--muted);white-space:nowrap}
   .col b{font-size:13px;font-weight:700}
-  .sindato{background:repeating-linear-gradient(45deg,#e8edf3,#e8edf3 5px,
+  .sindato{background:repeating-linear-gradient(45deg,var(--sup),var(--sup) 5px,
     transparent 5px,transparent 10px);height:100%!important;border-radius:8px}
 
   /* ---------- mapa ---------- */
-  #mapa{height:340px;border-radius:12px;overflow:hidden;background:#dde4ec}
+  #mapa{height:340px;border-radius:12px;overflow:hidden;background:var(--mapa-bg)}
   /* Apaga el mapa base para que el infrarrojo y los rayos destaquen. */
-  .mapa-tenue{filter:grayscale(0.85) brightness(1.08) contrast(0.85) opacity(0.75)}
-  #reproductor{margin-top:10px;padding-top:10px;border-top:1px solid #e5e9ef}
+  .mapa-tenue{filter:var(--mapa-filtro)}
+  #reproductor{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
   .fila-repro{display:flex;align-items:center;gap:10px;margin-bottom:8px}
   .fila-repro:last-child{margin-bottom:0}
   #linea{flex:1;min-width:0}
   #play{width:38px;height:34px;font-size:15px;border-radius:9px;
-        border:1px solid #d3dae4;background:#fff;cursor:pointer;flex:none}
-  #play:active{background:#eef2f7}
+        border:1px solid var(--borde-ctrl);background:var(--card);cursor:pointer;flex:none}
+  #play:active{background:var(--sup)}
   #marca-hora{font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace;
               min-width:52px;text-align:right;flex:none}
-  #dia{padding:5px 8px;border-radius:8px;border:1px solid #d3dae4;background:#fff}
-  .tenue{color:#6b7684;font-size:12px;flex:1}
-  .tenue-btn{background:none;border:none;color:#3b6fb6;font-size:12px;
+  #dia{padding:5px 8px;border-radius:8px;border:1px solid var(--borde-ctrl);
+    background:var(--card);color:var(--ink)}
+  .tenue{color:var(--muted);font-size:12px;flex:1}
+  .tenue-btn{background:none;border:none;color:var(--enlace);font-size:12px;
              cursor:pointer;text-decoration:underline;padding:0}
-  #abrir-hist{cursor:pointer;border:1px solid #d3dae4;background:#fff}
+  #abrir-hist{cursor:pointer;border:1px solid var(--borde-ctrl);background:var(--card)}
   .leyenda{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:13px;
     color:var(--muted);align-items:center}
   .chip{display:inline-flex;align-items:center;gap:6px}
@@ -75,9 +134,9 @@
   .rayo{width:11px;height:11px;border-radius:50%;display:inline-block}
   .controles{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
   .toggle{display:inline-flex;align-items:center;gap:7px;cursor:pointer;
-    background:#eef2f7;border:1px solid var(--line);border-radius:99px;
+    background:var(--sup);border:1px solid var(--line);border-radius:99px;
     padding:6px 14px;font-size:14px;user-select:none;transition:background .15s}
-  .toggle:hover{background:#e4eaf2}
+  .toggle:hover{background:var(--sup-hover)}
   .toggle input{accent-color:var(--azul);width:15px;height:15px;cursor:pointer}
   .toggle b{color:var(--muted);font-weight:600}
   .temp-grande{font-size:52px;font-weight:700;line-height:1;letter-spacing:-2px}
@@ -86,11 +145,20 @@
     font-size:14px;color:var(--muted)}
   .btn-fb{display:inline-block;padding:7px 16px;border-radius:99px;font-size:14px;
     font-weight:600;text-decoration:none;border:1px solid var(--line);
-    background:#eef2f7;color:var(--ink);transition:background .15s}
-  .btn-fb:hover{background:#e0e7f0}
-  #btn-si{border-color:#bcd6f5;background:#eaf2fd;color:#1a4d8f}
-  #btn-no{border-color:#cfe6d5;background:#edf7f0;color:#166b3f}
+    background:var(--sup);color:var(--ink);transition:background .15s}
+  .btn-fb:hover{background:var(--sup-hover)}
+  #btn-si{border-color:var(--si-borde);background:var(--si-fondo);color:var(--si-texto)}
+  #btn-no{border-color:var(--no-borde);background:var(--no-fondo);color:var(--no-texto)}
   .nota-fb{font-size:12px;color:var(--muted);margin-top:9px;line-height:1.45}
+
+  /* ---------- interruptor de tema ---------- */
+  #btn-tema{position:absolute;top:10px;right:14px;width:38px;height:38px;
+    border-radius:50%;border:1px solid var(--line);background:var(--card);
+    color:var(--ink);font-size:17px;line-height:1;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .15s,border-color .15s;z-index:500}
+  #btn-tema:hover{background:var(--sup)}
+  .wrap{position:relative}
 
   /* ---------- presión ---------- */
   .nivel{display:flex;align-items:center;gap:16px;margin-bottom:6px}
@@ -122,6 +190,9 @@
 <body>
 <div class="wrap">
 
+  <button id="btn-tema" type="button" title="Cambiar entre claro y oscuro"
+          aria-label="Cambiar tema">🌙</button>
+
   <div class="card hero">
     <div class="icono" id="icono">⏳</div>
     <h1 class="titular" id="titular">Cargando…</h1>
@@ -152,6 +223,8 @@
         <span>Nubes</span></label>
       <label class="toggle"><input type="checkbox" id="cap-rayos" checked>
         <span>Rayos <b id="cuenta-rayos"></b></span></label>
+      <label class="toggle"><input type="checkbox" id="cap-cono" checked>
+        <span>Por dónde pasaría</span></label>
       <button id="abrir-hist" class="toggle" type="button">▶ Animación</button>
     </div>
 
@@ -186,6 +259,14 @@
       Imagen del satélite GOES-19. Los colores muestran qué tan fríos están los
       techos de las nubes: entre más frío, más alta y más cargada está la nube.
       Los círculos marcan 50, 100 y 150 km alrededor de la ciudad.
+    </p>
+    <p class="nota" id="nota-cono" hidden>
+      <b>La franja de colores</b> es por dónde pasaría la celda que viene. Se
+      va ensanchando hacia la ciudad porque cuanto más lejos tiene que viajar,
+      menos seguro es el camino: de dónde está ahora se sabe bastante, de por
+      dónde pasará en una hora, mucho menos. Si tu casa queda dentro de la
+      franja no significa que vaya a llover ahí seguro, sino que entra dentro
+      de lo posible.
     </p>
   </div>
 
@@ -267,7 +348,7 @@
   <footer>Se actualiza cada 15 minutos · <span id="sello-pie"></span></footer>
 </div>
 
-<script>
+<script id="pagina">
 const q = s => document.querySelector(s);
 const hay = v => v !== null && v !== undefined && !Number.isNaN(Number(v));
 const pct = v => hay(v) ? Math.round(v * 100) + "%" : "—";
@@ -389,11 +470,11 @@ function pintarPresion(p){
       datasets: [
         { label: "Medida",
           data: serie.map(s => s.msl),
-          borderColor: "#b9c4d4", pointRadius: 0, borderWidth: 1.5,
+          borderColor: css("--muted"), pointRadius: 0, borderWidth: 1.5,
           tension: .35, fill: false, segment: {borderDash: punteado} },
         { label: "Sin el vaivén diario",
           data: serie.map(s => s.limpia ?? s.msl),
-          borderColor: "#2b6fd4", backgroundColor: "rgba(43,111,212,.10)",
+          borderColor: css("--azul"), backgroundColor: css("--azul") + "1a",
           fill: true, pointRadius: 0, borderWidth: 2.8, tension: .35,
           segment: {borderDash: punteado} }
       ]
@@ -402,14 +483,14 @@ function pintarPresion(p){
       responsive: true, maintainAspectRatio: false,
       interaction: {mode: "index", intersect: false},
       scales: {
-        y: {ticks: {color: "#697790", callback: v => v + " hPa"},
-            grid: {color: "#eef2f7"}},
-        x: {ticks: {color: "#697790", maxTicksLimit: 7, maxRotation: 0},
+        y: {ticks: {color: css("--muted"), callback: v => v + " hPa"},
+            grid: {color: css("--line")}},
+        x: {ticks: {color: css("--muted"), maxTicksLimit: 7, maxRotation: 0},
             grid: {display: false}}
       },
       plugins: {
         legend: {display: true, labels: {boxWidth: 14, font: {size: 11},
-                 color: "#697790", usePointStyle: true}},
+                 color: css("--muted"), usePointStyle: true}},
         tooltip: {callbacks: {label: c => `${c.dataset.label}: ${c.parsed.y} hPa`}}
       }
     }
@@ -440,10 +521,10 @@ function pintarTemperatura(t){
       labels: serie.map(s => s.t),
       datasets: [
         { label:"Temperatura", data:serie.map(s => s.temp),
-          borderColor:"#e2701e", backgroundColor:"rgba(226,112,30,.10)",
+          borderColor:css("--naranja"), backgroundColor:css("--naranja") + "1a",
           fill:true, pointRadius:0, borderWidth:2.8, tension:.35 },
         { label:"Se siente como", data:serie.map(s => s.sensacion),
-          borderColor:"#c9a48c", pointRadius:0, borderWidth:1.6,
+          borderColor:css("--muted"), pointRadius:0, borderWidth:1.6,
           borderDash:[5,4], tension:.35, fill:false }
       ]
     },
@@ -451,12 +532,12 @@ function pintarTemperatura(t){
       responsive:true, maintainAspectRatio:false,
       interaction:{mode:"index",intersect:false},
       scales:{
-        y:{ticks:{color:"#697790",callback:v => v + "°"},grid:{color:"#eef2f7"}},
-        x:{ticks:{color:"#697790",maxTicksLimit:7,maxRotation:0},grid:{display:false}}
+        y:{ticks:{color:css("--muted"),callback:v => v + "°"},grid:{color:css("--line")}},
+        x:{ticks:{color:css("--muted"),maxTicksLimit:7,maxRotation:0},grid:{display:false}}
       },
       plugins:{
         legend:{display:true,labels:{boxWidth:14,font:{size:11},
-                color:"#697790",usePointStyle:true}},
+                color:css("--muted"),usePointStyle:true}},
         tooltip:{callbacks:{label:c => `${c.dataset.label}: ${c.parsed.y}°`}}
       }
     }
@@ -537,6 +618,100 @@ async function pintarRayos(){
   if (q("#cap-rayos").checked) capaRayos.addTo(mapa);
 }
 
+
+
+/* --------------------------------------------------------------------
+   Chart.js y Leaflet reciben colores como cadenas, no leen CSS. Si se
+   dejan escritos a mano, el modo oscuro deja las graficas con rejilla
+   gris claro sobre negro y los pines del mapa invisibles.
+
+   En vez de mantener dos paletas en paralelo -que es como se desincronizan-
+   se leen las MISMAS variables que usa el CSS. Una sola fuente de verdad,
+   igual que el menu de la malla se genera de su tabla.
+   -------------------------------------------------------------------- */
+function css(nombre){
+  return getComputedStyle(document.documentElement)
+           .getPropertyValue(nombre).trim();
+}
+function esOscuro(){
+  return document.documentElement.dataset.tema === "oscuro";
+}
+
+/* --------------------------------------------------------------------
+   El cono de incertidumbre de la celda que viene.
+
+   Existe porque "celda a 31 km del noroeste, ~55 min" es correcto y no
+   significa nada para quien no esta acostumbrado a leer un mapa. Un dibujo
+   contesta las dos preguntas que la gente hace de verdad: por donde va a
+   pasar, y que tan seguro es.
+
+   La franja se ensancha hacia la ciudad a proposito. Es lo contrario de lo
+   que uno dibujaria por intuicion -la celda esta lejos, luego "ahi" hay mas
+   duda- pero el error se acumula con el RECORRIDO: de donde esta ahora se
+   sabe bastante, porque se acaba de ver; de por donde pasara dentro de una
+   hora, mucho menos. Es la misma forma de los conos de huracan, y por el
+   mismo motivo.
+
+   El radio lo calcula el motor con la misma formula que usa para los
+   horizontes, asi que el dibujo no puede contradecir a los numeros.
+   -------------------------------------------------------------------- */
+let capaCono;
+
+function pintarCono(d){
+  if (capaCono){ capaCono.remove(); capaCono = null; }
+  const nota0 = q("#nota-cono");
+  if (nota0) nota0.hidden = true;
+  const c = d.celda;
+  if (!c || !hay(c.lat) || !hay(c.lon) || !hay(c.radio_km)) return;
+  if (!q("#cap-cono") || !q("#cap-cono").checked) return;
+
+  const kmLat = 111.0, kmLon = 111.0 * Math.cos(d.lat * Math.PI / 180);
+  // Vector celda -> ciudad, en kilometros.
+  const vx = (d.lon - c.lon) * kmLon, vy = (d.lat - c.lat) * kmLat;
+  const largo = Math.hypot(vx, vy);
+  if (largo < 1) return;
+  const ux = vx / largo, uy = vy / largo;        // unitario, hacia la ciudad
+  const px = -uy, py = ux;                        // perpendicular
+
+  // Se prolonga mas alla de la ciudad para que no parezca que la tormenta
+  // se detiene aqui. Nada se detiene aqui.
+  const masAlla = Math.min(largo * 0.4, 45);
+  const R_CELDA = 6;                              // lo que ya se ve, de ancho
+  const R_LEJOS = c.radio_km;
+
+  function punto(along, ancho){
+    const bx = c.lon + ux * along / kmLon + px * ancho / kmLon;
+    const by = c.lat + uy * along / kmLat + py * ancho / kmLat;
+    return [by, bx];
+  }
+  const pasos = 14, total = largo + masAlla;
+  const izq = [], der = [];
+  for (let i = 0; i <= pasos; i++){
+    const t = i / pasos, along = total * t;
+    const ancho = R_CELDA + (R_LEJOS - R_CELDA) * t;
+    izq.push(punto(along, ancho));
+    der.push(punto(along, -ancho));
+  }
+
+  const color = c.intensidad >= 0.6 ? "#e13c3c"
+              : c.intensidad >= 0.4 ? "#f08232" : "#f5d250";
+  const nota = q("#nota-cono");
+  if (nota) nota.hidden = false;
+  capaCono = L.layerGroup().addTo(mapa);
+  L.polygon(izq.concat(der.reverse()), {
+    color: color, weight: 1.5, opacity: .75, fillColor: color,
+    fillOpacity: .16, dashArray: "5 6", interactive: false
+  }).addTo(capaCono);
+
+  const cuando = hay(c.eta_min)
+    ? (c.eta_min < 90 ? `en ~${Math.round(c.eta_min)} min`
+                      : `en ~${(c.eta_min / 60).toFixed(1)} h`)
+    : "sin hora estimada";
+  L.circleMarker([c.lat, c.lon], {radius:8, color:css("--card"), weight:2,
+    fillColor: color, fillOpacity:.95}).addTo(capaCono)
+    .bindTooltip(`Celda a ${Math.round(c.km)} km · ${cuando}`,
+                 {direction:"top"});
+}
 function pintarMapa(d){
   if (typeof L === "undefined" || !hay(d.lat) || !hay(d.lon)) return;
   // Si se esta revisando el historial, una actualizacion del presente no
@@ -569,12 +744,12 @@ function pintarMapa(d){
 
   // anillos de distancia: dan escala sin necesidad de leer números
   [50000, 100000, 150000].forEach(r => {
-    L.circle([d.lat, d.lon], {radius:r, color:"#16202e", weight:1,
+    L.circle([d.lat, d.lon], {radius:r, color:css("--pin"), weight:1,
       opacity:.22, fill:false, dashArray:"4 6"}).addTo(mapa);
   });
 
-  L.circleMarker([d.lat, d.lon], {radius:7, color:"#fff", weight:2.5,
-    fillColor:"#16202e", fillOpacity:1}).addTo(mapa)
+  L.circleMarker([d.lat, d.lon], {radius:7, color:css("--card"), weight:2.5,
+    fillColor:css("--pin"), fillOpacity:1}).addTo(mapa)
     .bindTooltip("Aguascalientes", {permanent:false});
 
   // de dónde vienen las celdas
@@ -584,17 +759,19 @@ function pintarMapa(d){
     const rad = desde * Math.PI / 180, dist = 0.85;
     const destino = [d.lat + dist * Math.cos(rad),
                      d.lon + dist * Math.sin(rad) / Math.cos(d.lat * Math.PI / 180)];
-    L.polyline([[d.lat, d.lon], destino], {color:"#16202e", weight:2.5,
+    L.polyline([[d.lat, d.lon], destino], {color:css("--pin"), weight:2.5,
       opacity:.55, dashArray:"7 7"}).addTo(mapa);
     // iconSize [0,0] es necesario: por omisión divIcon mide 12x12 px y
     // recorta el texto de la etiqueta
     L.marker(destino, {interactive:false, icon: L.divIcon({
       className:"", iconSize:[0,0], iconAnchor:[0,0], html:
-      `<div style="background:#16202e;color:#fff;padding:3px 10px;border-radius:99px;
+      `<div style="background:${css("--pin")};color:${css("--pin-txt")};padding:3px 10px;border-radius:99px;
         font:600 11px -apple-system,sans-serif;white-space:nowrap;
         position:absolute;transform:translate(-50%,-50%)">vienen del ${d.motion_from}</div>`
     })}).addTo(mapa);
   }
+
+  pintarCono(d);
 
   setTimeout(() => mapa.invalidateSize(), 120);
   pintarRayos();
@@ -776,6 +953,75 @@ function conectarCapas(){
     alternar(() => capaSatelite, () => capaHistSat));
   q("#cap-rayos").addEventListener("change",
     alternar(() => capaRayos, () => capaHistRayos));
+  // El cono no tiene version historica: describe hacia donde va algo, y en el
+  // archivo eso ya paso. Se redibuja del ultimo dato en vez de alternarse.
+  q("#cap-cono").addEventListener("change", () => {
+    if (!mapa || hist) return;
+    if (capaCono){ capaCono.remove(); capaCono = null; }
+    if (ultimo) pintarCono(ultimo);
+  });
+}
+
+/* --------------------------------------------------------------------
+   Tema claro / oscuro.
+
+   Tres reglas, y la tercera es la que casi nunca se implementa:
+
+   1. Sin elección guardada, manda el sistema operativo.
+   2. Con elección guardada, manda ella y se recuerda entre visitas.
+   3. Si el sistema cambia -al anochecer, con el modo automático del
+      teléfono- la página lo sigue **solo mientras el usuario no haya
+      elegido**. Quien pulsó el botón dijo algo explícito, y un cambio
+      automático no debe pisarlo.
+
+   El estado "ha elegido o no" vive en `data-tema-fijado` para que esa
+   distinción sea legible desde el HTML en vez de estar implícita.
+   -------------------------------------------------------------------- */
+function aplicarTema(oscuro, fijar){
+  const raiz = document.documentElement;
+  if (oscuro) raiz.dataset.tema = "oscuro";
+  else delete raiz.dataset.tema;
+  if (fijar){
+    raiz.dataset.temaFijado = "1";
+    // localStorage puede lanzar: modo privado de Safari, almacenamiento
+    // lleno, cookies bloqueadas por sitio. Nada de eso debe tumbar la
+    // pagina por un botón de decoración.
+    try { localStorage.setItem("tema", oscuro ? "oscuro" : "claro"); }
+    catch(e){ anotar("no se pudo recordar el tema: " + e.message); }
+  }
+  const b = q("#btn-tema");
+  if (b) b.textContent = oscuro ? "☀️" : "🌙";
+  // Las gráficas y el mapa reciben colores como cadenas y no se enteran de
+  // que cambió el CSS. Hay que volver a dibujarlos con la paleta nueva.
+  if (ultimo){
+    try { render(ultimo); }
+    catch(e){ anotar("repintado tras cambiar tema: " + e.message); }
+  }
+}
+
+let temaConectado = false;
+
+function conectarTema(){
+  // Idempotente. En un navegador DOMContentLoaded dispara una sola vez, pero
+  // un segundo registro dejaria DOS oyentes en el boton: cada pulsacion
+  // cambiaria el tema dos veces y volveria al de partida, o sea un boton que
+  // no hace nada. Barato de evitar, caro de diagnosticar.
+  if (temaConectado) return;
+  temaConectado = true;
+  const b = q("#btn-tema");
+  if (b) b.addEventListener("click", () => aplicarTema(!esOscuro(), true));
+  aplicarTema(esOscuro(), false);
+
+  const mq = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
+  if (!mq) return;
+  const alCambiar = e => {
+    if (document.documentElement.dataset.temaFijado === "1") return;
+    aplicarTema(e.matches, false);
+  };
+  // addListener es el nombre viejo; Safari lo necesito hasta hace poco y no
+  // cuesta nada conservarlo.
+  if (mq.addEventListener) mq.addEventListener("change", alCambiar);
+  else if (mq.addListener) mq.addListener(alCambiar);
 }
 
 /* ---------- render principal ---------- */
@@ -1078,6 +1324,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }, MARGEN_TOTAL_MS);
 
   // Lo importante va antes que lo accesorio, y sin nada que pueda impedirlo.
+  conectarTema();
   actualizar("arranque");
 
   // Al volver a mirar la pestaña. Este es el caso que fallaba en el celular.
@@ -1095,7 +1342,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 <details id="diag" style="margin:18px auto 40px;max-width:640px;
-         font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#6b7684">
+         font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)">
   <summary style="cursor:pointer">Diagnóstico</summary>
   <div id="diag-entorno" style="margin:8px 0;white-space:pre-wrap"></div>
   <pre id="diag-texto" style="white-space:pre-wrap;margin:0"></pre>

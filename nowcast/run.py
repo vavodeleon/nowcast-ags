@@ -327,6 +327,17 @@ def build_forecast() -> dict:
         "growth": round(growth, 3),
         "cell_eta_min": primary.nearest_cell_eta_min if primary else None,
         "cell_km": primary.nearest_cell_km if primary else None,
+        # La celda como objeto dibujable. Va aparte de `cell_km`/`cell_eta_min`
+        # -que siguen igual- porque la malla LoRa los lee y su contrato no debe
+        # moverse por un cambio de la pagina.
+        "celda": ({
+            "lat": primary.nearest_cell_lat,
+            "lon": primary.nearest_cell_lon,
+            "km": primary.nearest_cell_km,
+            "eta_min": primary.nearest_cell_eta_min,
+            "intensidad": primary.nearest_cell_intensity,
+            "radio_km": primary.nearest_cell_radio_km,
+        } if primary and primary.nearest_cell_lat is not None else None),
         "cape": round(cape, 0),
         "radar_coverage": round(coverage, 3),
         "radar_usable": cov["usable"],

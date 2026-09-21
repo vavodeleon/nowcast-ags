@@ -113,6 +113,20 @@ chk("0.4 km se dice en palabras", notify._km(0.4) == "menos de 1 km",
 chk("3.2 km se redondea normal", notify._km(3.2) == "3 km", notify._km(3.2))
 chk("44 km igual", notify._km(44.0) == "44 km", notify._km(44.0))
 
+print("\nD-bis. La celda se publica sin romper lo que ya leía la malla")
+# `celda` es aditivo: `cell_km` y `cell_eta_min` siguen donde estaban porque
+# clima_mesh.py los lee. Un campo nuevo no puede ser excusa para mover uno
+# viejo.
+chk("cell_km sigue en su sitio", "cell_km" in ejemplo)
+chk("cell_eta_min también", "cell_eta_min" in ejemplo)
+celda = {"lat": 22.4, "lon": -102.8, "km": 80.0, "eta_min": 95.0,
+         "intensidad": 0.7, "radio_km": 34.0}
+for c in ("lat", "lon", "km", "eta_min", "intensidad", "radio_km"):
+    chk(f"celda.{c}", c in celda)
+fuente_run = open("nowcast/run.py", encoding="utf-8").read()
+chk("y vale null entero cuando no hay celda",
+    'if primary and primary.nearest_cell_lat is not None else None' in fuente_run)
+
 print("\nE. temperatura.serie lleva fecha explícita")
 # Sin fecha, la malla reconstruye el cruce de medianoche contando horas. Los
 # avisos de helada necesitan el minimo QUE VIENE, no el del dia calendario.

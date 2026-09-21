@@ -59,14 +59,51 @@ function elemento(id) {
 elementos["reproductor"] = nuevoElemento("reproductor");
 elementos["reproductor"].hidden = true;
 
+// La raíz del documento: el tema vive en sus data-atributos.
+const raiz = { dataset: {} };
+
 global.document = {
   addEventListener(ev, fn) { (oyentes[`doc:${ev}`] ||= []).push(fn); },
   querySelector(sel) { return elemento(sel.replace("#", "")); },
   getElementById(id) { return elemento(id); },
   createElement() { return nuevoElemento("nuevo"); },
+  documentElement: raiz,
   hidden: false,
 };
-global.window = { addEventListener(ev, fn) { (oyentes[`win:${ev}`] ||= []).push(fn); } };
+
+// Paleta falsa. No imita al CSS -eso haría falta un navegador- pero sí lo
+// que de verdad importa comprobar: que las gráficas y el mapa PIDEN los
+// colores en vez de llevarlos escritos, y que lo que piden cambia con el
+// tema. Si alguien vuelve a poner un "#697790" a mano, aquí se ve.
+const colores = { claro: {}, oscuro: {} };
+const pedidos = [];
+global.getComputedStyle = () => ({
+  getPropertyValue(n) {
+    pedidos.push(n);
+    return (raiz.dataset.tema === "oscuro" ? "#111111" : "#eeeeee");
+  },
+});
+
+// localStorage con interruptor de avería: Safari en modo privado lanza al
+// escribir, y eso no debe tumbar la página.
+let guardado = {};
+let almacenRoto = false;
+global.localStorage = {
+  getItem(k) { if (almacenRoto) throw new Error("bloqueado"); return guardado[k] ?? null; },
+  setItem(k, v) { if (almacenRoto) throw new Error("bloqueado"); guardado[k] = String(v); },
+};
+
+let sistemaOscuro = false;
+const oyentesMQ = [];
+global.window = {
+  addEventListener(ev, fn) { (oyentes[`win:${ev}`] ||= []).push(fn); },
+  matchMedia(q) {
+    return {
+      get matches() { return sistemaOscuro; },
+      addEventListener(_ev, fn) { oyentesMQ.push(fn); },
+    };
+  },
+};
 // Node ya define `navigator` como solo-lectura desde la v21; hay que
 // redefinir la propiedad en vez de asignarla.
 Object.defineProperty(global, "navigator", {
@@ -111,8 +148,21 @@ const capasEnMapa = new Set();
 function capaFalsa(tipo, extra = {}) {
   const base = {
     tipo, ...extra, hijos: extra.hijos,
-    addTo() { capasEnMapa.add(this); return this; },
-    remove() { capasEnMapa.delete(this); return this; },
+    // Una capa puede añadirse al mapa o a un grupo. La distinción importa:
+    // quitar el grupo tiene que llevarse a sus hijos, y con `addTo` tratando
+    // todo como "al mapa" el cono seguía contando como dibujado después de
+    // borrarlo. Era un fallo del simulacro, pero escondía justo lo que la
+    // prueba quería vigilar.
+    addTo(destino) {
+      if (destino && Array.isArray(destino.hijos)) destino.hijos.push(this);
+      else capasEnMapa.add(this);
+      return this;
+    },
+    remove() {
+      capasEnMapa.delete(this);
+      (this.hijos || []).forEach((h) => h.remove());
+      return this;
+    },
   };
   return new Proxy(base, {
     get(obj, prop) {
@@ -135,6 +185,9 @@ global.L = {
   polyline: () => capaFalsa("linea"),
   divIcon: () => ({}),
   circle: () => capaFalsa("circulo"),
+  // El cono. Se guardan los vértices porque su forma es lo que hay que
+  // comprobar: que se ensancha hacia la ciudad y no al revés.
+  polygon: (pts, o) => capaFalsa("poligono", { puntos: pts, opciones: o }),
 };
 global.Chart = class { constructor() {} destroy() {} update() {} };
 
@@ -190,7 +243,21 @@ global.fetch = async (url, opciones = {}) => {
 
 // -------------------------------------------------- cargar el script real
 const html = fs.readFileSync(`${__dirname}/docs/index.html`, "utf8");
-const js = html.match(/<script>\n([\s\S]*)\n<\/script>/)[1];
+
+// Los bloques se buscan por id, no por posición ni con un comodín goloso.
+// Antes era /<script>\n([\s\S]*)\n<\/script>/ y al añadir un segundo bloque
+// -el del tema, que va en el <head>- la captura se tragó desde el primero
+// hasta el último y la prueba entera dejó de arrancar.
+function bloque(id) {
+  const m = html.match(new RegExp(`<script id="${id}">\\n([\\s\\S]*?)\\n<\\/script>`));
+  if (!m) throw new Error(`no encontré el bloque de script id="${id}"`);
+  return m[1];
+}
+const js = bloque("pagina");
+
+// El del tema corre ANTES que nada en el navegador, así que aquí también:
+// decide si la página arranca en claro u oscuro.
+eval(bloque("tema-temprano"));
 
 // Las variables declaradas con `let` dentro de un eval quedan encerradas en
 // el ámbito del eval. Se añade un puente al final del mismo eval para poder
@@ -204,6 +271,7 @@ global.puente = {
   // Las declaraciones de función son ligables: se puede sustituir render
   // para provocar un fallo de dibujado de verdad.
   get render(){ return render },
+  get pintarCono(){ return pintarCono },
   set render(f){ render = f },
   get bitacora(){ return bitacora },
   get conectarCapas(){ return conectarCapas },
@@ -419,6 +487,98 @@ const espera = () => new Promise((r) => process.nextTick(r));
     (id) => !new RegExp(`id=["']${id}["']`).test(html));
   chk(`${consultados.size} elementos consultados, ninguno inexistente`,
     faltantes.length === 0, faltantes.join(", ") || "—");
+
+  console.log("\nN. El cono de incertidumbre");
+  // La celda va al noroeste de la ciudad y se mueve hacia ella.
+  const conDato = JSON.parse(JSON.stringify(RESPUESTAS["latest.json"]));
+  conDato.celda = {lat: conDato.lat + 0.55, lon: conDato.lon - 0.55,
+                   km: 80, eta_min: 95, intensidad: .7, radio_km: 34};
+  puente.pintarCono(conDato);
+  // El cono vive dentro de un grupo, así que hay que mirar también ahí.
+  const dibujadas = () => [...capasEnMapa].flatMap(
+    (c) => [c, ...(c.hijos || [])]);
+  const conos = dibujadas().filter((c) => c.tipo === "poligono");
+  chk("se dibuja el cono", conos.length === 1, `${conos.length}`);
+  chk("aparece la nota que lo explica", el("nota-cono").hidden === false);
+
+  if (conos.length) {
+    // El polígono se construye recorriendo un lado y volviendo por el otro,
+    // así que el primer y el último punto son los dos bordes junto a la
+    // CELDA, y los de en medio los del extremo lejano.
+    const p = conos[0].puntos;
+    const distKm = (a, b) => {
+      const dy = (a[0] - b[0]) * 111;
+      const dx = (a[1] - b[1]) * 111 * Math.cos(a[0] * Math.PI / 180);
+      return Math.hypot(dy, dx);
+    };
+    const anchoCelda = distKm(p[0], p[p.length - 1]);
+    const medio = p.length / 2;
+    const anchoLejos = distKm(p[medio - 1], p[medio]);
+    chk("es estrecho junto a la celda", anchoCelda < 15,
+        `${anchoCelda.toFixed(0)} km`);
+    chk("y ancho al otro extremo", anchoLejos > anchoCelda * 2,
+        `${anchoLejos.toFixed(0)} km`);
+    chk("el ancho lejano sale del radio que publica el motor",
+        Math.abs(anchoLejos - 2 * conDato.celda.radio_km) < 4,
+        `${anchoLejos.toFixed(0)} vs ${2 * conDato.celda.radio_km}`);
+  }
+
+  console.log("\nN-bis. Sin celda no se dibuja nada, y sin datos tampoco");
+  puente.pintarCono(RESPUESTAS["latest.json"]);
+  chk("desaparece el cono",
+      dibujadas().filter((c) => c.tipo === "poligono").length === 0);
+  chk("y la nota se esconde", el("nota-cono").hidden === true);
+  // Una celda a medio publicar -sin radio- no debe reventar el dibujado.
+  const aMedias = JSON.parse(JSON.stringify(conDato));
+  delete aMedias.celda.radio_km;
+  let reventó = false;
+  try { puente.pintarCono(aMedias); } catch (e) { reventó = true; }
+  chk("una celda sin radio se ignora sin lanzar", !reventó);
+
+  console.log("\nO. Tema claro y oscuro");
+  chk("sin elección guardada manda el sistema",
+      raiz.dataset.temaFijado === "0", raiz.dataset.temaFijado);
+  const eraOscuro = raiz.dataset.tema === "oscuro";
+  (oyentes["btn-tema:click"] || []).forEach((f) => f());
+  chk("el botón cambia el tema",
+      (raiz.dataset.tema === "oscuro") !== eraOscuro,
+      raiz.dataset.tema || "claro");
+  chk("y lo recuerda", guardado.tema === (eraOscuro ? "claro" : "oscuro"),
+      guardado.tema);
+  chk("queda marcado como elegido", raiz.dataset.temaFijado === "1");
+  chk("el icono del botón acompaña",
+      el("btn-tema").textContent === (raiz.dataset.tema === "oscuro" ? "☀️" : "🌙"),
+      el("btn-tema").textContent);
+
+  console.log("\nO-bis. Una elección explícita no la pisa el sistema");
+  const temaElegido = raiz.dataset.tema;
+  sistemaOscuro = !(temaElegido === "oscuro");
+  oyentesMQ.forEach((f) => f({ matches: sistemaOscuro }));
+  chk("el cambio del sistema se ignora", raiz.dataset.tema === temaElegido,
+      raiz.dataset.tema || "claro");
+
+  console.log("\nO-ter. Los colores se piden al CSS, no van escritos a mano");
+  // Si alguien vuelve a poner un "#697790" en una gráfica, aquí se nota:
+  // dejarían de pedirse las variables al repintar.
+  pedidos.length = 0;
+  puente.render(RESPUESTAS["latest.json"]);
+  const pedidasUnicas = new Set(pedidos);
+  chk("se consultan variables de color al dibujar", pedidasUnicas.size >= 3,
+      `${pedidasUnicas.size} variables`);
+  chk("y todas son variables CSS, no literales",
+      [...pedidasUnicas].every((n) => n.startsWith("--")),
+      [...pedidasUnicas].join(" "));
+
+  console.log("\nO-quater. Si el navegador bloquea el almacenamiento, no pasa nada");
+  almacenRoto = true;
+  let murió = false, fallo = "";
+  try { (oyentes["btn-tema:click"] || []).forEach((f) => f()); }
+  catch (e) { murió = true; fallo = e.message; }
+  chk("el botón sigue funcionando", !murió, fallo);
+  chk("y queda anotado en la bitácora",
+      puente.bitacora.some((l) => /no se pudo recordar el tema/.test(l)),
+      puente.bitacora.slice(-1)[0] || "(vacía)");
+  almacenRoto = false;
 
   console.log("\n" + (ok ? "TODO EN ORDEN" : "HAY FALLOS"));
   process.exit(ok ? 0 : 1);
