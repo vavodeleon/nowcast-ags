@@ -465,6 +465,7 @@ def por_tramo(ref: dict, dias: int = 7) -> None:
             break
         inicio -= timedelta(days=dias)
 
+    suma_sk, suma_n = 0.0, 0
     for inicio, bloque in sorted(tramos):
         ps = np.array([b[0] for b in bloque])
         ys = np.array([b[1] for b in bloque], dtype=float)
@@ -472,13 +473,42 @@ def por_tramo(ref: dict, dias: int = 7) -> None:
         b = brier(ps, ys)
         bc = brier(np.full_like(ps, base), ys)
         sk = 1.0 - b / bc if bc > 0 else 0.0
-        aviso = "  ← casi sin lluvia, no comparable" if base < 0.03 else ""
+        # Con tasa base muy baja, la climatologia del tramo ya es casi
+        # imbatible: acertar "no llueve" no cuesta nada. El skill de esas
+        # semanas no es comparable con el de una semana de temporada.
+        flojo = base < 0.07
+        aviso = "  ← poca lluvia, no comparable" if flojo else ""
+        if not flojo:
+            suma_sk += sk * len(bloque)
+            suma_n += len(bloque)
         print(f"   {inicio.strftime('%Y-%m-%d'):>12} {len(bloque):>7} "
               f"{_pc(base):>8} {b:>8.4f} {bc:>8.4f} {sk:>+8.3f}{aviso}")
 
     print("\n   Un cambio en el motor solo puede verse en los tramos")
     print("   POSTERIORES al día en que se hizo. Si el último tramo no")
     print("   mejora en dos o tres semanas con lluvia, el cambio no sirvió.")
+
+    if suma_n:
+        dentro = suma_sk / suma_n
+        print("\n   POR QUÉ ESTOS NÚMEROS SON MENORES QUE EL DE LA SECCIÓN 3")
+        print(f"     skill contra la climatología fija:     {ref['skill']:+.3f}")
+        print(f"     skill dentro de cada semana:           {dentro:+.3f}")
+        print(f"     lo que aporta saber la época del año:  "
+              f"{ref['skill'] - dentro:+.3f}")
+        print()
+        print("   No es una contradicción, son dos preguntas. La sección 3")
+        print("   compara contra 'llueve el 14.7% de los ratos, siempre', y")
+        print("   las semanas de aquí van del 4.7% al 26.8%: parte del mérito")
+        print("   es solo saber que agosto no es noviembre, que es cierto pero")
+        print("   fácil. Cada tramo compara contra SU propia tasa, así que mide")
+        print("   lo difícil: qué quince minutos, dentro de una semana lluviosa.")
+        print()
+        if ref["skill"] - dentro > 0.15:
+            print("   Y aquí la mayor parte del mérito viene de la época del año.")
+            print("   Eso es tasa base con pasos extra, no nowcasting.")
+        else:
+            print("   Aquí la mayor parte sobrevive al descuento, así que el")
+            print("   sistema distingue de verdad ratos, no solo temporadas.")
 
 
 def _pc(v) -> str:

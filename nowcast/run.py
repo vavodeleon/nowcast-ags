@@ -431,7 +431,16 @@ def main() -> None:
 
     # 3. nuevo pronostico
     result = build_forecast()
-    store.append_predictions(result.pop("_rows"))
+    # Se marca cada fila con si la corrida salio degradada. La semana del 14 de
+    # septiembre el skill cayo a +0.086 y no hay forma de saber si fue mal
+    # tiempo, mala suerte o corridas a medias por el enlace saturado -que ese
+    # mes llegaron a tardar 893 s de 900-. Sin la columna, esa pregunta no se
+    # puede contestar nunca; con ella, se contesta sola en dos semanas.
+    filas = result.pop("_rows")
+    for f in filas:
+        f["degradado"] = 1 if result.get("degradado") else 0
+        f["duracion_s"] = result.get("duracion_s", "")
+    store.append_predictions(filas)
     pres = result.pop("_pressure", None)
     tormenta = result.pop("_tormenta", None)
     store.prune()

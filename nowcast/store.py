@@ -31,6 +31,12 @@ PRED_FIELDS = [
     # prediccion, en unas semanas se puede comprobar si la caida de presion
     # de verdad anticipa la lluvia AQUI, en vez de decidirlo por intuicion.
     "pres_1h", "pres_3h", "pres_nivel", "pres_fuente",
+    # Salud de la corrida que produjo esta fila. Una corrida degradada publica
+    # con menos datos -media capa de rayos, sin temperatura, a veces sin
+    # archivar- y eso deberia empeorar el pronostico. "Deberia" no es una
+    # medicion: con estas dos columnas se puede separar una semana mala por el
+    # tiempo de una semana mala por el enlace, que hoy son indistinguibles.
+    "degradado", "duracion_s",
 ]
 
 log = logging.getLogger(__name__)
