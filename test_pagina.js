@@ -491,8 +491,10 @@ const espera = () => new Promise((r) => process.nextTick(r));
   console.log("\nN. El cono de incertidumbre");
   // La celda va al noroeste de la ciudad y se mueve hacia ella.
   const conDato = JSON.parse(JSON.stringify(RESPUESTAS["latest.json"]));
+  // Celda al noroeste, viajando hacia el sureste (135°): pasa por la ciudad.
   conDato.celda = {lat: conDato.lat + 0.55, lon: conDato.lon - 0.55,
                    km: 80, eta_min: 95, intensidad: .7, radio_km: 34};
+  conDato.motion_bearing = 135;
   puente.pintarCono(conDato);
   // El cono vive dentro de un grupo, así que hay que mirar también ahí.
   const dibujadas = () => [...capasEnMapa].flatMap(
@@ -521,7 +523,55 @@ const espera = () => new Promise((r) => process.nextTick(r));
     chk("el ancho lejano sale del radio que publica el motor",
         Math.abs(anchoLejos - 2 * conDato.celda.radio_km) < 4,
         `${anchoLejos.toFixed(0)} vs ${2 * conDato.celda.radio_km}`);
+
+    // Lo que hace que el dibujo signifique algo: el eje es el RUMBO de la
+    // celda, no una línea hacia la ciudad. Con el eje viejo esta prueba era
+    // imposible de escribir, porque el cono apuntaba aquí por construcción.
+    // Por el EJE CENTRAL, no por un borde. Un borde lleva el ensanchamiento
+    // dentro y sale inclinado unos grados respecto al rumbo: la primera
+    // versión de esta comprobación fallaba por eso, y era la prueba la que
+    // estaba mal, no el dibujo.
+    const medioDe = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const cerca = medioDe(p[0], p[p.length - 1]);
+    const lejos = medioDe(p[medio - 1], p[medio]);
+    const ejeY = lejos[0] - cerca[0], ejeX = lejos[1] - cerca[1];
+    const rumboDibujado = (Math.atan2(
+      ejeX * Math.cos(conDato.lat * Math.PI / 180), ejeY) * 180 / Math.PI
+      + 360) % 360;
+    const desvio = Math.abs(((rumboDibujado - conDato.motion_bearing + 180)
+                             % 360) - 180);
+    chk("el eje sigue el rumbo de la celda", desvio < 12,
+        `dibujado ${rumboDibujado.toFixed(0)}° vs rumbo ${conDato.motion_bearing}°`);
   }
+
+  console.log("\nN-ter. Una tormenta que pasa de largo se dibuja pasando de largo");
+  // El caso que el dibujo viejo no podía representar. Misma celda al
+  // noroeste, pero viajando al noreste (45°): se va, no viene. El cono tiene
+  // que irse con ella y dejar la ciudad fuera.
+  const deLargo = JSON.parse(JSON.stringify(conDato));
+  deLargo.motion_bearing = 45;
+  puente.pintarCono(deLargo);
+  const cono2 = dibujadas().filter((c) => c.tipo === "poligono");
+  chk("se dibuja", cono2.length === 1, `${cono2.length}`);
+  if (cono2.length) {
+    const p2 = cono2[0].puntos;
+    // Distancia mínima de la ciudad a cualquier vértice del polígono: si el
+    // cono se fuera hacia la ciudad, alguno caería encima.
+    const dCiudad = Math.min(...p2.map((v) => {
+      const dy = (v[0] - deLargo.lat) * 111;
+      const dx = (v[1] - deLargo.lon) * 111 * Math.cos(deLargo.lat * Math.PI / 180);
+      return Math.hypot(dy, dx);
+    }));
+    chk("y la ciudad queda lejos del cono", dCiudad > 40,
+        `${dCiudad.toFixed(0)} km del borde más cercano`);
+  }
+
+  console.log("\nN-quater. Sin rumbo no hay cono, porque no hay hacia dónde");
+  const sinRumbo = JSON.parse(JSON.stringify(conDato));
+  delete sinRumbo.motion_bearing;
+  puente.pintarCono(sinRumbo);
+  chk("no se dibuja",
+      dibujadas().filter((c) => c.tipo === "poligono").length === 0);
 
   console.log("\nN-bis. Sin celda no se dibuja nada, y sin datos tampoco");
   puente.pintarCono(RESPUESTAS["latest.json"]);

@@ -667,15 +667,35 @@ function pintarCono(d){
   if (!q("#cap-cono") || !q("#cap-cono").checked) return;
 
   const kmLat = 111.0, kmLon = 111.0 * Math.cos(d.lat * Math.PI / 180);
-  // Vector celda -> ciudad, en kilometros.
-  const vx = (d.lon - c.lon) * kmLon, vy = (d.lat - c.lat) * kmLat;
-  const largo = Math.hypot(vx, vy);
-  if (largo < 1) return;
-  const ux = vx / largo, uy = vy / largo;        // unitario, hacia la ciudad
-  const px = -uy, py = ux;                        // perpendicular
 
-  // Se prolonga mas alla de la ciudad para que no parezca que la tormenta
-  // se detiene aqui. Nada se detiene aqui.
+  // EL EJE ES EL RUMBO DE LA CELDA, no la línea celda→ciudad.
+  //
+  // Aquí estaba el error que Álvaro veía en el mapa. La primera versión
+  // dibujaba desde la celda hacia la ciudad, así que el cono apuntaba a la
+  // ciudad SIEMPRE, por construcción: era imposible dibujar una tormenta que
+  // pasa de largo. Y pasar de largo es lo normal — el motor acepta una celda
+  // como "viene hacia acá" mientras su trayectoria no se desvíe más de
+  // 15 km + 0.3·distancia, que a 80 km son 39 km de margen. Una celda que
+  // pasa a 39 km se dibujaba entrando de frente.
+  //
+  // De ahí que el cono pareciera apuntar "completamente a otro lado": no
+  // apuntaba a otro lado, apuntaba SIEMPRE aquí mientras la tormenta se iba
+  // por su camino. Un dibujo que no puede representar el caso frecuente no
+  // está describiendo nada.
+  //
+  // Ahora el eje es hacia dónde va la celda. Si la ciudad cae dentro de la
+  // franja, va a pasar por encima; si cae fuera, pasa de largo, y eso se ve.
+  if (!hay(d.motion_bearing)) return;
+  const rad = d.motion_bearing * Math.PI / 180;
+  const uy = Math.cos(rad), ux = Math.sin(rad);   // unitario, hacia donde va
+  const px = -uy, py = ux;                        // perpendicular
+  // Cuánto se prolonga: lo que recorrería hasta pasar la ciudad, con margen.
+  const hastaCiudad = Math.hypot((d.lon - c.lon) * kmLon,
+                                 (d.lat - c.lat) * kmLat);
+  const largo = Math.max(25, hastaCiudad);
+
+  // Se prolonga mas alla para que no parezca que la tormenta se detiene a la
+  // altura de la ciudad. Nada se detiene aqui.
   const masAlla = Math.min(largo * 0.4, 45);
   const R_CELDA = 6;                              // lo que ya se ve, de ancho
   const R_LEJOS = c.radio_km;
