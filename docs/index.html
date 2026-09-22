@@ -267,7 +267,14 @@
       menos seguro es el camino: de dónde está ahora se sabe bastante, de por
       dónde pasará en una hora, mucho menos. Si tu casa queda dentro de la
       franja no significa que vaya a llover ahí seguro, sino que entra dentro
-      de lo posible.
+      de lo posible. <b>Y si la ciudad queda fuera de la franja, esa tormenta
+      va a pasar de largo</b>: la franja sigue el rumbo de la celda, no una
+      línea hacia aquí.
+      <br><br>
+      La flecha de «en general» es el movimiento promedio de todo lo que se ve
+      en el mapa, que abarca casi 500 km. Cuando hay dos sistemas a la vez
+      pueden ir en direcciones distintas, y entonces <b>la franja manda sobre
+      la flecha</b>: está medida junto a la celda que viene.
     </p>
   </div>
 
@@ -685,8 +692,14 @@ function pintarCono(d){
   //
   // Ahora el eje es hacia dónde va la celda. Si la ciudad cae dentro de la
   // franja, va a pasar por encima; si cae fuera, pasa de largo, y eso se ve.
-  if (!hay(d.motion_bearing)) return;
-  const rad = d.motion_bearing * Math.PI / 180;
+  // El rumbo de la CELDA si lo hay; el del dominio solo como respaldo. Con
+  // una ventana de 488 km de lado caben dos sistemas moviéndose distinto, y
+  // el promedio no describe a ninguno. Dibujar el cono con el promedio fue lo
+  // que hizo que la franja señalara al oeste mientras la tormenta que llegaba
+  // venía del este.
+  const rumbo = hay(c.rumbo) ? c.rumbo : d.motion_bearing;
+  if (!hay(rumbo)) return;
+  const rad = rumbo * Math.PI / 180;
   const uy = Math.cos(rad), ux = Math.sin(rad);   // unitario, hacia donde va
   const px = -uy, py = ux;                        // perpendicular
   // Cuánto se prolonga: lo que recorrería hasta pasar la ciudad, con margen.
@@ -804,7 +817,7 @@ function pintarMapa(d){
       className:"", iconSize:[0,0], iconAnchor:[0,0], html:
       `<div style="background:${css("--pin")};color:${css("--pin-txt")};padding:3px 10px;border-radius:99px;
         font:600 11px -apple-system,sans-serif;white-space:nowrap;
-        position:absolute;transform:translate(-50%,-50%)">vienen del ${d.motion_from}${
+        position:absolute;transform:translate(-50%,-50%)">en general, del ${d.motion_from}${
           d.deriva && d.deriva.usada ? " ⚡" : ""}</div>`
     })}).addTo(mapa);
   }

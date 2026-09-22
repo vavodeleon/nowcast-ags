@@ -420,6 +420,11 @@ def build_forecast() -> dict:
             "eta_min": primary.nearest_cell_eta_min,
             "intensidad": primary.nearest_cell_intensity,
             "radio_km": primary.nearest_cell_radio_km,
+            # El rumbo de ESTA celda, medido donde ella esta. Es lo que hay
+            # que dibujar: el del dominio entero puede describir otro sistema
+            # a 200 km, y con 488 km de ventana eso pasa a diario.
+            "rumbo": primary.nearest_cell_bearing,
+            "kmh": primary.nearest_cell_kmh,
         } if primary and primary.nearest_cell_lat is not None else None),
         "cape": round(cape, 0),
         "radar_coverage": round(coverage, 3),

@@ -233,3 +233,8 @@ DERIVA_CONFIANZA_MIN = 0.45
 #
 # Ahi queda el corte, y cuesta poco: 38 de 381 casos con tormenta, un 10%.
 MOTION_MIN_PX = 1.0
+
+# Cuantas celdas candidatas se evaluan con movimiento propio. Cada una cuesta
+# una correlacion de fase sobre un recorte pequeño; seis es barato incluso en
+# un Pi 3 y cubre de sobra las que pueden llegar dentro del horizonte util.
+CELDAS_A_EVALUAR = 6

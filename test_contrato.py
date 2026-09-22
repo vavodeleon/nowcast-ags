@@ -121,8 +121,17 @@ chk("cell_km sigue en su sitio", "cell_km" in ejemplo)
 chk("cell_eta_min también", "cell_eta_min" in ejemplo)
 celda = {"lat": 22.4, "lon": -102.8, "km": 80.0, "eta_min": 95.0,
          "intensidad": 0.7, "radio_km": 34.0}
-for c in ("lat", "lon", "km", "eta_min", "intensidad", "radio_km"):
+celda["rumbo"] = 270.0
+celda["kmh"] = 38.0
+for c in ("lat", "lon", "km", "eta_min", "intensidad", "radio_km",
+          "rumbo", "kmh"):
     chk(f"celda.{c}", c in celda)
+# El rumbo propio de la celda es lo que dibuja el cono. Sin el, la pagina cae
+# al promedio del dominio, que con 488 km de ventana puede describir otro
+# sistema a 200 km de distancia.
+pagina = open("docs/index.html", encoding="utf-8").read()
+chk("la página prefiere el rumbo de la celda",
+    'hay(c.rumbo) ? c.rumbo : d.motion_bearing' in pagina)
 fuente_run = open("nowcast/run.py", encoding="utf-8").read()
 chk("y vale null entero cuando no hay celda",
     'if primary and primary.nearest_cell_lat is not None else None' in fuente_run)

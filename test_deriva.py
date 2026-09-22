@@ -221,5 +221,76 @@ chk("y deja su propio rumbo como referencia para la siguiente",
 chk("aunque la confianza sea alta", girada.confianza > 0.5,
     f"{girada.confianza:.2f}")
 
+print("\nL. Dos sistemas a la vez: cada celda con su propio movimiento")
+# La tormenta del 21 de septiembre de 2026. Un complejo grande a 100 km al
+# OESTE yendo al este, y una celda al ESTE de la ciudad viniendo hacia ella.
+# La mediana sobre los 488 km de la ventana decia "del oeste" -cierto para el
+# complejo grande, inutil para lo que se le venia encima- y el sistema lo
+# publicaba con total seguridad.
+GRANDE = 34.0     # el complejo domina el promedio del dominio
+CERCA = 12.0
+
+
+def dos_sistemas(i):
+    """Complejo al oeste yendo al ESTE; celda al este viniendo al OESTE."""
+    yy, xx = np.mgrid[0:N, 0:N]
+    bt = np.full((N, N), 290.0)
+    # complejo grande al oeste (columna baja), moviendose al este
+    bt -= 75 * np.exp(-((yy - 80) ** 2 + (xx - (20 + 4.0 * i)) ** 2)
+                      / (2 * GRANDE ** 2))
+    # celda compacta al este (columna alta), moviendose al oeste
+    bt -= 75 * np.exp(-((yy - 80) ** 2 + (xx - (132 - 4.0 * i)) ** 2)
+                      / (2 * CERCA ** 2))
+    return bt.astype(np.float32)
+
+
+base = datetime(2026, 9, 21, 20, 0, tzinfo=timezone.utc)
+mezcla_f = [Frame(time=base + timedelta(minutes=15 * i), data=dos_sistemas(i),
+                  km_per_px=KM_PX, center_lat=LAT0, center_lon=LON0, kind="ir")
+            for i in range(4)]
+
+glob = engine.estimate_motion(mezcla_f)
+cerca_local = engine.motion_en(mezcla_f, 80, 132, radio_px=28)
+print(f"\n     dominio entero: {glob.from_direction} "
+      f"({glob.bearing_deg:.0f}°)" if glob.bearing_deg is not None
+      else "\n     dominio entero: sin rumbo")
+print(f"     junto a la celda del este: {cerca_local.from_direction} "
+      f"({cerca_local.bearing_deg:.0f}°)" if cerca_local.bearing_deg is not None
+      else "     junto a la celda: sin rumbo")
+chk("la medida local ve la celda yendo al oeste",
+    cerca_local.bearing_deg is not None
+    and abs(((cerca_local.bearing_deg - 270 + 180) % 360) - 180) < 30,
+    f"{cerca_local.bearing_deg:.0f}°" if cerca_local.bearing_deg else "—")
+chk("y dice que viene del este", cerca_local.from_direction == "este",
+    cerca_local.from_direction)
+# Lo que de verdad hay que fijar no es que el global se equivoque -eso
+# depende de cual de los dos sistemas tenga la estructura mas nitida, y en
+# este simulacro gana la celda compacta- sino que medir LOCALMENTE separe los
+# dos movimientos. Un unico vector, sea cual sea, no puede describir a los dos.
+lejos_local = engine.motion_en(mezcla_f, 80, 20, radio_px=28)
+print(f"     junto al complejo del oeste: {lejos_local.from_direction} "
+      f"({lejos_local.bearing_deg:.0f}°)" if lejos_local.bearing_deg is not None
+      else "     junto al complejo: sin rumbo")
+chk("el complejo del oeste se mide yendo al este",
+    lejos_local.bearing_deg is not None
+    and abs(((lejos_local.bearing_deg - 90 + 180) % 360) - 180) < 30,
+    f"{lejos_local.bearing_deg:.0f}°" if lejos_local.bearing_deg else "—")
+chk("o sea que las dos medidas locales son opuestas",
+    lejos_local.bearing_deg is not None and cerca_local.bearing_deg is not None
+    and abs(((lejos_local.bearing_deg - cerca_local.bearing_deg + 180) % 360)
+            - 180) > 120,
+    "un solo vector no puede describir a los dos")
+
+print("\nM. Y la celda que se elige lleva ese movimiento propio")
+nc = engine.run_nowcast(mezcla_f)
+chk("hay celda", nc is not None and nc.nearest_cell_km is not None,
+    str(nc.nearest_cell_km) if nc else "—")
+if nc and nc.nearest_cell_bearing is not None:
+    print(f"     celda elegida a {nc.nearest_cell_km:.0f} km, "
+          f"va hacia {nc.nearest_cell_bearing:.0f}° a "
+          f"{nc.nearest_cell_kmh:.0f} km/h")
+chk("con rumbo propio publicado",
+    nc is not None and nc.nearest_cell_bearing is not None)
+
 print("\n" + ("TODO EN ORDEN" if ok else "HAY FALLOS"))
 sys.exit(0 if ok else 1)

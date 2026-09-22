@@ -495,6 +495,7 @@ const espera = () => new Promise((r) => process.nextTick(r));
   conDato.celda = {lat: conDato.lat + 0.55, lon: conDato.lon - 0.55,
                    km: 80, eta_min: 95, intensidad: .7, radio_km: 34};
   conDato.motion_bearing = 135;
+  conDato.celda.rumbo = 135;
   puente.pintarCono(conDato);
   // El cono vive dentro de un grupo, así que hay que mirar también ahí.
   const dibujadas = () => [...capasEnMapa].flatMap(
@@ -550,6 +551,7 @@ const espera = () => new Promise((r) => process.nextTick(r));
   // que irse con ella y dejar la ciudad fuera.
   const deLargo = JSON.parse(JSON.stringify(conDato));
   deLargo.motion_bearing = 45;
+  deLargo.celda.rumbo = 45;
   puente.pintarCono(deLargo);
   const cono2 = dibujadas().filter((c) => c.tipo === "poligono");
   chk("se dibuja", cono2.length === 1, `${cono2.length}`);
@@ -566,9 +568,32 @@ const espera = () => new Promise((r) => process.nextTick(r));
         `${dCiudad.toFixed(0)} km del borde más cercano`);
   }
 
+  console.log("\nN-quinquies. La celda manda sobre el promedio del dominio");
+  // El caso del 21/09/2026: el dominio dice una cosa y la celda otra. Se
+  // dibuja la de la celda, que es la que va a pasar por aquí.
+  const discrepa = JSON.parse(JSON.stringify(conDato));
+  discrepa.motion_bearing = 90;     // el dominio: hacia el este
+  discrepa.celda.rumbo = 270;       // esta celda: hacia el oeste
+  puente.pintarCono(discrepa);
+  const cono3 = dibujadas().filter((c) => c.tipo === "poligono");
+  if (cono3.length) {
+    const p3 = cono3[0].puntos, m3 = p3.length / 2;
+    const medioDe3 = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const c1 = medioDe3(p3[0], p3[p3.length - 1]);
+    const c2 = medioDe3(p3[m3 - 1], p3[m3]);
+    const r3 = (Math.atan2((c2[1] - c1[1]) * Math.cos(discrepa.lat * Math.PI / 180),
+                           c2[0] - c1[0]) * 180 / Math.PI + 360) % 360;
+    chk("el cono sigue a la celda, no al dominio",
+        Math.abs(((r3 - 270 + 180) % 360) - 180) < 12,
+        `dibujado ${r3.toFixed(0)}° (celda 270°, dominio 90°)`);
+  } else {
+    chk("se dibuja el cono con rumbo de celda", false, "no se dibujó");
+  }
+
   console.log("\nN-quater. Sin rumbo no hay cono, porque no hay hacia dónde");
   const sinRumbo = JSON.parse(JSON.stringify(conDato));
   delete sinRumbo.motion_bearing;
+  delete sinRumbo.celda.rumbo;
   puente.pintarCono(sinRumbo);
   chk("no se dibuja",
       dibujadas().filter((c) => c.tipo === "poligono").length === 0);

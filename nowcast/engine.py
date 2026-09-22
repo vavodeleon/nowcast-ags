@@ -199,6 +199,49 @@ def estimate_motion(frames: list[Frame]) -> Motion:
                   confidence=float(np.clip(conf * agreement, 0.0, 1.0)))
 
 
+def motion_en(frames: list[Frame], cy: float, cx: float,
+              radio_px: float = 40.0) -> Motion:
+    """El movimiento ALREDEDOR de un punto, no el del dominio entero.
+
+    Esta funcion existe por la tormenta del 21 de septiembre de 2026. Alvaro
+    veia celdas con rayos llegando desde el este mientras el sistema insistia
+    en "vienen del oeste". No era un signo invertido ni cizalladura: el archivo
+    de descargas mostraba el grueso de la actividad a 100 km al OESTE de la
+    ciudad, y esa era la que mandaba en el promedio.
+
+    La ventana del infrarrojo mide 488 km de lado. `estimate_motion` saca UNA
+    mediana ponderada sobre todo ese dominio -global mas cuatro cuadrantes- y
+    con dos sistemas dentro moviendose distinto, esa mediana no describe a
+    ninguno de los dos. Describe un promedio continental que no le pasa por
+    encima a nadie.
+
+    Para el dato que de verdad importa -por donde va LA celda que viene- hay
+    que medir donde esta esa celda. Eso es lo que hace esto: la misma
+    correlacion de fase, sobre un recorte centrado en ella.
+
+    El radio por defecto, 40 px, son ~100 km: suficiente para que una celda a
+    50 km/h no se salga del recorte entre cuadros, y bastante mas pequeño que
+    la distancia tipica entre sistemas distintos.
+    """
+    if len(frames) < 2:
+        return Motion()
+    h, w = frames[-1].data.shape
+    r = int(max(16, min(radio_px, min(h, w) / 2)))
+    y0, y1 = int(max(0, cy - r)), int(min(h, cy + r))
+    x0, x1 = int(max(0, cx - r)), int(min(w, cx + r))
+    # Un recorte demasiado pegado al borde no tiene con que correlacionar.
+    if (y1 - y0) < 16 or (x1 - x0) < 16:
+        return Motion()
+
+    recortes = []
+    for f in frames:
+        sub = Frame(time=f.time, data=f.data[y0:y1, x0:x1],
+                    km_per_px=f.km_per_px, center_lat=f.center_lat,
+                    center_lon=f.center_lon, kind=f.kind)
+        recortes.append(sub)
+    return estimate_motion(recortes)
+
+
 def _weighted_median(values: np.ndarray, weights: np.ndarray) -> float:
     order = np.argsort(values)
     v, w = values[order], weights[order]
@@ -335,6 +378,10 @@ class Nowcast:
     nearest_cell_lat: float | None = None
     nearest_cell_lon: float | None = None
     nearest_cell_radio_km: float | None = None
+    # El movimiento medido DONDE ESTA la celda, que puede no tener nada que
+    # ver con el del dominio entero.
+    nearest_cell_bearing: float | None = None
+    nearest_cell_kmh: float = 0.0
     valid_time: str = ""
 
     def score_at(self, lead_min: int) -> float:
@@ -474,7 +521,7 @@ def run_nowcast(frames: list[Frame]) -> Nowcast | None:
             tendencia=round(tendencia, 4),
             compacidad=round(compacidad, 3)))
 
-    _find_incoming_cell(nc, signal, motion, cy, cx, km_per_px, latest)
+    _find_incoming_cell(nc, signal, motion, cy, cx, km_per_px, latest, frames)
     return nc
 
 
@@ -504,18 +551,28 @@ def recolocar_celda(nc: Nowcast, frames: list[Frame], motion: Motion) -> None:
     nc.nearest_cell_lat = None
     nc.nearest_cell_lon = None
     nc.nearest_cell_radio_km = None
-    _find_incoming_cell(nc, signal, motion, cy, cx, latest.km_per_px, latest)
+    nc.nearest_cell_bearing = None
+    nc.nearest_cell_kmh = 0.0
+    _find_incoming_cell(nc, signal, motion, cy, cx, latest.km_per_px, latest,
+                        frames)
 
 
 def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
                         cy: float, cx: float, km_per_px: float,
-                        frame=None) -> None:
-    """Identifica la celda significativa mas cercana que viene hacia ti."""
-    # Sin rumbo no hay "hacia ti". Elegir una celda igualmente seria inventar
-    # la parte que importa: cual de todas viene, y cuando. Mejor no señalar
-    # ninguna que señalar una al azar con un cono de aspecto convincente.
-    if motion.bearing_deg is None:
-        return
+                        frame=None, frames: list[Frame] | None = None) -> None:
+    """Identifica la celda significativa mas cercana que viene hacia ti.
+
+    Cada candidata se evalua con el movimiento medido DONDE ELLA ESTA, no con
+    el del dominio entero. La diferencia dejo de ser teorica el 21 de
+    septiembre de 2026: con un complejo grande a 100 km al oeste y celdas
+    llegando por el este, la mediana global decia "del oeste" -correcto para
+    el complejo, inutil para lo que se le venia encima a Alvaro- y el sistema
+    publicaba eso con total seguridad.
+
+    Una ventana de 488 km de lado tiene sitio de sobra para dos sistemas que
+    van cada uno a lo suyo. Un solo vector para toda ella describe un promedio
+    que no le pasa por encima a nadie.
+    """
     threshold = 0.35
     mask = signal >= threshold
     if not mask.any():
@@ -527,48 +584,62 @@ def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
     if count == 0:
         return
 
-    speed_px_min = math.hypot(motion.vy_px_min, motion.vx_px_min)
-    # (eta, dist_km, intensidad, gy, gx)
-    best: tuple[float, float, float, float, float] | None = None
-
+    # Candidatas: con tamaño suficiente y ordenadas por cercania. Se limita el
+    # numero porque cada una cuesta una correlacion de fase mas, y en un Pi 3
+    # con el presupuesto de tiempo encima eso no es gratis. Las lejanas
+    # tampoco aportan: su ETA caeria fuera del horizonte util de todas formas.
+    candidatas = []
     for idx in range(1, count + 1):
         cell = labels == idx
         area_px = int(cell.sum())
         if area_px * (km_per_px ** 2) < 25:   # ignorar celdas < 25 km2
             continue
         gy, gx = ndimage.center_of_mass(cell)
-        dy, dx = cy - gy, cx - gx
-        dist_km = math.hypot(dy, dx) * km_per_px
-        intensity = float(signal[cell].mean())
+        dist_km = math.hypot(cy - gy, cx - gx) * km_per_px
+        candidatas.append((dist_km, float(gy), float(gx),
+                           float(signal[cell].mean())))
+    candidatas.sort()
+    candidatas = candidatas[:config.CELDAS_A_EVALUAR]
 
-        if speed_px_min < 1e-4:
-            eta = float("inf")
-        else:
-            # proyeccion del vector celda->casa sobre la direccion del viento
-            along = (dy * motion.vy_px_min + dx * motion.vx_px_min) / speed_px_min
-            if along <= 0:
-                continue          # se aleja
-            # distancia perpendicular: ¿realmente pasa por encima?
-            cross = abs(dy * motion.vx_px_min - dx * motion.vy_px_min) / speed_px_min
-            corridor_km = 15.0 + 0.3 * (along * km_per_px)
-            if cross * km_per_px > corridor_km:
-                continue          # pasa de largo
-            eta = along / speed_px_min
+    # (eta, dist_km, intensidad, gy, gx, movimiento usado)
+    best = None
 
-        if eta == float("inf"):
+    for dist_km, gy, gx, intensity in candidatas:
+        # --- el movimiento de ESTA celda, medido donde ella esta
+        local = motion_en(frames, gy, gx) if frames else Motion()
+        usar = local if local.bearing_deg is not None else motion
+        if usar.bearing_deg is None:
+            # Ni local ni global saben hacia donde va. Sin rumbo no hay
+            # "viene hacia aca", y adivinarlo es inventar lo que importa.
             continue
-        if best is None or eta < best[0]:
-            best = (eta, dist_km, intensity, float(gy), float(gx))
 
-    # Un ETA mas alla del horizonte util no es informacion, es aritmetica.
-    # Una celda a 180 km moviendose a 10 km/h "llega en 18 horas": para
-    # entonces se habra disipado y nacido otras tres. Reportarlo seria
-    # exactamente el tipo de precision falsa que hace inutiles a las apps.
+        speed_px_min = math.hypot(usar.vy_px_min, usar.vx_px_min)
+        if speed_px_min < 1e-4:
+            continue
+        dy, dx = cy - gy, cx - gx
+        # proyeccion del vector celda->casa sobre la direccion del viento
+        along = (dy * usar.vy_px_min + dx * usar.vx_px_min) / speed_px_min
+        if along <= 0:
+            continue          # se aleja
+        # distancia perpendicular: ¿realmente pasa por encima?
+        cross = abs(dy * usar.vx_px_min - dx * usar.vy_px_min) / speed_px_min
+        corridor_km = 15.0 + 0.3 * (along * km_per_px)
+        if cross * km_per_px > corridor_km:
+            continue          # pasa de largo
+        eta = along / speed_px_min
+
+        if best is None or eta < best[0]:
+            best = (eta, dist_km, intensity, gy, gx, usar)
+
     max_eta = max(config.LEAD_TIMES_MIN) * 1.5
     if best and best[0] <= max_eta:
         nc.nearest_cell_eta_min = round(best[0], 1)
         nc.nearest_cell_km = round(best[1], 1)
         nc.nearest_cell_intensity = round(best[2], 3)
+        usado = best[5]
+        nc.nearest_cell_bearing = (round(usado.bearing_deg, 1)
+                                   if usado.bearing_deg is not None else None)
+        nc.nearest_cell_kmh = round(usado.speed_kmh, 1)
 
         # --- donde esta, en coordenadas, y cuanto puede desviarse
         #
@@ -579,7 +650,7 @@ def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
         # incertidumbre que mide decenas de kilometros. Usar algo mas fino
         # seria precision falsa.
         if frame is not None:
-            _eta, _d, _i, gy, gx = best
+            _eta, _d, _i, gy, gx, _m = best
             norte_km = (cy - gy) * km_per_px
             este_km = (gx - cx) * km_per_px
             lat = frame.center_lat + norte_km / 111.0
@@ -592,6 +663,8 @@ def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
         # que el dibujo y los numeros no puedan contradecirse: 5 km de error
         # minimo mas lo que se ensancha con el recorrido, y se ensancha mas
         # cuanto menos fiable es la estimacion de movimiento.
-        recorrido_km = speed_px_min * km_per_px * best[0]
-        spread = 0.25 + 0.5 * (1.0 - motion.confidence)
+        usado = best[5]
+        v_px_min = math.hypot(usado.vy_px_min, usado.vx_px_min)
+        recorrido_km = v_px_min * km_per_px * best[0]
+        spread = 0.25 + 0.5 * (1.0 - usado.confidence)
         nc.nearest_cell_radio_km = round(5.0 + recorrido_km * spread, 1)
