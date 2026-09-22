@@ -261,8 +261,15 @@ def build_forecast() -> dict:
         # segundos y daria exactamente lo mismo.
         if queda():
             try:
-                puntos_ahora = (bloques_rayos[-1].get("puntos")
-                                if bloques_rayos else None)
+                # El bloque MAS RECIENTE por su marca de tiempo, no el
+                # ultimo de la lista. El orden de `bloques` no esta
+                # garantizado -`evaluar()` los ordena por su cuenta, que es
+                # la pista de que alguna vez no venian en orden- y archivar
+                # el bloque equivocado deja el historial sin rayos justo en
+                # las tormentas, que es cuando se quiere revisar.
+                recientes = sorted((b for b in bloques_rayos if b.get("puntos")),
+                                   key=lambda b: b.get("t", ""))
+                puntos_ahora = recientes[-1].get("puntos") if recientes else None
                 archivo.guardar(issued, ruta_png, map_bounds, puntos_ahora)
                 archivo.podar()
             except Exception as exc:

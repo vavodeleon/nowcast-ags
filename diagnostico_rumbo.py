@@ -96,13 +96,32 @@ def rayos_recientes(horas: float = 2.0):
     return salida
 
 
-def paso_1() -> float | None:
+def paso_1(horas: float = 2.0) -> float | None:
     print("1. LOS RAYOS, EN LATITUD Y LONGITUD PURAS")
     print("   (sin tocar ningún píxel: esta medida no puede tener el error)\n")
-    c = rayos_recientes()
+    c = rayos_recientes(horas)
     if len(c) < 2:
-        print(f"   Solo {len(c)} cuadros con descargas en las últimas 2 h.")
-        print("   Hace falta correrlo DURANTE la tormenta.")
+        print(f"   Solo {len(c)} cuadros con descargas en las últimas "
+              f"{horas:.0f} h.")
+        # Que no haya nada puede ser que no hubo rayos, o que el archivo no
+        # este donde se busca. No son lo mismo y conviene distinguirlo aqui
+        # mismo en vez de suponer.
+        if not os.path.isdir(RAIZ):
+            print(f"   Y el archivo no existe: {RAIZ}")
+        else:
+            dias = sorted(d for d in os.listdir(RAIZ)
+                          if os.path.isdir(os.path.join(RAIZ, d)))
+            print(f"   Días archivados: {', '.join(dias[-4:]) or 'ninguno'}")
+            for dia in dias[-1:]:
+                arch = sorted(n for n in os.listdir(os.path.join(RAIZ, dia))
+                              if n.endswith(".r.json"))
+                print(f"   Cuadros con rayos en {dia}: {len(arch)}"
+                      + (f" (últimos: {', '.join(a[:4] for a in arch[-6:])})"
+                         if arch else ""))
+            print(f"   Hora local ahora: "
+                  f"{datetime.now(timezone.utc).astimezone(config.TZ):%Y-%m-%d %H:%M}")
+        print("   Si hay cuadros pero no salen, prueba con más horas:")
+        print("     python diagnostico_rumbo.py 12")
         return None
 
     print(f"   {'hora':>8} {'lat':>9} {'lon':>10} {'destellos':>10} {'movió':>16}")
@@ -175,8 +194,19 @@ def paso_2() -> None:
 
     with h5py.File(io.BytesIO(raw), "r") as fh:
         xs, ys = fh["x"], fh["y"]
-        x0, x1 = float(xs[0]), float(xs[1])
-        y0, y1 = float(ys[0]), float(ys[1])
+        # `unpack` y no `float(xs[0])`. GOES guarda x, y y CMI como enteros
+        # empaquetados con scale_factor y add_offset; h5py devuelve el entero
+        # crudo y la escala de `y` es NEGATIVA. Leyendo en crudo las dos
+        # diferencias salen +1 -enteros consecutivos- y el signo se pierde
+        # justo cuando el signo es lo unico que se estaba buscando.
+        #
+        # La primera version de este diagnostico tenia ese fallo e imprimio
+        # "fila -> NORTE" con toda confianza. El motor nunca lo tuvo: usa
+        # `unpack` desde el principio, y ahi estaba escrito el aviso.
+        x0, x1 = goes.unpack(xs, slice(0, 2))
+        y0, y1 = goes.unpack(ys, slice(0, 2))
+        print(f"   crudo sin escalar: x[0]={float(xs[0]):.0f} y[0]={float(ys[0]):.0f}"
+              f"   escalado: x0={x0:+.6f} rad  y0={y0:+.6f} rad")
         proj = fh["goes_imager_projection"]
         grid = goes.FixedGrid({k: goes._attr(proj, k)
                                for k in ("semi_major_axis", "semi_minor_axis",
@@ -248,10 +278,16 @@ def paso_3(rumbo_rayos: float | None) -> None:
 
 
 def main() -> int:
+    horas = 2.0
+    if len(sys.argv) > 1:
+        try:
+            horas = float(sys.argv[1])
+        except ValueError:
+            pass
     print("=" * 66)
     print("¿ESTÁ INVERTIDO EL RUMBO?")
     print("=" * 66 + "\n")
-    r = paso_1()
+    r = paso_1(horas)
     paso_2()
     paso_3(r)
     print("\n" + "=" * 66)
