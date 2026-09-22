@@ -67,10 +67,16 @@ def rayos_recientes(horas: float = 2.0):
     if not os.path.isdir(RAIZ):
         return salida
     corte = datetime.now(timezone.utc) - timedelta(hours=horas)
-    for dia in sorted(os.listdir(RAIZ))[-2:]:
+    # Filtrar carpetas ANTES de quedarse con las ultimas. En `hist/` conviven
+    # las carpetas de cada dia con sus indices -`2026-09-21.json`, `dias.json`-
+    # y al ordenar por nombre los dos ultimos elementos son los indices, no los
+    # dias. Con el filtro despues del recorte, este paso encontraba cero
+    # cuadros mientras el propio mensaje de error listaba cincuenta y ocho.
+    dias = [d for d in sorted(os.listdir(RAIZ))
+            if os.path.isdir(os.path.join(RAIZ, d))]
+    cuantos = max(2, int(horas // 24) + 2)
+    for dia in dias[-cuantos:]:
         carpeta = os.path.join(RAIZ, dia)
-        if not os.path.isdir(carpeta):
-            continue
         for nombre in sorted(os.listdir(carpeta)):
             if not nombre.endswith(".r.json"):
                 continue
