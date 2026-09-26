@@ -1,6 +1,6 @@
 {
-  "issued_utc": "2026-09-26T14:15:48+00:00",
-  "issued_local": "2026-09-26 08:15",
+  "issued_utc": "2026-09-26T14:30:57+00:00",
+  "issued_local": "2026-09-26 08:30",
   "probabilities": {
     "15": 0.02,
     "30": 0.02,
@@ -12,11 +12,11 @@
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 288.3,
-    "contraste": -0.6,
+    "bt_encima": 289.5,
+    "contraste": -0.7,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": 0.0,
+    "precip_observada": null,
     "forma": "despejado",
     "lloviendo": false,
     "corroborado_por": "",
@@ -49,13 +49,13 @@
     ]
   },
   "model_probs_1h": {
-    "ecmwf_ifs025": 0.0,
+    "ecmwf_ifs025": 0.02,
     "gfs_seamless": 0.0,
     "icon_seamless": 0.0,
     "gem_seamless": 0.0
   },
   "confidence": "baja",
-  "calibration_n": 35282,
+  "calibration_n": 35289,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -70,28 +70,28 @@
   ],
   "motion_bearing": null,
   "pressure": {
-    "now_msl": 1019.4,
-    "now_surface": 817.4,
+    "now_msl": 1019.5,
+    "now_surface": 817.5,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1796,
-      "edad_min": 0.3,
+      "edad_min": 0.5,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2471,
+      "factor": 1.2472,
       "amplitud_diaria": 5.0,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": 0.1,
-    "change_3h": 0.1,
-    "change_6h": -0.1,
-    "change_24h": -0.1,
+    "change_1h": -0.1,
+    "change_3h": -0.2,
+    "change_6h": 0.1,
+    "change_24h": 0.3,
     "forecast_drop": 4.0,
     "forecast_drop_at": "Sat 26, 18:00",
-    "forecast_drop_in_h": 9.7,
+    "forecast_drop_in_h": 9.5,
     "level": "vigilancia",
     "trend": "estable",
     "series": [
@@ -597,9 +597,9 @@
     "ciclo_diario": 8.9
   },
   "temperatura": {
-    "ahora": 17.4,
-    "sensacion": 16.4,
-    "humedad": 75,
+    "ahora": 17.9,
+    "sensacion": 16.9,
+    "humedad": 72,
     "maxima": 29.4,
     "minima": 15.0,
     "serie": [
@@ -762,7 +762,7 @@
     "dist_km": null,
     "dist_min_hora_km": null
   },
-  "duracion_s": 24.4,
+  "duracion_s": 24.5,
   "degradado": false,
   "performance": {
     "15": {
