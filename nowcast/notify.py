@@ -426,6 +426,38 @@ def _botones_lluvia(ts: str) -> str:
             f"body=lluvia:no @{ts}, clear=true")
 
 
+def enviar_muestra(ident: int, vence) -> bool:
+    """La pregunta al azar, por ntfy, con dos botones.
+
+    Va al canal de lluvia, no al de salud: es una pregunta sobre el tiempo, y
+    quien la conteste da igual. La primera respuesta gana, venga de quien venga
+    y por el canal que venga.
+
+    El texto pide expresamente NO contestar si no se puede ver el cielo. Una
+    no-respuesta no le hace daño a nada; una respuesta adivinada desde dentro
+    de casa es un dato falso con cara de verdad independiente, que es peor
+    que no tener el dato.
+    """
+    if not config.NTFY_TOPIC_RESPUESTAS:
+        log.warning("muestreo: sin canal de respuestas, la pregunta #%s solo "
+                    "puede contestarse por la malla", ident)
+    url = f"{config.NTFY_SERVER.rstrip('/')}/{config.NTFY_TOPIC_RESPUESTAS}"
+    botones = ""
+    if config.NTFY_TOPIC_RESPUESTAS:
+        botones = (f"http, Sí llueve, {url}, method=POST, "
+                   f"body=muestra:{ident}:si, clear=true; "
+                   f"http, No llueve, {url}, method=POST, "
+                   f"body=muestra:{ident}:no, clear=true")
+    hasta = vence.astimezone(config.TZ).strftime("%H:%M")
+    cuerpo = (f"Pregunta al azar #{ident}, vale hasta las {hasta}.\n\n"
+              "Solo si puedes ver el cielo o la calle. Si no, ignórala: "
+              "no contestar no estropea nada, adivinar sí.\n\n"
+              "Sirve para medir el pronóstico sin sesgo: se pregunta a ratos "
+              "al azar, llueva o no.")
+    return send("¿Está lloviendo ahora mismo?", cuerpo, priority="default",
+                tags="grey_question", actions=botones)
+
+
 def _registrar_aviso_salud(state, tipo: str, ts_aviso: str) -> None:
     """Deja la fila lista, con la presion tal como estaba al avisar.
 

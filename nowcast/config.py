@@ -148,7 +148,10 @@ OPENMETEO_MODELS = [
 
 # ---------------------------------------------------------------- rutas
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(ROOT, "data")
+# Redirigible por entorno para que la suite de pruebas NO pueda tocar los datos
+# reales aunque una prueba se olvide de redirigir un archivo. El 28/09/2026 dos
+# pruebas llevaban semanas escribiendo en el salud.csv de verdad.
+DATA_DIR = os.environ.get("NOWCAST_DATA_DIR") or os.path.join(ROOT, "data")
 PREDICTIONS_CSV = os.path.join(DATA_DIR, "predictions.csv")
 OBSERVATIONS_CSV = os.path.join(DATA_DIR, "observations.csv")
 CALIBRATION_JSON = os.path.join(DATA_DIR, "calibration.json")
@@ -157,7 +160,7 @@ STATE_JSON = os.path.join(DATA_DIR, "state.json")
 LATEST_JSON = os.path.join(ROOT, "docs", "latest.json")
 HISTORY_JSON = os.path.join(ROOT, "docs", "history.json")
 LIGHTNING_JSON = os.path.join(ROOT, "docs", "rayos.json")
-SALUD_CSV = os.path.join(ROOT, "data", "salud.csv")
+SALUD_CSV = os.path.join(DATA_DIR, "salud.csv")
 
 # Historial de cuadros para la animacion y la revision de tormentas pasadas.
 # 7 dias son ~670 cuadros, unos 60 MB en el sitio publicado. Cabe de sobra en
@@ -238,3 +241,20 @@ MOTION_MIN_PX = 1.0
 # una correlacion de fase sobre un recorte pequeño; seis es barato incluso en
 # un Pi 3 y cubre de sobra las que pueden llegar dentro del horizonte util.
 CELDAS_A_EVALUAR = 6
+
+# ---------------------------------------------------------------- muestreo
+# Preguntas a ratos al azar, por ntfy y por la malla a la vez. Ver el
+# docstring de muestreo.py: el momento lo elige el sistema, nunca el
+# pronostico, y eso es lo unico que las hace valer para comparar fuentes.
+MUESTREO_ACTIVO = os.environ.get("MUESTREO", "1") != "0"
+MUESTREO_CSV = os.path.join(DATA_DIR, "muestreo.csv")
+# Uno y medio al dia es lo que se puede contestar sin que canse. En temporada,
+# con ~15% de lluvia, salen unas siete respuestas con lluvia al mes: pocas,
+# pero sin sesgo. Mas preguntas darian mas datos y menos respuestas.
+MUESTREO_POR_DIA = 1.5
+# Solo cuando alguien puede asomarse. De noche la respuesta seria "no se", y
+# una pregunta sin respuesta posible solo entrena a ignorar las demas.
+MUESTREO_DESDE_H = 8
+MUESTREO_HASTA_H = 22
+# "¿Esta lloviendo AHORA?" deja de tener sentido pasada media hora.
+MUESTREO_VIGENCIA_MIN = 30

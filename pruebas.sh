@@ -40,10 +40,18 @@ fi
 # leyendo la presion real de la casa y fallando por motivos ajenos.
 export CLIMA_DB=""
 
+# Y por la misma razon, los datos del proyecto: todo lo que cuelga de DATA_DIR
+# va a un temporal. El 28/09/2026 se descubrio que test_presion y
+# test_barometro llevaban semanas metiendo filas falsas en el data/salud.csv
+# real -en el Pi, que ademas las subia al repositorio-. Se noto porque el Mac,
+# al empezar a correr la suite, choco en git con ese archivo.
+export NOWCAST_DATA_DIR="$(mktemp -d)"
+marca="$(mktemp)"
+
 fallos=0
 for t in selftest test_visual test_matutino test_rayos test_ahora \
          test_tormenta test_presion test_barometro test_archivo test_migracion test_salud \
-         test_malla test_contrato test_pesos test_deriva test_evaluar test_presupuesto test_workflow; do
+         test_malla test_muestreo test_contrato test_pesos test_deriva test_evaluar test_presupuesto test_workflow; do
   printf "  %-16s " "$t"
   if salida="$("$PY" "$t.py" 2>&1)"; then
     echo "$(echo "$salida" | tail -1)"
@@ -64,6 +72,19 @@ if command -v node >/dev/null 2>&1; then
 else
   echo "omitida (node no instalado)"
 fi
+
+# La guardia: si algo escribio en data/ o docs/ reales durante la suite, lo
+# dice con nombre. Es la misma sonda con la que se encontro el fallo, dejada
+# puesta para que el siguiente no tarde semanas en aparecer.
+tocados="$(find data docs -type f -newer "$marca" 2>/dev/null | grep -v __pycache__)"
+if [ -n "$tocados" ]; then
+  echo
+  echo "  LAS PRUEBAS ESCRIBIERON EN DATOS REALES:"
+  echo "$tocados" | sed 's/^/      /'
+  echo "  (En el Pi, si el temporizador corrió a la vez, puede ser él: repite.)"
+  fallos=$((fallos+1))
+fi
+rm -rf "$NOWCAST_DATA_DIR" "$marca"
 
 echo
 [ "$fallos" -eq 0 ] && echo "TODO EN ORDEN" || echo "$fallos suite(s) con fallos"

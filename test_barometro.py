@@ -47,6 +47,9 @@ barometro.datetime = Reloj
 
 tmp = tempfile.mkdtemp()
 RUTA = os.path.join(tmp, "clima.db")
+# Los avisos de presion dejan fila en salud.csv: que sea en un temporal, no en
+# el registro real. Ver el mismo comentario en test_presion.py.
+config.SALUD_CSV = os.path.join(tmp, "salud.csv")
 
 
 def marea(t: datetime) -> float:

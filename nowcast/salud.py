@@ -47,6 +47,10 @@ _RESPUESTA = re.compile(r"dolor\s*:\s*(si|sí|no)\b\s*@?\s*([0-9T:.\-+]*)",
 _RESPUESTA_LLUVIA = re.compile(
     r"lluvia\s*:\s*(si|sí|no)\b\s*@?\s*([0-9T:.\-+]*)", re.IGNORECASE)
 
+# "muestra:7:si" — la respuesta a una pregunta al azar. Ver muestreo.py.
+_RESPUESTA_MUESTRA = re.compile(
+    r"muestra\s*:\s*(\d+)\s*:\s*(si|sí|no)\b", re.IGNORECASE)
+
 _CLAVE_ULTIMO = "salud_ultimo_id"
 
 
@@ -94,8 +98,9 @@ def _mensajes() -> list[dict]:
 def procesar() -> int:
     """Incorpora las respuestas nuevas. Devuelve cuantas.
 
-    Atiende DOS tipos de respuesta por el mismo canal: "dolor:si|no" del
-    canal de salud y "lluvia:si|no" de las alertas de lluvia.
+    Atiende TRES tipos de respuesta por el mismo canal: "dolor:si|no" del
+    canal de salud, "lluvia:si|no" de las alertas de lluvia, y
+    "muestra:<id>:si|no" de las preguntas al azar.
 
     Un solo lector a proposito. El canal se consume con un cursor -el id del
     ultimo mensaje visto- y dos lectores independientes se pisarian: el
@@ -123,6 +128,18 @@ def procesar() -> int:
             continue
         ultimo = mid or ultimo
         cuerpo = f"{m.get('title', '')} {m.get('message', '')}"
+
+        # --- respuesta a una pregunta al azar: va al muestreo
+        muestra = _RESPUESTA_MUESTRA.search(cuerpo)
+        if muestra:
+            from . import muestreo
+            cuando = datetime.fromtimestamp(m.get("time", 0) or 0, timezone.utc)
+            res = muestreo.registrar(int(muestra.group(1)),
+                                     muestra.group(2).lower() != "no",
+                                     "ntfy", cuando)
+            if res == "aceptada":
+                incorporadas += 1
+            continue
 
         # --- confirmacion de lluvia: va a las observaciones, no a salud
         lluvia = _RESPUESTA_LLUVIA.search(cuerpo)

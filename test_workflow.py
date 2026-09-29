@@ -72,6 +72,11 @@ automaticas = {
     # El canal de respuestas de salud solo tiene sentido en la maquina que
     # manda los avisos; en un runner no hay a quien preguntarle si le dolio.
     "NTFY_TOPIC_RESPUESTAS",
+    # Interruptor de las preguntas al azar: activo si no se dice lo contrario.
+    # Solo existe para poder apagarlo (MUESTREO=0) sin tocar codigo.
+    "MUESTREO",
+    # Solo la usa pruebas.sh, para que la suite no toque los datos reales.
+    "NOWCAST_DATA_DIR",
 }
 faltantes = pedidas - entorno - automaticas
 print(f"     el codigo pide: {sorted(pedidas)}")

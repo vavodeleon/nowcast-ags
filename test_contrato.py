@@ -150,6 +150,18 @@ chk("y `usada` dice si mandó", ejemplo["deriva"]["usada"] is True)
 chk("el umbral existe y no es cero", config.DERIVA_CONFIANZA_MIN > 0.2,
     str(config.DERIVA_CONFIANZA_MIN))
 
+print("\nD-quater. La pregunta al azar, para que la malla la emita")
+# La malla la lee de latest.json. Regla de siempre: la clave va SIEMPRE, null
+# si no hay pregunta abierta. Omitirla obligaria a la malla a adivinar si "no
+# hay pregunta" o "el nowcast es viejo y no sabe de preguntas".
+chk("run.py pone la clave siempre, null por defecto",
+    'result["muestreo"] = None' in fuente_run)
+from nowcast import muestreo as _mu  # noqa: E402
+import inspect  # noqa: E402
+campos = inspect.getsource(_mu.vigente)
+for c in ("id", "pregunta", "vence_utc", "vence_local"):
+    chk(f"muestreo.{c}", f'"{c}"' in campos)
+
 print("\nE. temperatura.serie lleva fecha explícita")
 # Sin fecha, la malla reconstruye el cruce de medianoche contando horas. Los
 # avisos de helada necesitan el minimo QUE VIENE, no el del dia calendario.

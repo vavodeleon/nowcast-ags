@@ -171,5 +171,48 @@ chk("no atribuye al enlace lo que fue el tiempo",
     "SÍ empeora" not in txt and "MEJOR" not in txt,
     txt.strip().splitlines()[-1])
 
+print("\nF. 4-quater: detecta si contestar depende del tiempo")
+import os, tempfile  # noqa: E402
+from nowcast import config, muestreo, store  # noqa: E402
+
+
+def escenario(sesgado: bool, semilla: int) -> str:
+    tmp = tempfile.mkdtemp()
+    config.OBSERVATIONS_CSV = os.path.join(tmp, "o.csv")
+    config.MUESTREO_CSV = os.path.join(tmp, "m.csv")
+    config.STATE_JSON = os.path.join(tmp, "s.json")
+    r = np.random.default_rng(semilla)
+    base = datetime(2026, 9, 1, 15, tzinfo=timezone.utc)
+    obs, yv = [], {}
+    for i in range(4000):
+        slot = store.round_slot(base + timedelta(minutes=15 * i))
+        y = 1 if r.random() < 0.2 else 0
+        yv[slot] = y
+        obs.append({"valid_utc": slot, "rained": y, "mm": "",
+                    "peak_score": "", "source": "openmeteo"})
+    store.append_observations(obs)
+    for k in range(150):
+        t = base + timedelta(minutes=15 * int(r.integers(0, 3990)))
+        muestreo._añadir({"id": k + 1, "preguntado_utc": t.isoformat(),
+                          "vence_utc": (t + timedelta(minutes=30)).isoformat(),
+                          "pi": 0.03, "p60": "", "respuesta": "", "canal": "",
+                          "respondido_utc": "", "estado": "abierta"})
+        y = yv[store.round_slot(t)]
+        # sesgado: si llueve casi siempre contestan; si no, casi nunca
+        prob = (0.95 if y else 0.35) if sesgado else 0.6
+        if r.random() < prob:
+            muestreo.registrar(k + 1, bool(y), "ntfy", t + timedelta(minutes=2))
+    muestreo.cerrar_vencidas(base + timedelta(days=90))
+    return salida_de(evaluar.muestreo_al_azar, {})
+
+
+detectados = sum("se\n   contesta distinto" in escenario(True, 200 + k)
+                 or "contesta distinto" in escenario(True, 200 + k)
+                 for k in range(5))
+chk("con respuesta sesgada por el tiempo, lo detecta (casi siempre)",
+    detectados >= 4, f"{detectados} de 5")
+falsos = sum("contesta distinto" in escenario(False, 300 + k) for k in range(5))
+chk("con respuesta al azar, no inventa un sesgo", falsos <= 1, f"{falsos} de 5")
+
 print("\n" + ("TODO EN ORDEN" if ok else "HAY FALLOS"))
 sys.exit(0 if ok else 1)

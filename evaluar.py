@@ -48,7 +48,12 @@ from nowcast import config, store
 
 
 # Las dos fuentes de verdad que no salieron de un modelo numérico.
-INDEPENDIENTES = {"manual", "malla"}
+INDEPENDIENTES = {"manual", "malla", "muestra"}
+# Las espontaneas son las que da una persona cuando ELLA decide. Sirven de
+# verdad, pero no para comparar fuentes: se dan sobre todo cuando el sistema
+# fallo. 'muestra' queda fuera de este grupo a proposito -el momento lo eligio
+# el sistema al azar- y por eso tiene su propia seccion, la 4-quater.
+ESPONTANEAS = {"manual", "malla"}
 
 
 def _num(v):
@@ -100,7 +105,110 @@ def es_independiente(fuente: str) -> bool:
 
 
 def solo_manuales(datos: list) -> list:
-    return [d for d in datos if es_independiente(d[2].get("_verdad", ""))]
+    """Las correcciones espontaneas: sesgadas hacia el error por construccion."""
+    return [d for d in datos
+            if str(d[2].get("_verdad", "")).strip() in ESPONTANEAS]
+
+
+def solo_muestra(datos: list) -> list:
+    """Las respuestas a preguntas al azar: la unica verdad sin ese sesgo."""
+    return [d for d in datos if str(d[2].get("_verdad", "")).strip() == "muestra"]
+
+
+def muestreo_al_azar(datos: dict) -> None:
+    """4-quater. La unica comparacion de fuentes que no esta sesgada.
+
+    Todo lo anterior tiene un problema de fondo. La verdad de Open-Meteo sale
+    de los mismos modelos que se evaluan, y las correcciones espontaneas son
+    la muestra de los errores. Aqui la verdad la da una persona, y el MOMENTO
+    lo eligio el sistema al azar, sin mirar el pronostico.
+
+    Queda un sesgo posible, y se mide en vez de suponerlo: que se conteste mas
+    cuando llueve. Para eso se registran tambien las preguntas que nadie
+    contesto, y se compara lo que dijo Open-Meteo en unas y en otras.
+    """
+    from nowcast import muestreo as _m
+
+    print("\n4-quater. PREGUNTAS AL AZAR — la comparación sin sesgo")
+    # Las de prueba -abiertas a mano, `pi` vacio- no son al azar y no cuentan.
+    registro = [f for f in _m.leer() if f.get("pi")]
+    if not registro:
+        print("\n   Todavía no se ha hecho ninguna pregunta.")
+        return
+
+    hechas = len(registro)
+    resp = [f for f in registro if f.get("estado") == "respondida"]
+    tarde = sum(1 for f in registro if f.get("estado") == "tarde")
+    por_canal = {}
+    for f in resp:
+        por_canal[f.get("canal") or "?"] = por_canal.get(f.get("canal") or "?", 0) + 1
+    canales = ", ".join(f"{n} por {c}" for c, n in sorted(por_canal.items()))
+    print(f"\n   {hechas} preguntas, {len(resp)} contestadas a tiempo "
+          f"({len(resp) / hechas:.0%})" + (f": {canales}" if canales else "")
+          + (f"; {tarde} tarde" if tarde else "") + ".")
+
+    # --- ¿se contesta mas cuando llueve? Open-Meteo existe para todos los
+    # ratos, contestados o no, y eso permite medirlo.
+    om = {o["valid_utc"]: o for o in store.read_observations()}
+    def _lluvia_om(f):
+        t = f.get("preguntado_utc") or ""
+        try:
+            slot = store.round_slot(datetime.fromisoformat(t))
+        except ValueError:
+            return None
+        o = om.get(slot)
+        return _num(o.get("rained")) if o else None
+    si = [v for f in resp if (v := _lluvia_om(f)) is not None]
+    no = [v for f in registro if f.get("estado") == "sin_respuesta"
+          and (v := _lluvia_om(f)) is not None]
+    if len(si) >= 10 and len(no) >= 10:
+        a, b = sum(si) / len(si), sum(no) / len(no)
+        print(f"\n   Lluvia según Open-Meteo en los ratos contestados: {a:.0%} "
+              f"({len(si)}); en los no contestados: {b:.0%} ({len(no)}).")
+        # Con el mismo cuidado que la 8-bis: un umbral fijo decia "parecido"
+        # a 16% contra 6%, y "distinto" a diferencias que el azar da solo.
+        # Se barajan las etiquetas contestada/no contestada y se mira cuanta
+        # diferencia sale sin que haya nada detras.
+        todo = np.array(si + no, dtype=float)
+        rng = np.random.default_rng(0)
+        nulas = []
+        for _ in range(1000):
+            rng.shuffle(todo)
+            nulas.append(todo[:len(si)].mean() - todo[len(si):].mean())
+        lo, hi = np.percentile(nulas, [2.5, 97.5])
+        if lo <= a - b <= hi:
+            print(f"   El azar da diferencias entre {lo:+.0%} y {hi:+.0%}: no hay")
+            print("   señal de que contestar dependa del tiempo. Con más")
+            print("   preguntas esta comprobación se vuelve más fina.")
+        else:
+            print(f"   Fuera de lo que da el azar ({lo:+.0%} a {hi:+.0%}): se")
+            print("   contesta distinto según el tiempo. La muestra respondida")
+            print("   tiene sesgo de respuesta; tomar lo de abajo con cuidado.")
+    else:
+        print("\n   Aún no hay suficientes contestadas y no contestadas para")
+        print("   saber si contestar depende del tiempo (hacen falta 10 y 10).")
+
+    # --- la comparacion de fuentes, en cada plazo que tenga datos
+    hay_algo = False
+    for lead, d in datos.items():
+        m = solo_muestra(d)
+        if not m:
+            continue
+        hay_algo = True
+        lluvias = sum(y for _p, y, _f in m)
+        print(f"\n   Plazo {lead} min: {len(m)} casos, {lluvias} con lluvia.")
+        if len(m) < 30 or lluvias < 8:
+            print("   Todavía no alcanza: hacen falta ~30 casos y al menos 8 con")
+            print("   lluvia para que una diferencia entre fuentes signifique algo.")
+            continue
+        fm = por_fuente(m)
+        print(f"   {'fuente':>12} {'Brier':>8} {'separación':>11}")
+        for nombre, x in sorted(fm.items(), key=lambda kv: kv[1]["brier"]):
+            print(f"   {nombre:>12} {x['brier']:>8.4f} {_pc(x['separacion']):>11}")
+        rep = informe_lead(lead, m)
+        print(f"   mezcla: Brier {rep['brier']:.4f}, skill {rep['skill']:+.3f}")
+    if not hay_algo:
+        print("\n   Ninguna respuesta cruza todavía con una predicción guardada.")
 
 
 def informe_lead(lead: int, datos: list) -> dict:
@@ -340,6 +448,8 @@ def main() -> int:
     else:
         print(f"\n   Solo {len(man)} confirmaciones tuyas en este plazo; hacen")
         print("   falta ~20 para decir algo.")
+
+    muestreo_al_azar(datos)
 
     print("\n5. QUÉ FUENTE CARGA LA INFORMACIÓN")
     fuentes = por_fuente(ref["datos"])

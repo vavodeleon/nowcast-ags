@@ -16,6 +16,13 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 from nowcast import config, http, notify, pressure
+
+# Los avisos de presion dejan una fila en salud.csv. Sin esto, cada corrida de
+# la suite metia una fila falsa en el registro REAL de migrañas -en el Pi, y
+# de ahi al repositorio-. Lo destapo un conflicto de git el 28/09/2026.
+import os as _os  # noqa: E402
+import tempfile as _tempfile  # noqa: E402
+config.SALUD_CSV = _os.path.join(_tempfile.mkdtemp(), "salud.csv")
 # Aislamiento: sin esto, la prueba lee el barometro REAL de la malla si la
 # maquina lo tiene, y la serie sintetica que fabricamos aqui queda pisada por
 # la presion de verdad. Paso en el Raspberry: la suite pasaba en una maquina

@@ -148,7 +148,12 @@ def append_predictions(rows: list[dict]) -> None:
 #
 # 'manual' y 'malla' valen lo mismo a proposito: los dos son el mismo ojo humano
 # por dos caminos distintos. El camino no cambia la calidad del dato.
-PRIORIDAD_FUENTE = {"manual": 3, "malla": 3, "ir+openmeteo": 2, "openmeteo": 1}
+#
+# 'muestra' -la respuesta a una pregunta al azar- vale igual: tambien es un
+# ojo humano. Lo que la distingue es CUANDO existe, no cuanto vale el dato, y
+# eso se aprovecha en evaluar.py, no aqui.
+PRIORIDAD_FUENTE = {"manual": 3, "malla": 3, "muestra": 3,
+                    "ir+openmeteo": 2, "openmeteo": 1}
 
 
 def _prioridad(fuente) -> int:

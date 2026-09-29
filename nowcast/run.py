@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 
 from . import (archivo, calibrate, config, engine, feedback, lightning, malla,
-               notify, overhead, salud,
+               muestreo, notify, overhead, salud,
                pressure, render, sources, store, verify)
 
 log = logging.getLogger(__name__)
@@ -544,6 +544,18 @@ def main() -> None:
     pres = result.pop("_pressure", None)
     tormenta = result.pop("_tormenta", None)
     store.prune()
+
+    # Pregunta al azar. Se decide ANTES de publicar porque la malla la recoge
+    # de latest.json. La clave va SIEMPRE, null si no hay pregunta abierta:
+    # es la regla del contrato, "no se" se dice con null y nunca omitiendo.
+    result["muestreo"] = None
+    if not args.no_alert:
+        try:
+            muestreo.cerrar_vencidas()
+            result["muestreo"] = muestreo.decidir(
+                p60=(result.get("probabilities") or {}).get("60"))
+        except Exception as exc:
+            log.error("muestreo fallo: %s", exc)
     publish(result)
 
     log.info("prob 60 min: %s | viene del %s a %s km/h | confianza %s",

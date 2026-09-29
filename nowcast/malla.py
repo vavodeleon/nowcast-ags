@@ -156,6 +156,21 @@ def procesar(desde: int | None = None) -> int:
         ultimo = max(ultimo, int(ts or 0))
         if llovio is None:
             continue
+        # Respuesta a una pregunta al azar: la malla la guarda con
+        # fuente = "muestra:<id>". Va al muestreo, que decide si llego a
+        # tiempo y si fue la primera, y la anota como verdad del instante.
+        # No pasa ademas por la ruta normal: seria la misma respuesta dos
+        # veces con dos etiquetas distintas.
+        if str(fuente or "").startswith("muestra:"):
+            try:
+                ident = int(str(fuente).split(":", 1)[1])
+            except ValueError:
+                log.info("malla: fuente de muestra ilegible: %r", fuente)
+                continue
+            from . import muestreo
+            cuando = datetime.fromtimestamp(int(ts), timezone.utc)
+            muestreo.registrar(ident, bool(int(llovio)), "malla", cuando)
+            continue
         t = _instante(ts, fecha or "")
         if t is None:
             continue
