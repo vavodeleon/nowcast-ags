@@ -319,6 +319,18 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO,
                         format="%(levelname)s %(name)s: %(message)s")
     if args.probar:
+        # Fuera de systemd nadie carga ~/.nowcast.env, y sin el no hay canales
+        # de ntfy. El 28/09/2026 la primera prueba abrio una pregunta que solo
+        # podia contestarse por radio -y la malla aun no la emite-, o sea una
+        # pregunta que no le llegaba a nadie. Mejor negarse con el comando
+        # exacto que abrir una a medias.
+        if not config.NTFY_TOPIC or not config.NTFY_TOPIC_RESPUESTAS:
+            print("No están cargados los canales de ntfy: la pregunta no le")
+            print("llegaría a nadie. Fuera de systemd hay que cargar el entorno:")
+            print()
+            print("  set -a; . ~/.nowcast.env; set +a")
+            print("  ./.venv/bin/python -m nowcast.muestreo --probar")
+            sys.exit(1)
         q = forzar()
         print(f"Pregunta de prueba #{q['id']} abierta hasta las "
               f"{q['vence_local']}. Contesta por ntfy o por radio "
