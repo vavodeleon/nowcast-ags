@@ -162,6 +162,16 @@ campos = inspect.getsource(_mu.vigente)
 for c in ("id", "pregunta", "vence_utc", "vence_local"):
     chk(f"muestreo.{c}", f'"{c}"' in campos)
 
+print("\nD-quinquies. La presión a nivel del mar se llama now_msl")
+# La malla (v18) pregunto por `pressure.msl`, que no existe: el campo siempre
+# se ha llamado `now_msl`. `msl` solo aparece DENTRO de cada punto de la serie.
+# Se fija aqui para que nadie "arregle" el malentendido añadiendo un segundo
+# nombre: dos claves para el mismo dato acaban diciendo cosas distintas.
+claves = pressure.to_dict(pressure.PressureState())
+chk("pressure.now_msl existe", "now_msl" in claves)
+chk("pressure.sensor existe (ahí va el factor)", "sensor" in claves)
+chk("y no hay un pressure.msl paralelo", "msl" not in claves)
+
 print("\nE. temperatura.serie lleva fecha explícita")
 # Sin fecha, la malla reconstruye el cruce de medianoche contando horas. Los
 # avisos de helada necesitan el minimo QUE VIENE, no el del dia calendario.

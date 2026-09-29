@@ -127,6 +127,14 @@ chk("la presión se publica a nivel del mar",
     s.now_msl is not None and 995 < s.now_msl < 1035, f"{s.now_msl} hPa")
 chk("y la de estación también se conserva",
     s.now_surface is not None and 800 < s.now_surface < 830, f"{s.now_surface} hPa")
+# El contrato con la malla, desde su v18: la malla reduce su propia lectura a
+# nivel del mar con `pressure.sensor.factor`. Para que los dos lados den el
+# mismo numero, `now_msl` tiene que salir de ESE factor y no de otra cuenta.
+# Tolerancia 0.15: now_msl y now_surface se redondean a 0.1 por separado.
+f_pub = (s.sensor or {}).get("factor")
+chk("now_msl es la presión de estación por el factor publicado",
+    f_pub is not None and abs(s.now_msl - s.now_surface * f_pub) < 0.15,
+    f"{s.now_msl} vs {s.now_surface} × {f_pub}")
 chk("change_1h cerca de cero pese a la marea",
     s.change_1h is not None and abs(s.change_1h) < 0.6, f"{s.change_1h} hPa")
 chk("no se declara caída rápida", not s.is_falling_fast)
