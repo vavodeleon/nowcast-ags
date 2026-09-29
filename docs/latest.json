@@ -1,6 +1,6 @@
 {
-  "issued_utc": "2026-09-29T03:45:40+00:00",
-  "issued_local": "2026-09-28 21:45",
+  "issued_utc": "2026-09-29T03:57:27+00:00",
+  "issued_local": "2026-09-28 21:57",
   "probabilities": {
     "15": 0.083,
     "30": 0.076,
@@ -12,8 +12,8 @@
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 286.2,
-    "contraste": 0.0,
+    "bt_encima": 286.4,
+    "contraste": -0.2,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
     "precip_observada": null,
@@ -22,9 +22,9 @@
     "corroborado_por": "",
     "estado": "Despejado"
   },
-  "motion_speed_kmh": 83.6,
-  "motion_from": "norte",
-  "motion_confidence": 0.003,
+  "motion_speed_kmh": 0.0,
+  "motion_from": "sin movimiento definido",
+  "motion_confidence": 0.0,
   "motion_fuente": "infrarrojo (topes)",
   "deriva": {
     "desde": "sur",
@@ -34,8 +34,8 @@
     "destellos": 17,
     "usada": false
   },
-  "motion_ir_from": "norte",
-  "motion_ir_kmh": 83.6,
+  "motion_ir_from": "sin movimiento definido",
+  "motion_ir_kmh": 0.0,
   "growth": 1.0,
   "cell_eta_min": null,
   "cell_km": null,
@@ -75,30 +75,30 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 178.5,
+  "motion_bearing": null,
   "pressure": {
-    "now_msl": 1012.4,
+    "now_msl": 1012.3,
     "now_surface": 812.1,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1799,
-      "edad_min": 0.2,
+      "edad_min": 1.0,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2467,
+      "factor": 1.2465,
       "amplitud_diaria": 5.2,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": 0.0,
-    "change_3h": -0.4,
+    "change_1h": 0.1,
+    "change_3h": -0.5,
     "change_6h": -1.0,
     "change_24h": -0.8,
     "forecast_drop": 3.1,
     "forecast_drop_at": "Tue 29, 04:00",
-    "forecast_drop_in_h": 6.2,
+    "forecast_drop_in_h": 6.0,
     "level": "vigilancia",
     "trend": "bajando",
     "series": [
@@ -769,7 +769,7 @@
     "dist_km": 301.5,
     "dist_min_hora_km": 189.6
   },
-  "duracion_s": 14.2,
+  "duracion_s": 6.8,
   "degradado": false,
   "muestreo": null,
   "performance": {
