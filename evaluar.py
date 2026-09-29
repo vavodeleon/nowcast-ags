@@ -40,6 +40,7 @@ import csv
 import os
 import sys
 from collections import defaultdict
+from datetime import datetime, timedelta
 
 import numpy as np
 
@@ -144,28 +145,52 @@ def fiabilidad(ps: np.ndarray, ys: np.ndarray, bins: int = 5) -> list:
 
 
 def por_fuente(datos: list) -> dict:
-    """Brier de cada fuente por separado, sobre los mismos casos."""
+    """Brier de cada fuente, y el de la mezcla SOBRE LOS MISMOS CASOS.
+
+    La segunda parte es la que importa. Hasta el 28 de septiembre de 2026 la
+    seccion 5 comparaba la mezcla calificada sobre todos sus casos contra cada
+    fuente calificada sobre los suyos, y los "suyos" podian ser un subconjunto
+    cualquiera. Asi salio el aviso "la mezcla (0.0788) es PEOR que infrarrojo
+    sin ajuste (0.0364)": esa fila tenia 748 casos, casi todos de una semana con
+    3.4% de lluvia, y en una semana seca cualquier cosa saca buen Brier. Su
+    separacion era 0.1%, o sea ninguna informacion. No era una fuente mejor,
+    era una semana mas facil.
+
+    Dos numeros calificados sobre casos distintos no se pueden comparar. Por
+    eso cada fuente trae ahora `brier_mezcla`: el de la mezcla en exactamente
+    las mismas filas.
+    """
     salida = {}
     for col, nombre in (("p_ir", "infrarrojo"), ("p_models", "modelos"),
-                        ("p_radar", "radar"),
-                        # El infrarrojo antes del ajuste por yunque. Aparece al
-                        # lado del ajustado a proposito: la pregunta no es si el
-                        # ajuste es razonable -lo es, y tiene fisica detras- sino
-                        # si en ESTOS casos separa mejor. Si no, sobra.
-                        ("p_ir_crudo", "infrarrojo (sin ajuste)")):
-        pares = [(_num(f.get(col)), y) for _p, y, f in datos]
-        pares = [(p, y) for p, y in pares if p is not None]
-        if len(pares) < 15:
+                        ("p_radar", "radar")):
+        trios = [(_num(f.get(col)), pf, y) for pf, y, f in datos]
+        trios = [(p, pf, y) for p, pf, y in trios if p is not None]
+        if len(trios) < 15:
             continue
-        ps = np.array([p for p, _ in pares])
-        ys = np.array([y for _, y in pares], dtype=float)
+        ps = np.array([t[0] for t in trios])
+        mz = np.array([t[1] for t in trios], dtype=float)
+        ys = np.array([t[2] for t in trios], dtype=float)
         con, sin = ps[ys == 1], ps[ys == 0]
         salida[nombre] = {
             "n": len(ps), "brier": brier(ps, ys),
+            "brier_mezcla": brier(mz, ys),
+            "lluvia": float(ys.mean()),
             "separacion": (float(con.mean() - sin.mean())
                            if len(con) and len(sin) else None),
         }
     return salida
+
+
+def ganadoras(fuentes: dict) -> list:
+    """Las fuentes que le ganan a la mezcla EN SUS PROPIOS CASOS.
+
+    Una fuente sin separacion no compite aunque su Brier sea menor: sacar buen
+    Brier sin distinguir nada es haber caido en una semana seca, no ser mejor.
+    Es exactamente la trampa del aviso falso del 28/09/2026.
+    """
+    return [(n, d) for n, d in fuentes.items()
+            if d["brier"] < d["brier_mezcla"] - 0.001
+            and (d["separacion"] or 0) >= 0.01]
 
 
 def presion_vs_lluvia(datos: list, col: str = "pres_3h") -> dict | None:
@@ -319,18 +344,25 @@ def main() -> int:
     print("\n5. QUÉ FUENTE CARGA LA INFORMACIÓN")
     fuentes = por_fuente(ref["datos"])
     if fuentes:
-        print(f"\n   {'fuente':>12} {'casos':>7} {'Brier':>8} {'separación':>11}")
+        print()
+        print(f"   {'':>12} {'':>7} {'':>8} {'':>11} {'mezcla en':>10}")
+        print(f"   {'fuente':>12} {'casos':>7} {'Brier':>8} {'separación':>11} "
+              f"{'esos casos':>10}")
         for nombre, d in sorted(fuentes.items(), key=lambda kv: kv[1]["brier"]):
             print(f"   {nombre:>12} {d['n']:>7} {d['brier']:>8.4f} "
-                  f"{_pc(d['separacion']):>11}")
-        mejor_sola = min(fuentes.values(), key=lambda d: d["brier"])
-        nombre_mejor = min(fuentes, key=lambda k: fuentes[k]["brier"])
-        if mejor_sola["brier"] < ref["brier"] - 0.001:
-            print(f"\n   La mezcla (Brier {ref['brier']:.4f}) es PEOR que")
-            print(f"   {nombre_mejor} sola ({mejor_sola['brier']:.4f}).")
-            print("   Los pesos no se han movido lo suficiente hacia la fuente buena.")
+                  f"{_pc(d['separacion']):>11} {d['brier_mezcla']:>10.4f}")
+
+        ganan = ganadoras(fuentes)
+        if ganan:
+            print()
+            for nombre, d in ganan:
+                print(f"   En sus {d['n']} casos, {nombre} sola "
+                      f"({d['brier']:.4f}) le gana a la mezcla "
+                      f"({d['brier_mezcla']:.4f}).")
+            print("   Los pesos no se han movido lo suficiente hacia esa fuente.")
         else:
-            print(f"\n   La mezcla ({ref['brier']:.4f}) mejora a la mejor fuente sola.")
+            print("\n   Ninguna fuente sola le gana a la mezcla en sus propios")
+            print("   casos. La mezcla hace su trabajo.")
     else:
         print("   Sin datos suficientes por fuente todavía.")
 
@@ -402,11 +434,9 @@ def main() -> int:
         print(f"\n   Solo {n} casos con presión registrada; hacen falta ~30.")
         print("   Las columnas se añadieron el 31 de agosto; hay que esperar.")
 
-    print("\n7-bis. EL AJUSTE POR YUNQUE, ¿SIRVIÓ?")
-    ajuste(ref)
-
     print("\n8. ¿MEJORÓ DESDE EL ÚLTIMO CAMBIO? — el número acumulado no lo dice")
     por_tramo(ref)
+    por_salud(datos)
 
     print("\n" + "=" * 66)
     peor = min(informes, key=lambda r: r["skill"])
@@ -422,50 +452,172 @@ def main() -> int:
     return 0
 
 
-def ajuste(ref: dict) -> None:
-    """Las dos versiones del infrarrojo, cara a cara sobre los mismos casos.
+def _dif_estratos(estratos: dict, marcas: dict,
+                  min_lluvias: int = 2) -> tuple[float | None, int]:
+    """Skill de limpias menos degradadas, comparadas DENTRO de cada estrato.
 
-    El 21 de septiembre de 2026 se le añadio al infrarrojo un ajuste por
-    compacidad del campo y por enfriamiento local, para no confundir una celda
-    con el yunque de una tormenta lejana. Tenia motivo -separacion -19.3% en las
-    correcciones humanas- y fisica que lo respalda.
+    `estratos` es {estrato: array (p, y)} y `marcas` {estrato: array 0/1}. Se
+    separan para poder barajar las marcas sin tocar los datos.
 
-    Nada de eso es una comprobacion. Por eso cada fila guarda las dos
-    probabilidades, la ajustada y la cruda, y aqui se comparan. Si el ajuste no
-    separa mejor, hay que quitarlo en vez de defenderlo.
+    Un estrato solo cuenta si los DOS grupos tienen lluvia dentro. Si uno de
+    los dos cayo entero en un rato seco, su skill describe el rato, no el
+    enlace, y compararlo seria volver a la trampa que esto existe para evitar.
     """
-    pares = [(_num(f.get("p_ir")), _num(f.get("p_ir_crudo")), y)
-             for _p, y, f in ref["datos"]]
-    pares = [(a, b, y) for a, b, y in pares if a is not None and b is not None]
-    if len(pares) < 40:
-        print(f"\n   Solo {len(pares)} filas con las dos versiones; el ajuste")
-        print("   empezó a registrarse el 21/09/2026 y hacen falta unos días.")
+    pares = []
+    for k, v in estratos.items():
+        g = marcas[k]
+        tasa = v[:, 1].mean()
+        clima = tasa * (1 - tasa)
+        if clima <= 0:
+            continue
+        lim, deg = v[g == 0], v[g == 1]
+        if (len(lim) == 0 or len(deg) == 0
+                or lim[:, 1].sum() < min_lluvias
+                or deg[:, 1].sum() < min_lluvias):
+            continue
+        sk_l = 1 - brier(lim[:, 0], lim[:, 1]) / clima
+        sk_d = 1 - brier(deg[:, 0], deg[:, 1]) / clima
+        pares.append((min(len(lim), len(deg)), sk_l - sk_d))
+    if not pares:
+        return None, 0
+    peso = sum(p for p, _ in pares)
+    return sum(p * d for p, d in pares) / peso, len(pares)
+
+
+def por_salud(datos: dict, lead: int = 15, dias: int = 7,
+              barajadas: int = 400, semilla: int = 0,
+              estrato_h: int = 24) -> None:
+    """8-bis. ¿Una semana mala fue el enlace o el tiempo?
+
+    Escrita por Alvaro el 28/09/2026 y corregida el mismo dia en dos puntos,
+    los dos encontrados por test_evaluar.py:
+
+    1. **Se compara dentro de la misma semana.** Medir cada fila contra la
+       climatologia de su semana no bastaba: el propio skill depende de la tasa
+       base, asi que con el MISMO pronostico, degradadas en una semana seca y
+       limpias en una lluviosa daban "el enlace SI empeora" por 0.34.
+
+       Y la semana resulto ser demasiado gruesa: el tiempo tambien cambia
+       DENTRO de una semana, y una semana que empieza seca y termina lluviosa
+       volvia a mezclar las dos cosas. El veredicto se calcula por DIA; la
+       tabla semanal se queda porque se lee mejor.
+
+    2. **Se mide el azar antes de dar veredicto.** Con marcas puestas al azar
+       -sin relacion alguna con el pronostico- salia "pierden 0.083: el enlace
+       SI empeora". Con 30-40 lluvias por grupo, un umbral fijo de 0.05 esta
+       por debajo del ruido de muestreo. Ahora se barajan las marcas dentro de
+       cada semana cientos de veces y solo cuenta la diferencia que el azar no
+       produce.
+    """
+    filas, sin_marca = [], 0
+    for p, y, d in datos.get(lead, []):
+        g = _num(d.get("degradado"))
+        if g is None or g != g:  # vacio o NaN: fila anterior al 20/09
+            sin_marca += 1
+            continue
+        t = datetime.fromisoformat(str(d["valid_utc"]).replace("Z", "+00:00"))
+        filas.append((t, float(p), int(y), 1 if g else 0))
+
+    print("\n8-bis. ¿DEGRADADO O MAL TIEMPO?\n")
+    print(f"   Plazo {lead} min. {sin_marca} filas sin marca (anteriores al")
+    print("   commit del 20/09) no cuentan: esas semanas no se pueden juzgar aquí.")
+    if not filas:
+        print("   Todavía no hay filas marcadas.")
         return
 
-    ys = np.array([p[2] for p in pares], dtype=float)
-    aj = np.array([p[0] for p in pares])
-    cr = np.array([p[1] for p in pares])
-    if not (ys == 1).any() or not (ys == 0).any():
-        print("\n   Todavía no hay casos de los dos tipos.")
+    t0 = min(f[0] for f in filas)
+    crudo: dict[int, list] = {}
+    por_estrato: dict[int, list] = {}
+    for t, p, y, g in filas:
+        crudo.setdefault((t - t0).days // dias, []).append((p, y, g))
+        h = int((t - t0).total_seconds() // 3600) // estrato_h
+        por_estrato.setdefault(h, []).append((p, y, g))
+    estratos = {k: np.array(v, dtype=float)[:, :2]
+                for k, v in por_estrato.items()}
+    marcas = {k: np.array(v, dtype=float)[:, 2].astype(int)
+              for k, v in por_estrato.items()}
+
+    print(f"\n   {'desde':>10} {'grupo':>10} {'casos':>6} {'lluvia':>7}"
+          f" {'Brier':>7} {'skill':>7}")
+    acum = {0: [0.0, 0.0, 0, 0], 1: [0.0, 0.0, 0, 0]}  # sse, clima, n, lluvias
+    for k in sorted(crudo):
+        v = np.array(crudo[k], dtype=float)
+        tasa = v[:, 1].mean()
+        clima = tasa * (1 - tasa)
+        desde = (t0 + timedelta(days=k * dias)).date()
+        for g, nombre in ((0, "limpia"), (1, "degradada")):
+            s = v[v[:, 2] == g]
+            if len(s) == 0:
+                continue
+            b = brier(s[:, 0], s[:, 1])
+            llov = int(s[:, 1].sum())
+            sk_txt = f"{1 - b / clima:>+7.3f}" if clima > 0 else f"{'—':>7}"
+            nota = "  ← pocas lluvias" if llov < 5 else ""
+            print(f"   {str(desde):>10} {nombre:>10} {len(s):>6} "
+                  f"{s[:, 1].mean():>6.1%} {b:>7.4f} {sk_txt}{nota}")
+            a = acum[g]
+            a[0] += float(((s[:, 0] - s[:, 1]) ** 2).sum())
+            a[1] += clima * len(s)
+            a[2] += len(s)
+            a[3] += llov
+
+    print()
+    for g, nombre in ((0, "limpias"), (1, "degradadas")):
+        sse, cl, n, llov = acum[g]
+        sk = 1 - sse / cl if cl > 0 else float("nan")
+        tasa = llov / n if n else float("nan")
+        print(f"   {nombre:>10}: {n:>5} casos, {llov:>3} con lluvia "
+              f"({tasa:.1%}), skill contra su semana {sk:+.3f}")
+
+    if acum[1][3] < 10 or acum[0][3] < 10:
+        print("\n   Menos de 10 lluvias en algún grupo: todavía no se puede decir nada.")
         return
 
-    def sep(v):
-        return float(v[ys == 1].mean() - v[ys == 0].mean())
+    dif, n_est = _dif_estratos(estratos, marcas)
+    if dif is None:
+        print("\n   Limpias y degradadas nunca coinciden en un mismo día con")
+        print("   lluvia en los dos grupos. Así no se pueden comparar:")
+        print("   cualquier diferencia sería el tiempo de cada día, no el enlace.")
+        return
 
-    print(f"\n   {len(pares)} filas, plazo {ref['lead']} min\n")
-    print(f"   {'versión':>26} {'Brier':>8} {'separación':>12}")
-    print(f"   {'con ajuste':>26} {brier(aj, ys):>8.4f} {_pc(sep(aj)):>12}")
-    print(f"   {'sin ajuste (brillo a secas)':>26} {brier(cr, ys):>8.4f} "
-          f"{_pc(sep(cr)):>12}")
-    mejor = sep(aj) - sep(cr)
-    print(f"\n   El ajuste cambia la separación en {mejor * 100:+.1f} puntos.")
-    if mejor > 0.03:
-        print("   Sirve. Distinguir la forma de la nube aporta de verdad.")
-    elif mejor < -0.03:
-        print("   NO sirve: empeora. Hay que quitarlo, no afinarlo.")
+    # Cuanta diferencia produce el azar: barajar las marcas DENTRO de cada
+    # semana conserva el tiempo de esa semana y el tamaño de cada grupo, y
+    # rompe cualquier relacion real entre la marca y el pronostico.
+    rng = np.random.default_rng(semilla)
+    nulas = []
+    for _ in range(barajadas):
+        mezcladas = {k: rng.permutation(g) for k, g in marcas.items()}
+        d, _n = _dif_estratos(estratos, mezcladas)
+        if d is not None:
+            nulas.append(d)
+    lo, hi = (np.percentile(nulas, [2.5, 97.5]) if nulas
+              else (float("-inf"), float("inf")))
+
+    print(f"\n   Dentro del mismo día ({n_est} día"
+          f"{'s' if n_est != 1 else ''} con lluvia en los dos grupos): "
+          f"diferencia {dif:+.3f}.")
+    print(f"   Por puro azar -barajando las marcas- sale entre {lo:+.3f} y "
+          f"{hi:+.3f}")
+    print("   el 95% de las veces.")
+    if lo <= dif <= hi:
+        print("\n   No se distingue del azar: el enlace no explica las semanas")
+        print("   malas con estos datos. O no importa, o todavía hace falta")
+        print("   más temporada para verlo.")
+    elif dif > 0:
+        print(f"\n   Fuera de lo que da el azar: las degradadas pierden {dif:.3f}")
+        print("   de skill. El enlace SÍ empeora el pronóstico.")
     else:
-        print("   Indistinguible por ahora. Con más casos se verá; si se queda")
-        print("   aquí, es complejidad que no se paga y conviene retirarla.")
+        print(f"\n   Fuera del azar, pero al revés: las degradadas salen "
+              f"{-dif:.3f} MEJOR.")
+        print("   Raro: revisar qué marca 'degradado'.")
+
+    t_l = acum[0][3] / acum[0][2]
+    t_d = acum[1][3] / acum[1][2]
+    if t_d > 1.5 * t_l:
+        print("   Ojo: las corridas degradadas caen en ratos mucho más lluviosos")
+        print("   que las limpias, incluso dentro de una semana. Enlace saturado")
+        print("   y tormenta van juntos, y parte de la diferencia puede ser la")
+        print("   tormenta, no el enlace.")
 
 
 def por_tramo(ref: dict, dias: int = 7) -> None:

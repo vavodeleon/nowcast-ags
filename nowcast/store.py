@@ -41,14 +41,26 @@ PRED_FIELDS = [
     # medicion: con estas dos columnas se puede separar una semana mala por el
     # tiempo de una semana mala por el enlace, que hoy son indistinguibles.
     "degradado", "duracion_s",
-    # El infrarrojo en sus dos versiones: la de brillo a secas y la ajustada
-    # por crecimiento local y forma del campo. Se guardan LAS DOS a proposito.
+    # RETIRADO el 28 de septiembre de 2026. Estas tres columnas registraron,
+    # del 21 al 28 de septiembre, el infrarrojo con y sin un ajuste por
+    # compacidad del campo y enfriamiento local, pensado para no confundir una
+    # celda con el yunque de una tormenta lejana.
     #
-    # El ajuste nace de una medicion -separacion -19.3% en las correcciones
-    # humanas, el infrarrojo cantando yunques- y de una explicacion fisica que
-    # encaja. Las dos cosas juntas siguen sin ser una comprobacion: la unica
-    # forma de saber si ayudo es comparar las dos series sobre los mismos casos,
-    # y para eso hay que haberlas guardado desde el primer dia.
+    # Nacio de una medicion -separacion -19.3% del infrarrojo en las
+    # correcciones humanas- y tenia fisica detras. Se guardaron las dos
+    # versiones precisamente para no quedarse con la explicacion bonita, y la
+    # comparacion sobre los mismos casos dijo que no servia: -0.2 puntos de
+    # separacion, Brier 0.0366 con ajuste contra 0.0364 sin el, en 748 casos a
+    # 15 minutos. La regla estaba escrita antes de medir: si no gana por unos
+    # puntos claros, se quita en vez de afinarlo.
+    #
+    # Las columnas se quedan en la cabecera para no tocar el historial: las
+    # filas nuevas salen vacias (DictWriter rellena con ""), y las de esa
+    # semana conservan los datos por si alguien quiere volver a mirarlos.
+    #
+    # Una salvedad honesta: esos 748 casos cayeron casi todos en una semana
+    # con 3.4% de lluvia. La prueba fue poco exigente. Si algun dia se retoma
+    # la idea, que se mida en semanas de temporada, no en una seca.
     "p_ir_crudo", "ir_tend", "ir_compac",
     # La deriva del nucleo, medida con descargas. Se guarda tambien cuando no
     # se usa -confianza baja- para poder medir despues cuanto discrepa del

@@ -135,6 +135,17 @@ def build_calibration() -> dict:
             lead = int(row["lead_min"])
             ts = datetime.fromisoformat(row["issued_utc"]).timestamp()
             probs = {s: float(row.get(f"p_{s}") or 0.0) for s in SOURCES}
+            # Del 21 al 28 de septiembre de 2026 `p_ir` salio con un ajuste
+            # por yunque que se retiro despues. Esas filas guardaron tambien
+            # `p_ir_crudo`, que es exactamente lo que el motor produce hoy. Se
+            # usa esa: asi todo el historial describe al MISMO infrarrojo, y
+            # los pesos y la curva no se aprenden sobre una mezcla de dos
+            # versiones. Es el mismo principio que recomponer la mezcla con
+            # los pesos de hoy: aprender de lo que se produce, no de lo que
+            # se produjo.
+            crudo = row.get("p_ir_crudo")
+            if crudo not in (None, ""):
+                probs["ir"] = float(crudo)
             p_final = float(row.get("p_final") or 0.0)
         except (TypeError, ValueError):
             continue

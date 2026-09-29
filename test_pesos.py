@@ -179,5 +179,50 @@ chk("el radar todavía no cae del todo", p3["radar"] > 0.05, str(p3["radar"]))
 chk("pero ya va bajando", p3["radar"] < config.DEFAULT_SOURCE_WEIGHTS["radar"]
     or p3["models"] > config.DEFAULT_SOURCE_WEIGHTS["models"], str(p3))
 
+print("\nG. La semana del ajuste por yunque se aprende con el infrarrojo de HOY")
+# Del 21 al 28/09/2026 `p_ir` salio ajustado y `p_ir_crudo` guardo la version
+# sin ajuste. Al retirar el ajuste, lo que el motor produce ahora es lo que
+# era `p_ir_crudo`. Si la calibracion leyera `p_ir` en esas filas aprenderia
+# sobre dos infrarrojos distintos mezclados.
+config.PREDICTIONS_CSV = os.path.join(tmp, "pred4.csv")
+config.OBSERVATIONS_CSV = os.path.join(tmp, "obs4.csv")
+filas4, obs4 = [], []
+for i in range(500):
+    llovio = 1 if rng.random() < 0.3 else 0
+    emitido = ahora - timedelta(minutes=15 * (i + 1))
+    slot = store.round_slot(emitido + timedelta(minutes=60))
+    filas4.append({
+        "issued_utc": emitido.isoformat(), "valid_utc": slot, "lead_min": 60,
+        "p_models": 0.2,
+        # el ajustado, sin ninguna informacion
+        "p_ir": 0.3,
+        # el crudo, que si separa
+        "p_ir_crudo": round(0.7 if llovio else 0.1, 4),
+        "p_radar": 0.0, "p_final": 0.2,
+        "w_radar": 0.0, "w_ir": 0.3, "w_models": 0.7,
+    })
+    obs4.append({"valid_utc": slot, "rained": llovio, "mm": "",
+                 "peak_score": "", "source": "openmeteo"})
+store.append_predictions(filas4)
+store.append_observations(obs4)
+cal4 = calibrate.build_calibration()
+sep4 = cal4["skill"]["60"]["separacion"]
+chk("la separación del infrarrojo sale de p_ir_crudo",
+    sep4["ir"] > 0.5, f"{sep4['ir']:.2f}")
+chk("y por eso el infrarrojo gana peso",
+    calibrate.weights_for(60, cal4)["ir"] > 0.5,
+    str(calibrate.weights_for(60, cal4)))
+
+# Y las filas nuevas, sin p_ir_crudo, siguen leyendo p_ir sin tropezar.
+config.PREDICTIONS_CSV = os.path.join(tmp, "pred5.csv")
+config.OBSERVATIONS_CSV = os.path.join(tmp, "obs5.csv")
+for f in filas4:
+    f["p_ir"] = f.pop("p_ir_crudo")
+store.append_predictions(filas4)
+store.append_observations(obs4)
+sep5 = calibrate.build_calibration()["skill"]["60"]["separacion"]
+chk("sin la columna, se usa p_ir", abs(sep5["ir"] - sep4["ir"]) < 0.01,
+    f"{sep5['ir']:.2f}")
+
 print("\n" + ("TODO EN ORDEN" if ok else "HAY FALLOS"))
 sys.exit(0 if ok else 1)
