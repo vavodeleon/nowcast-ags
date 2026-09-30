@@ -1,35 +1,35 @@
 {
-  "issued_utc": "2026-09-30T14:15:45+00:00",
-  "issued_local": "2026-09-30 08:15",
+  "issued_utc": "2026-09-30T14:30:45+00:00",
+  "issued_local": "2026-09-30 08:30",
   "probabilities": {
     "15": 0.049,
-    "30": 0.048,
-    "45": 0.049,
-    "60": 0.048,
+    "30": 0.046,
+    "45": 0.048,
+    "60": 0.049,
     "90": 0.048,
     "120": 0.049,
-    "180": 0.056
+    "180": 0.055
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 277.9,
-    "contraste": -0.1,
+    "bt_encima": 277.2,
+    "contraste": 1.3,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": 0.0,
+    "precip_observada": null,
     "forma": "despejado",
     "lloviendo": false,
     "corroborado_por": "",
     "estado": "Despejado"
   },
-  "motion_speed_kmh": 41.5,
+  "motion_speed_kmh": 31.0,
   "motion_from": "suroeste",
-  "motion_confidence": 0.012,
+  "motion_confidence": 0.02,
   "motion_fuente": "infrarrojo (topes)",
   "deriva": null,
   "motion_ir_from": "suroeste",
-  "motion_ir_kmh": 41.5,
-  "growth": 0.55,
+  "motion_ir_kmh": 31.0,
+  "growth": 0.89,
   "cell_eta_min": null,
   "cell_km": null,
   "celda": null,
@@ -49,13 +49,13 @@
     ]
   },
   "model_probs_1h": {
-    "ecmwf_ifs025": 0.22,
-    "gfs_seamless": 0.0,
-    "icon_seamless": 0.0,
-    "gem_seamless": 0.14
+    "ecmwf_ifs025": 0.25,
+    "gfs_seamless": 0.04,
+    "icon_seamless": 0.03,
+    "gem_seamless": 0.09
   },
   "confidence": "baja",
-  "calibration_n": 37984,
+  "calibration_n": 37991,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -68,30 +68,30 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 44.9,
+  "motion_bearing": 61.6,
   "pressure": {
-    "now_msl": 1016.2,
-    "now_surface": 814.9,
+    "now_msl": 1015.9,
+    "now_surface": 815.0,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1744,
       "edad_min": 0.2,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2469,
-      "amplitud_diaria": 4.6,
+      "factor": 1.2464,
+      "amplitud_diaria": 4.63,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": 0.7,
-    "change_3h": 1.0,
-    "change_6h": 0.5,
-    "change_24h": 0.9,
+    "change_1h": 0.4,
+    "change_3h": 1.1,
+    "change_6h": -0.1,
+    "change_24h": 1.3,
     "forecast_drop": 2.4,
     "forecast_drop_at": "Wed 30, 16:00",
-    "forecast_drop_in_h": 7.7,
+    "forecast_drop_in_h": 7.5,
     "level": "tranquilo",
     "trend": "estable",
     "series": [
@@ -597,9 +597,9 @@
     "ciclo_diario": 8.1
   },
   "temperatura": {
-    "ahora": 18.4,
-    "sensacion": 19.0,
-    "humedad": 82,
+    "ahora": 19.1,
+    "sensacion": 19.6,
+    "humedad": 78,
     "maxima": 28.3,
     "minima": 16.2,
     "serie": [
@@ -764,7 +764,13 @@
   },
   "duracion_s": 14.1,
   "degradado": false,
-  "muestreo": null,
+  "muestreo": {
+    "id": 4,
+    "pregunta": "¿Está lloviendo ahora mismo donde estás?",
+    "preguntado_utc": "2026-09-30T14:31:01.904799+00:00",
+    "vence_utc": "2026-09-30T15:01:01.904799+00:00",
+    "vence_local": "09:01"
+  },
   "performance": {
     "15": {
       "n": 2012,
