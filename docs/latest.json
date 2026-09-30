@@ -1,42 +1,42 @@
 {
-  "issued_utc": "2026-09-30T07:15:46+00:00",
-  "issued_local": "2026-09-30 01:15",
+  "issued_utc": "2026-09-30T07:30:45+00:00",
+  "issued_local": "2026-09-30 01:30",
   "probabilities": {
-    "15": 0.205,
-    "30": 0.208,
-    "45": 0.183,
-    "60": 0.209,
+    "15": 0.203,
+    "30": 0.211,
+    "45": 0.181,
+    "60": 0.149,
     "90": 0.136,
-    "120": 0.115,
+    "120": 0.061,
     "180": 0.058
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 283.8,
-    "contraste": -4.0,
+    "bt_encima": 284.1,
+    "contraste": -3.7,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": 0.0,
+    "precip_observada": null,
     "forma": "despejado",
     "lloviendo": false,
     "corroborado_por": "",
     "estado": "Despejado"
   },
-  "motion_speed_kmh": 28.0,
-  "motion_from": "sur",
-  "motion_confidence": 0.635,
-  "motion_fuente": "rayos (nucleo)",
+  "motion_speed_kmh": 32.0,
+  "motion_from": "norte",
+  "motion_confidence": 0.124,
+  "motion_fuente": "infrarrojo (topes)",
   "deriva": {
-    "desde": "sur",
-    "bearing": 13.7,
-    "kmh": 28.0,
-    "confianza": 0.635,
-    "destellos": 386,
-    "usada": true
+    "desde": "oeste",
+    "bearing": 70.6,
+    "kmh": 32.0,
+    "confianza": 0.804,
+    "destellos": 183,
+    "usada": false
   },
   "motion_ir_from": "norte",
-  "motion_ir_kmh": 30.7,
-  "growth": 0.89,
+  "motion_ir_kmh": 32.0,
+  "growth": 0.792,
   "cell_eta_min": null,
   "cell_km": null,
   "celda": null,
@@ -56,13 +56,13 @@
     ]
   },
   "model_probs_1h": {
-    "ecmwf_ifs025": 0.43,
-    "gfs_seamless": 0.37,
-    "icon_seamless": 0.15,
-    "gem_seamless": 0.18
+    "ecmwf_ifs025": 0.37,
+    "gfs_seamless": 0.13,
+    "icon_seamless": 0.1,
+    "gem_seamless": 0.19
   },
   "confidence": "baja",
-  "calibration_n": 37788,
+  "calibration_n": 37795,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -75,30 +75,30 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 13.7,
+  "motion_bearing": 179.4,
   "pressure": {
-    "now_msl": 1015.2,
-    "now_surface": 813.6,
+    "now_msl": 1014.5,
+    "now_surface": 813.5,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1798,
       "edad_min": 0.4,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2477,
-      "amplitud_diaria": 4.65,
+      "factor": 1.2472,
+      "amplitud_diaria": 4.66,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": -0.0,
-    "change_3h": -0.4,
-    "change_6h": -0.3,
-    "change_24h": 1.9,
+    "change_1h": -0.2,
+    "change_3h": -0.6,
+    "change_6h": -0.4,
+    "change_24h": 1.2,
     "forecast_drop": 1.7,
     "forecast_drop_at": "Wed 30, 16:00",
-    "forecast_drop_in_h": 14.7,
+    "forecast_drop_in_h": 14.5,
     "level": "tranquilo",
     "trend": "estable",
     "series": [
@@ -604,8 +604,8 @@
     "ciclo_diario": 8.0
   },
   "temperatura": {
-    "ahora": 17.9,
-    "sensacion": 19.1,
+    "ahora": 17.8,
+    "sensacion": 18.9,
     "humedad": 92,
     "maxima": 27.7,
     "minima": 16.0,
@@ -763,13 +763,13 @@
     ]
   },
   "rayos": {
-    "total_hora": 1028,
+    "total_hora": 691,
     "bloques": 4,
     "fase": "despejado",
-    "dist_km": 241.3,
-    "dist_min_hora_km": 217.5
+    "dist_km": 245.7,
+    "dist_min_hora_km": 240.0
   },
-  "duracion_s": 15.4,
+  "duracion_s": 17.9,
   "degradado": false,
   "muestreo": null,
   "performance": {
@@ -804,20 +804,20 @@
     "90": {
       "n": 2007,
       "brier": 0.0854,
-      "skill_vs_climatologia": 0.258,
+      "skill_vs_climatologia": 0.257,
       "acierto_binario": 0.873,
       "frecuencia_lluvia": 0.133
     },
     "120": {
       "n": 2005,
       "brier": 0.0823,
-      "skill_vs_climatologia": 0.285,
+      "skill_vs_climatologia": 0.284,
       "acierto_binario": 0.879,
       "frecuencia_lluvia": 0.133
     },
     "180": {
       "n": 2001,
-      "brier": 0.081,
+      "brier": 0.0811,
       "skill_vs_climatologia": 0.297,
       "acierto_binario": 0.883,
       "frecuencia_lluvia": 0.133
