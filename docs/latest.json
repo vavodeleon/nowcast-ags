@@ -1,6 +1,6 @@
 {
-  "issued_utc": "2026-10-01T12:45:45+00:00",
-  "issued_local": "2026-10-01 06:45",
+  "issued_utc": "2026-10-01T13:00:45+00:00",
+  "issued_local": "2026-10-01 07:00",
   "probabilities": {
     "15": 0.02,
     "30": 0.02,
@@ -12,28 +12,28 @@
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 276.4,
+    "bt_encima": 277.5,
     "contraste": -11.1,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": null,
+    "precip_observada": 0.0,
     "forma": "despejado",
     "lloviendo": false,
     "corroborado_por": "",
     "estado": "Despejado"
   },
-  "motion_speed_kmh": 19.6,
+  "motion_speed_kmh": 15.1,
   "motion_from": "noreste",
-  "motion_confidence": 0.417,
+  "motion_confidence": 0.024,
   "motion_fuente": "infrarrojo (topes)",
   "deriva": null,
   "motion_ir_from": "noreste",
-  "motion_ir_kmh": 19.6,
+  "motion_ir_kmh": 15.1,
   "growth": 0.55,
   "cell_eta_min": null,
   "cell_km": null,
   "celda": null,
-  "cape": 570.0,
+  "cape": 700.0,
   "radar_coverage": 0.0,
   "radar_usable": false,
   "primary_sensor": "infrarrojo (GOES-19)",
@@ -54,8 +54,8 @@
     "icon_seamless": 0.0,
     "gem_seamless": 0.14
   },
-  "confidence": "buena",
-  "calibration_n": 38614,
+  "confidence": "baja",
+  "calibration_n": 38621,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -68,40 +68,33 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 214.5,
+  "motion_bearing": 230.1,
   "pressure": {
-    "now_msl": 1014.3,
-    "now_surface": 813.3,
+    "now_msl": 1014.4,
+    "now_surface": 813.4,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1745,
       "edad_min": 0.5,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2472,
-      "amplitud_diaria": 4.92,
+      "factor": 1.2471,
+      "amplitud_diaria": 4.9,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": -0.5,
-    "change_3h": -0.6,
+    "change_1h": -0.4,
+    "change_3h": -0.7,
     "change_6h": -1.1,
     "change_24h": -1.5,
     "forecast_drop": 3.5,
     "forecast_drop_at": "Thu 01, 16:00",
-    "forecast_drop_in_h": 9.2,
+    "forecast_drop_in_h": 9.0,
     "level": "vigilancia",
     "trend": "bajando",
     "series": [
-      {
-        "t": "30 07:00",
-        "iso": "2026-09-30T13:00:00+00:00",
-        "msl": 1015.8,
-        "limpia": 1013.8,
-        "futuro": false
-      },
       {
         "t": "30 08:00",
         "iso": "2026-09-30T14:00:00+00:00",
@@ -267,8 +260,8 @@
         "t": "01 07:00",
         "iso": "2026-10-01T13:00:00+00:00",
         "msl": 1014.3,
-        "limpia": 1012.3,
-        "futuro": true
+        "limpia": 1012.2,
+        "futuro": false
       },
       {
         "t": "01 08:00",
@@ -435,7 +428,7 @@
         "t": "02 07:00",
         "iso": "2026-10-02T13:00:00+00:00",
         "msl": 1013.4,
-        "limpia": 1011.4,
+        "limpia": 1011.3,
         "futuro": true
       },
       {
@@ -591,6 +584,13 @@
         "msl": 1013.8,
         "limpia": 1012.8,
         "futuro": true
+      },
+      {
+        "t": "03 06:00",
+        "iso": "2026-10-03T12:00:00+00:00",
+        "msl": 1014.4,
+        "limpia": 1012.9,
+        "futuro": true
       }
     ],
     "umbral_24h": 5.0,
@@ -599,16 +599,10 @@
   "temperatura": {
     "ahora": 16.1,
     "sensacion": 17.6,
-    "humedad": 97,
+    "humedad": 96,
     "maxima": 27.5,
     "minima": 15.9,
     "serie": [
-      {
-        "t": "06:00",
-        "fecha": "2026-10-01",
-        "temp": 16.4,
-        "sensacion": 17.9
-      },
       {
         "t": "07:00",
         "fecha": "2026-10-01",
@@ -752,6 +746,12 @@
         "fecha": "2026-10-02",
         "temp": 16.3,
         "sensacion": 17.1
+      },
+      {
+        "t": "07:00",
+        "fecha": "2026-10-02",
+        "temp": 16.0,
+        "sensacion": 17.1
       }
     ]
   },
@@ -803,7 +803,7 @@
     },
     "120": {
       "n": 2007,
-      "brier": 0.083,
+      "brier": 0.0829,
       "skill_vs_climatologia": 0.257,
       "acierto_binario": 0.879,
       "frecuencia_lluvia": 0.128
