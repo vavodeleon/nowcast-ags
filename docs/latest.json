@@ -1,22 +1,22 @@
 {
-  "issued_utc": "2026-10-03T15:15:43+00:00",
-  "issued_local": "2026-10-03 09:15",
+  "issued_utc": "2026-10-03T15:30:46+00:00",
+  "issued_local": "2026-10-03 09:30",
   "probabilities": {
-    "15": 0.046,
+    "15": 0.045,
     "30": 0.047,
-    "45": 0.046,
+    "45": 0.047,
     "60": 0.047,
     "90": 0.046,
-    "120": 0.047,
-    "180": 0.052
+    "120": 0.088,
+    "180": 0.137
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 263.4,
-    "contraste": 13.8,
+    "bt_encima": 268.2,
+    "contraste": 10.6,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": 0.0,
+    "precip_observada": null,
     "forma": "nubes",
     "lloviendo": false,
     "corroborado_por": "",
@@ -49,13 +49,13 @@
     ]
   },
   "model_probs_1h": {
-    "ecmwf_ifs025": 0.16,
+    "ecmwf_ifs025": 0.34,
     "gfs_seamless": 0.07,
-    "icon_seamless": 0.05,
-    "gem_seamless": 0.14
+    "icon_seamless": 0.08,
+    "gem_seamless": 0.04
   },
   "confidence": "baja",
-  "calibration_n": 40028,
+  "calibration_n": 40035,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -70,28 +70,28 @@
   ],
   "motion_bearing": null,
   "pressure": {
-    "now_msl": 1015.9,
-    "now_surface": 815.2,
+    "now_msl": 1015.8,
+    "now_surface": 815.3,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1799,
-      "edad_min": 0.8,
+      "edad_min": 0.9,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2462,
+      "factor": 1.2459,
       "amplitud_diaria": 4.34,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": -0.1,
-    "change_3h": -0.1,
-    "change_6h": -0.2,
-    "change_24h": 0.9,
+    "change_1h": -0.0,
+    "change_3h": 0.1,
+    "change_6h": -0.0,
+    "change_24h": 0.2,
     "forecast_drop": 2.2,
     "forecast_drop_at": "Sat 03, 19:00",
-    "forecast_drop_in_h": 9.7,
+    "forecast_drop_in_h": 9.5,
     "level": "tranquilo",
     "trend": "estable",
     "series": [
@@ -597,9 +597,9 @@
     "ciclo_diario": 6.8
   },
   "temperatura": {
-    "ahora": 19.3,
-    "sensacion": 18.6,
-    "humedad": 72,
+    "ahora": 19.7,
+    "sensacion": 19.1,
+    "humedad": 70,
     "maxima": 24.9,
     "minima": 15.4,
     "serie": [
@@ -762,7 +762,7 @@
     "dist_km": null,
     "dist_min_hora_km": 398.2
   },
-  "duracion_s": 13.3,
+  "duracion_s": 13.6,
   "degradado": false,
   "muestreo": null,
   "performance": {
