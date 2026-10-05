@@ -66,6 +66,10 @@ PRED_FIELDS = [
     # se usa -confianza baja- para poder medir despues cuanto discrepa del
     # infrarrojo sin tener que esperar a otra temporada.
     "deriva_desde", "deriva_kmh", "deriva_conf",
+    # Nubes bajas sobre la ciudad (5/10/2026). Topes calientes que el
+    # infrarrojo de tormentas no ve y que a veces llueven. Se guardan sin
+    # usarlas: la seccion 9 de evaluar.py decide si se ganan la entrada.
+    "nb_frac", "nb_contraste", "nb_dia",
 ]
 
 log = logging.getLogger(__name__)

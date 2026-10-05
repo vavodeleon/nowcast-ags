@@ -5,8 +5,14 @@ lat/lon- y la reproyecta a un rectangulo geografico regular. Sin ese paso
 la imagen queda torcida sobre el mapa, porque la rejilla geoestacionaria no
 es un rectangulo en coordenadas geograficas.
 
-El color va de transparente (cielo despejado o nube baja, que no llueve) a
-morado intenso (topes muy frios, conveccion profunda). La escala esta
+El color va de gris tenue (nube baja o media, mas fria que el suelo pero sin
+tope de tormenta) a morado intenso (topes muy frios, conveccion profunda). El
+cielo despejado queda transparente.
+
+Hasta el 5/10/2026 la nube baja tambien era transparente, con el argumento de
+que "no llueve". Si llueve: Alvaro vio llover varias veces con el mapa vacio.
+Ahora se dibuja en gris, y de noche se ve menos porque el suelo se enfria
+hasta su temperatura (ver nubes_bajas.py). La escala esta
 elegida para que lo que se ve coincida con lo que importa: si hay morado
 acercandose, va a llover.
 """
@@ -22,8 +28,8 @@ from . import config
 
 log = logging.getLogger(__name__)
 
-# Escala de color por temperatura de brillo (K). Transparente arriba de
-# 250 K: eso es nube baja o suelo, y no aporta informacion de tormenta.
+# Escala de color por temperatura de brillo (K) para las nubes altas. Arriba
+# de 250 K la decide la capa gris de nube baja, no esta tabla.
 _STOPS = [
     (250.0, (120, 160, 200, 0)),      # invisible
     (240.0, (120, 170, 220, 90)),     # nube alta incipiente
@@ -36,8 +42,16 @@ _STOPS = [
 ]
 
 
-def colorize(bt: np.ndarray) -> np.ndarray:
-    """Temperatura de brillo -> RGBA."""
+# Gris de la nube baja: alfa creciente con el contraste contra el suelo, con
+# tope bajo para que nunca compita con el color de una tormenta.
+_GRIS = (165, 172, 185)
+_GRIS_ALFA_MAX = 110
+_GRIS_RAMPA_K = 12.0
+
+
+def colorize(bt: np.ndarray, ref: float | None = None) -> np.ndarray:
+    """Temperatura de brillo -> RGBA. `ref`: suelo despejado (K) para la capa
+    de nube baja; sin ella no se dibuja."""
     temps = np.array([s[0] for s in _STOPS])
     cols = np.array([s[1] for s in _STOPS], dtype=float)
 
@@ -50,6 +64,14 @@ def colorize(bt: np.ndarray) -> np.ndarray:
         ys = cols[::-1, ch]
         out[valid, ch] = np.interp(flat[valid], xs, ys)
     out[~valid] = 0
+    if ref is not None:
+        from . import nubes_bajas
+        c = nubes_bajas.contraste(flat, ref)
+        baja = c > 0
+        alfa = np.clip((c[baja] - config.NUBE_BAJA_CONTRASTE_K) / _GRIS_RAMPA_K
+                       + 0.35, 0, 1) * _GRIS_ALFA_MAX
+        out[baja, :3] = _GRIS
+        out[baja, 3] = alfa
     return out.reshape(bt.shape + (4,)).astype(np.uint8)
 
 
@@ -104,7 +126,9 @@ def reproject_to_latlon(frame, size: int = 700):
     sampled[bad] = np.nan
     sampled[(fi < 0) | (fi > w - 1) | (fj < 0) | (fj > h - 1)] = np.nan
 
-    return colorize(sampled), [[south, west], [north, east]]
+    from . import nubes_bajas
+    ref = nubes_bajas.referencia(np.asarray(frame.data, dtype=float))
+    return colorize(sampled, ref), [[south, west], [north, east]]
 
 
 def render(frame, path: str, size: int = 700) -> list | None:

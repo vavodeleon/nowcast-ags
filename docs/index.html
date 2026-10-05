@@ -185,6 +185,26 @@
   @media(max-width:520px){
     .titular{font-size:25px} .icono{font-size:54px} #mapa{height:270px}
   }
+
+  /* ---------- escritorio: mapa grande + columna lateral ----------
+     Solo en pantallas anchas. El HTML no cambia de orden, así que en el
+     celular todo sigue exactamente igual que antes: veredicto, barras, mapa…
+     Aquí la rejilla coloca el mapa a la izquierda, ocupando casi toda la
+     altura, y lo deja pegado mientras la columna derecha se desplaza. */
+  @media(min-width:1100px){
+    body{padding:20px 28px}
+    .wrap{max-width:1600px;display:grid;gap:0 18px;
+      grid-template-columns:minmax(0,1fr) minmax(360px,440px);
+      grid-template-areas:
+        "mapa hero" "mapa barras" "mapa temp" "mapa pres" "mapa tec" "pie pie";
+      align-items:start}
+    .c-hero{grid-area:hero} .c-barras{grid-area:barras} .c-temp{grid-area:temp}
+    .c-pres{grid-area:pres} .c-tec{grid-area:tec} .wrap>footer{grid-area:pie}
+    .c-mapa{grid-area:mapa;position:sticky;top:20px}
+    #mapa{height:calc(100vh - 360px);min-height:480px}
+    .hero{padding:22px 18px} .icono{font-size:52px} .titular{font-size:26px}
+    #btn-tema{position:fixed}
+  }
 </style>
 </head>
 <body>
@@ -193,7 +213,7 @@
   <button id="btn-tema" type="button" title="Cambiar entre claro y oscuro"
           aria-label="Cambiar tema">🌙</button>
 
-  <div class="card hero">
+  <div class="card hero c-hero">
     <div class="icono" id="icono">⏳</div>
     <h1 class="titular" id="titular">Cargando…</h1>
     <div class="apoyo" id="apoyo"></div>
@@ -210,12 +230,12 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card c-barras">
     <h2>Las próximas 3 horas</h2>
     <div class="barras" id="barras"></div>
   </div>
 
-  <div class="card">
+  <div class="card c-mapa">
     <h2>Dónde están las nubes de tormenta</h2>
     <div id="mapa"></div>
     <div class="controles">
@@ -258,8 +278,10 @@
     <p class="nota" id="nota-mapa">
       Imagen del satélite GOES-19. Los colores muestran qué tan fríos están los
       techos de las nubes: entre más frío, más alta y más cargada está la nube.
+      El <b>gris</b> son nubes bajas: no son tormenta, pero a veces lloviznan.
       Los círculos marcan 50, 100 y 150 km alrededor de la ciudad.
     </p>
+    <p class="nota" id="nota-nube-baja" hidden></p>
     <p class="nota" id="nota-deriva" hidden></p>
     <p class="nota" id="nota-cono" hidden>
       <b>La franja de colores</b> es por dónde pasaría la celda que viene. Se
@@ -278,7 +300,7 @@
     </p>
   </div>
 
-  <div class="card">
+  <div class="card c-temp">
     <h2>Temperatura</h2>
     <div class="nivel">
       <div class="temp-grande" id="temp-ahora">–</div>
@@ -295,7 +317,7 @@
     </p>
   </div>
 
-  <div class="card">
+  <div class="card c-pres">
     <h2>Presión atmosférica</h2>
     <div class="nivel">
       <div class="foco" id="foco">–</div>
@@ -344,7 +366,7 @@
     </details>
   </div>
 
-  <div class="card">
+  <div class="card c-tec">
     <details>
       <summary>Detalles técnicos y qué tan bien está acertando</summary>
       <div class="datos" id="datos-tecnicos"></div>
@@ -665,6 +687,23 @@ function esOscuro(){
    -------------------------------------------------------------------- */
 let capaCono;
 
+// Nube baja sobre la ciudad. Solo se avisa; el pronóstico todavía no la
+// cuenta (evaluar.py, sección 9, decide si se gana la entrada). De noche el
+// dato vale poco y se dice, en vez de esconderlo.
+function pintarNubeBaja(d){
+  const n = q("#nota-nube-baja");
+  if (!n) return;
+  const nb = d.nube_baja;
+  if (!nb || !hay(nb.frac) || nb.frac < 0.3){ n.hidden = true; return; }
+  n.hidden = false;
+  n.innerHTML = "<b>☁ Hay nubes bajas sobre la ciudad</b> (" +
+    Math.round(nb.frac * 100) + "% del cielo cercano). No son tormenta, " +
+    "pero pueden dar llovizna que el pronóstico de arriba todavía no cuenta." +
+    (nb.de_dia === false
+      ? " De noche el satélite las distingue mal del suelo: tómalo con cuidado."
+      : "");
+}
+
 function pintarCono(d){
   if (capaCono){ capaCono.remove(); capaCono = null; }
   const nota0 = q("#nota-cono");
@@ -697,34 +736,61 @@ function pintarCono(d){
   // el promedio no describe a ninguno. Dibujar el cono con el promedio fue lo
   // que hizo que la franja señalara al oeste mientras la tormenta que llegaba
   // venía del este.
-  const rumbo = hay(c.rumbo) ? c.rumbo : d.motion_bearing;
-  if (!hay(rumbo)) return;
-  const rad = rumbo * Math.PI / 180;
-  const uy = Math.cos(rad), ux = Math.sin(rad);   // unitario, hacia donde va
-  const px = -uy, py = ux;                        // perpendicular
-  // Cuánto se prolonga: lo que recorrería hasta pasar la ciudad, con margen.
-  const hastaCiudad = Math.hypot((d.lon - c.lon) * kmLon,
-                                 (d.lat - c.lat) * kmLat);
-  const largo = Math.max(25, hastaCiudad);
-
-  // Se prolonga mas alla para que no parezca que la tormenta se detiene a la
-  // altura de la ciudad. Nada se detiene aqui.
-  const masAlla = Math.min(largo * 0.4, 45);
   const R_CELDA = 6;                              // lo que ya se ve, de ancho
   const R_LEJOS = c.radio_km;
-
-  function punto(along, ancho){
-    const bx = c.lon + ux * along / kmLon + px * ancho / kmLon;
-    const by = c.lat + uy * along / kmLat + py * ancho / kmLat;
-    return [by, bx];
-  }
-  const pasos = 14, total = largo + masAlla;
   const izq = [], der = [];
-  for (let i = 0; i <= pasos; i++){
-    const t = i / pasos, along = total * t;
-    const ancho = R_CELDA + (R_LEJOS - R_CELDA) * t;
-    izq.push(punto(along, ancho));
-    der.push(punto(along, -ancho));
+
+  // --- Camino curvo, si el motor lo integró sobre el campo de movimiento.
+  //
+  // Existe por las tormentas que giran (5/10/2026). Un cono recto supone que
+  // la celda va en línea recta; si el sistema da vueltas, la recta se sale
+  // de la curva y la franja señala a un sitio por donde la celda no va a
+  // pasar. El motor ahora sigue la celda paso a paso y manda el camino; aquí
+  // solo se le da ancho, creciendo con lo recorrido igual que el cono recto.
+  const tray = (Array.isArray(c.trayectoria) ? c.trayectoria : [])
+    .filter(p => Array.isArray(p) && hay(p[0]) && hay(p[1]));
+  if (tray.length >= 2){
+    const km = tray.map(p => [p[0] * kmLat, p[1] * kmLon]);
+    const acum = [0];
+    for (let i = 1; i < km.length; i++)
+      acum.push(acum[i - 1] + Math.hypot(km[i][0] - km[i - 1][0],
+                                         km[i][1] - km[i - 1][1]));
+    const total = acum[acum.length - 1] || 1;
+    for (let i = 0; i < km.length; i++){
+      // Dirección local: la del tramo, o la media de los dos que se unen
+      // aquí, para que la franja no haga picos en las curvas.
+      const a = km[Math.max(0, i - 1)], b = km[Math.min(km.length - 1, i + 1)];
+      let ny = b[0] - a[0], nx = b[1] - a[1];
+      const n = Math.hypot(ny, nx) || 1;
+      ny /= n; nx /= n;
+      const ancho = R_CELDA + (R_LEJOS - R_CELDA) * (acum[i] / total);
+      // perpendicular (-nx, ny) en (norte, este)
+      izq.push([(km[i][0] - nx * ancho) / kmLat, (km[i][1] + ny * ancho) / kmLon]);
+      der.push([(km[i][0] + nx * ancho) / kmLat, (km[i][1] - ny * ancho) / kmLon]);
+    }
+  } else {
+    // --- Cono recto: sin camino, se sigue el rumbo de la celda (ver arriba
+    // por qué el rumbo y no la línea celda→ciudad).
+    const rumbo = hay(c.rumbo) ? c.rumbo : d.motion_bearing;
+    if (!hay(rumbo)) return;
+    const rad = rumbo * Math.PI / 180;
+    const uy = Math.cos(rad), ux = Math.sin(rad);   // unitario, hacia donde va
+    const px = -uy, py = ux;                        // perpendicular
+    const hastaCiudad = Math.hypot((d.lon - c.lon) * kmLon,
+                                   (d.lat - c.lat) * kmLat);
+    const largo = Math.max(25, hastaCiudad);
+    // Se prolonga más allá: nada se detiene a la altura de la ciudad.
+    const masAlla = Math.min(largo * 0.4, 45);
+    const punto = (along, ancho) => [
+      c.lat + uy * along / kmLat + py * ancho / kmLat,
+      c.lon + ux * along / kmLon + px * ancho / kmLon];
+    const pasos = 14, total = largo + masAlla;
+    for (let i = 0; i <= pasos; i++){
+      const t = i / pasos, along = total * t;
+      const ancho = R_CELDA + (R_LEJOS - R_CELDA) * t;
+      izq.push(punto(along, ancho));
+      der.push(punto(along, -ancho));
+    }
   }
 
   const color = c.intensidad >= 0.6 ? "#e13c3c"
@@ -803,7 +869,17 @@ function pintarMapa(d){
     .bindTooltip("Aguascalientes", {permanent:false});
 
   // de dónde vienen las celdas
-  if (hay(d.motion_bearing) && d.motion_speed_kmh > 3){
+  // Si lo dominante es un giro, una flecha "vienen del X" describe un
+  // promedio que no va a ningún sitio: las celdas de lados opuestos del giro
+  // van en direcciones opuestas. Se sustituye por una etiqueta que lo dice.
+  if (d.motion_giro){
+    L.marker([d.lat + 0.6, d.lon], {interactive:false, icon: L.divIcon({
+      className:"", iconSize:[0,0], iconAnchor:[0,0], html:
+      `<div style="background:${css("--pin")};color:${css("--pin-txt")};padding:3px 10px;border-radius:99px;
+        font:600 11px -apple-system,sans-serif;white-space:nowrap;
+        position:absolute;transform:translate(-50%,-50%)">⟲ el sistema está girando</div>`
+    })}).addTo(mapa);
+  } else if (hay(d.motion_bearing) && d.motion_speed_kmh > 3){
     const desde = (d.motion_bearing + 180) % 360;
     // 0.85° ≈ 95 km: dentro del encuadre, para que la etiqueta no se corte
     const rad = desde * Math.PI / 180, dist = 0.85;
@@ -823,8 +899,19 @@ function pintarMapa(d){
   }
 
   pintarCono(d);
+  pintarNubeBaja(d);
 
   setTimeout(() => mapa.invalidateSize(), 120);
+  // Al cruzar el corte de escritorio el mapa cambia de alto; sin esto Leaflet
+  // se queda con el tamaño viejo y deja una franja gris.
+  if (!window._oyenteTamano){
+    window._oyenteTamano = true;
+    let t;
+    window.addEventListener("resize", () => {
+      clearTimeout(t);
+      t = setTimeout(() => mapa && mapa.invalidateSize(), 150);
+    });
+  }
   pintarRayos();
 }
 

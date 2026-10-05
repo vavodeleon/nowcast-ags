@@ -38,8 +38,9 @@ function nuevoElemento(id) {
     remove() {},
   };
   Object.defineProperty(el, "innerHTML", {
-    get() { return ""; },
-    set() { this.children = []; this.value = ""; },
+    // Se guarda lo escrito para poder revisar el texto de las notas.
+    get() { return this._html || ""; },
+    set(v) { this.children = []; this.value = ""; this._html = String(v); },
   });
   return el;
 }
@@ -172,6 +173,8 @@ function capaFalsa(tipo, extra = {}) {
     },
   });
 }
+// El HTML de cada etiqueta del mapa, para poder leer lo que dicen.
+const htmlEtiquetas = [];
 global.L = {
   map: () => ({
     setView() { return this; }, remove() {}, invalidateSize() {},
@@ -183,7 +186,7 @@ global.L = {
   circleMarker: () => capaFalsa("punto"),
   marker: () => capaFalsa("marca"),
   polyline: () => capaFalsa("linea"),
-  divIcon: () => ({}),
+  divIcon: (o) => { htmlEtiquetas.push((o && o.html) || ""); return {}; },
   circle: () => capaFalsa("circulo"),
   // El cono. Se guardan los vértices porque su forma es lo que hay que
   // comprobar: que se ensancha hacia la ciudad y no al revés.
@@ -590,10 +593,70 @@ const espera = () => new Promise((r) => process.nextTick(r));
     chk("se dibuja el cono con rumbo de celda", false, "no se dibujó");
   }
 
+  console.log("\nN-sexies. Con camino curvo, la franja sigue la curva");
+  // Las tormentas que giran (5/10/2026): el motor manda el camino integrado
+  // sobre el campo de movimiento. Un cuarto de vuelta alrededor de un centro
+  // al este de la celda: si la franja fuera recta, su punto medio quedaría
+  // lejos del camino.
+  const curva = JSON.parse(JSON.stringify(conDato));
+  const cLat = conDato.lat, cLon = conDato.lon + 0.5;
+  curva.celda.trayectoria = [];
+  for (let i = 0; i <= 12; i++){
+    const a = Math.PI + (Math.PI / 2) * (i / 12);       // de oeste a sur
+    curva.celda.trayectoria.push([cLat + 0.45 * Math.sin(a),
+                                  cLon + 0.45 * Math.cos(a) /
+                                  Math.cos(cLat * Math.PI / 180)]);
+  }
+  curva.celda.lat = curva.celda.trayectoria[0][0];
+  curva.celda.lon = curva.celda.trayectoria[0][1];
+  puente.pintarCono(curva);
+  const cono4 = dibujadas().filter((c) => c.tipo === "poligono");
+  chk("se dibuja", cono4.length === 1);
+  if (cono4.length) {
+    const p4 = cono4[0].puntos, m4 = p4.length / 2;
+    // El eje central en el punto medio del camino tiene que estar sobre el
+    // punto medio de la curva, no sobre la cuerda.
+    const ejeMedio = [(p4[6][0] + p4[p4.length - 7][0]) / 2,
+                      (p4[6][1] + p4[p4.length - 7][1]) / 2];
+    const curvaMedio = curva.celda.trayectoria[6];
+    const dKm = Math.hypot((ejeMedio[0] - curvaMedio[0]) * 111,
+      (ejeMedio[1] - curvaMedio[1]) * 111 * Math.cos(cLat * Math.PI / 180));
+    chk("el eje de la franja pasa por la curva, no por la cuerda", dKm < 3,
+        `${dKm.toFixed(1)} km del camino`);
+    chk("y tiene un vértice por cada punto, por los dos lados",
+        p4.length === 2 * curva.celda.trayectoria.length, `${p4.length}`);
+  }
+
+  console.log("\nN-septies. Si el sistema gira, la flecha no dice 'del oeste'");
+  const gira = JSON.parse(JSON.stringify(RESPUESTAS["latest.json"]));
+  gira.motion_giro = true;
+  gira.motion_bearing = 270;
+  gira.motion_speed_kmh = 22;
+  puente.render(gira);
+  // La etiqueta va en un divIcon: se revisa el HTML que se le pasó.
+  chk("la etiqueta habla de giro", htmlEtiquetas.some((h) => /girando/.test(h)),
+      htmlEtiquetas.slice(-1)[0] || "(sin etiquetas)");
+  chk("y no de 'en general, del'",
+      !htmlEtiquetas.slice(-1)[0] || !/en general, del/.test(htmlEtiquetas.slice(-1)[0]));
+
+  console.log("\nN-octies. Nube baja sobre la ciudad: se avisa, y de noche con reservas");
+  const nubla = JSON.parse(JSON.stringify(RESPUESTAS["latest.json"]));
+  nubla.nube_baja = {frac: 0.8, contraste_k: 15, de_dia: true};
+  puente.render(nubla);
+  chk("aparece la nota", el("nota-nube-baja").hidden === false);
+  chk("dice el porcentaje", /80%/.test(el("nota-nube-baja").innerHTML || ""));
+  nubla.nube_baja.de_dia = false;
+  puente.render(nubla);
+  chk("de noche lo advierte", /De noche/.test(el("nota-nube-baja").innerHTML || ""));
+  nubla.nube_baja = {frac: null, contraste_k: null, de_dia: null};
+  puente.render(nubla);
+  chk("null: no dice nada", el("nota-nube-baja").hidden === true);
+
   console.log("\nN-quater. Sin rumbo no hay cono, porque no hay hacia dónde");
   const sinRumbo = JSON.parse(JSON.stringify(conDato));
   delete sinRumbo.motion_bearing;
   delete sinRumbo.celda.rumbo;
+  delete sinRumbo.celda.trayectoria;
   puente.pintarCono(sinRumbo);
   chk("no se dibuja",
       dibujadas().filter((c) => c.tipo === "poligono").length === 0);

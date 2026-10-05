@@ -547,6 +547,7 @@ def main() -> int:
     print("\n8. ¿MEJORÓ DESDE EL ÚLTIMO CAMBIO? — el número acumulado no lo dice")
     por_tramo(ref)
     por_salud(datos)
+    nubes_bajas_seccion(datos)
 
     print("\n" + "=" * 66)
     peor = min(informes, key=lambda r: r["skill"])
@@ -560,6 +561,93 @@ def main() -> int:
               f"peor {peor['lead']} min ({peor['skill']:+.3f}).")
     print("=" * 66)
     return 0
+
+
+def nubes_bajas_vs_lluvia(datos: dict, lead: int = 15, umbral: float = 0.3,
+                          p_max: float = 0.2, barajadas: int = 400,
+                          semilla: int = 0) -> dict:
+    """9. ¿La nube baja avisa de lluvia que el pronóstico no ve?
+
+    Solo mira los casos donde el pronóstico dijo que NO (p_final < p_max): ahí
+    es donde la nube baja podría aportar algo. Si separara lluvia solo donde
+    el pronóstico ya decía que sí, no añadiría nada.
+
+    Se compara la tasa de lluvia con y sin nube baja DENTRO de cada día, y el
+    valor p sale de barajar la marca dentro del día. Es la misma trampa que
+    tuvo 8-bis: un día nublado y lluvioso contra uno despejado y seco "separa"
+    perfectamente sin que la nube tenga mérito propio... salvo que la nube sea
+    justo lo que llueve. Comparar dentro del día lo deja limpio.
+    """
+    out = {}
+    for franja, quiero in (("día", 1), ("noche", 0)):
+        por_dia: dict[str, list] = defaultdict(list)
+        for pf, y, fila in datos.get(lead, []):
+            fr, dia = _num(fila.get("nb_frac")), _num(fila.get("nb_dia"))
+            if fr is None or dia is None or int(dia) != quiero or pf >= p_max:
+                continue
+            por_dia[str(fila.get("valid_utc", ""))[:10]].append(
+                (1 if fr >= umbral else 0, y))
+        todos = [c for v in por_dia.values() for c in v]
+        con = [y for m, y in todos if m]
+        sin = [y for m, y in todos if not m]
+        r = {"n": len(todos), "n_con": len(con),
+             "tasa_con": float(np.mean(con)) if con else None,
+             "tasa_sin": float(np.mean(sin)) if sin else None,
+             "dif": None, "p": None}
+
+        def dif(marcas_por_dia):
+            num = den = 0.0
+            for k, v in por_dia.items():
+                m = marcas_por_dia[k]
+                ys = np.array([y for _, y in v])
+                if m.all() or not m.any():
+                    continue
+                peso = min(m.sum(), (1 - m).sum())
+                num += peso * (ys[m == 1].mean() - ys[m == 0].mean())
+                den += peso
+            return num / den if den else None
+
+        marcas = {k: np.array([m for m, _ in v]) for k, v in por_dia.items()}
+        d0 = dif(marcas)
+        if d0 is not None:
+            rng = np.random.default_rng(semilla)
+            mayores = 0
+            for _ in range(barajadas):
+                b = {k: rng.permutation(m) for k, m in marcas.items()}
+                db = dif(b)
+                if db is not None and db >= d0:
+                    mayores += 1
+            r["dif"], r["p"] = d0, (mayores + 1) / (barajadas + 1)
+        out[franja] = r
+    return out
+
+
+def nubes_bajas_seccion(datos: dict) -> None:
+    print("\n9. NUBES BAJAS — ¿avisan de lluvia que el pronóstico no ve?")
+    print("   Solo casos a 15 min donde el pronóstico dijo <20%, comparados")
+    print("   dentro del mismo día. Se registran desde el 5/10/2026.\n")
+    res = nubes_bajas_vs_lluvia(datos)
+    print(f"   {'franja':>7} {'casos':>6} {'con nube':>9} {'llueve con':>11} "
+          f"{'sin':>6} {'dif. mismo día':>15} {'p':>6}")
+    for franja, r in res.items():
+        dif = f"{r['dif'] * 100:+.1f} pts" if r["dif"] is not None else "—"
+        pv = f"{r['p']:.2f}" if r["p"] is not None else "—"
+        print(f"   {franja:>7} {r['n']:>6} {r['n_con']:>9} "
+              f"{_pc(r['tasa_con']):>11} {_pc(r['tasa_sin']):>6} "
+              f"{dif:>15} {pv:>6}")
+    d = res["día"]
+    print()
+    if d["n_con"] < 30:
+        print(f"   De día hay {d['n_con']} casos con nube baja; hacen falta ~30.")
+        print("   Hasta entonces la capa gris es solo para mirar.")
+    elif d["dif"] is not None and d["dif"] >= 0.10 and d["p"] < 0.05:
+        print("   De día GANA: llueve claramente más con nube baja, en el mismo")
+        print("   día, y no es azar. Merece entrar como fuente (solo de día).")
+    else:
+        print("   De día no separa lo bastante (regla: ≥10 pts y p<0.05).")
+        print("   Se queda en el mapa y fuera del pronóstico.")
+    print("   La noche se muestra para ver, no para decidir: ahí el satélite")
+    print("   confunde la nube con el suelo frío.")
 
 
 def _dif_estratos(estratos: dict, marcas: dict,

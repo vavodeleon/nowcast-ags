@@ -302,6 +302,13 @@ class Nowcast:
     # ver con el del dominio entero.
     nearest_cell_bearing: float | None = None
     nearest_cell_kmh: float = 0.0
+    # El camino que seguira la celda, en (lat, lon), si se pudo integrar sobre
+    # un campo de movimiento. Puede ser curvo: es lo que permite dibujar una
+    # tormenta que gira. Vacio si se uso la recta de siempre.
+    nearest_cell_trayectoria: list = field(default_factory=list)
+    # ¿El movimiento dominante es un giro? Para no decir "vienen del oeste"
+    # cuando nada se traslada.
+    giro: bool = False
     valid_time: str = ""
 
     def score_at(self, lead_min: int) -> float:
@@ -444,8 +451,60 @@ def recolocar_celda(nc: Nowcast, frames: list[Frame], motion: Motion) -> None:
     nc.nearest_cell_radio_km = None
     nc.nearest_cell_bearing = None
     nc.nearest_cell_kmh = 0.0
+    nc.nearest_cell_trayectoria = []
     _find_incoming_cell(nc, signal, motion, cy, cx, latest.km_per_px, latest,
                         frames)
+
+
+def _px_a_latlon(frame, cy, cx, km_per_px, py, px) -> list:
+    """Pixel -> [lat, lon], con la misma aproximacion plana de la celda."""
+    norte_km = (cy - py) * km_per_px
+    este_km = (px - cx) * km_per_px
+    coslat = max(0.2, math.cos(math.radians(frame.center_lat)))
+    return [round(frame.center_lat + norte_km / 111.0, 4),
+            round(frame.center_lon + este_km / (111.0 * coslat), 4)]
+
+
+def _longitud_km(camino, km_per_px, hasta=None) -> float:
+    total = 0.0
+    for (t0, y0, x0), (t1, y1, x1) in zip(camino, camino[1:]):
+        if hasta is not None and t0 >= hasta:
+            break
+        total += math.hypot(y1 - y0, x1 - x0) * km_per_px
+    return total
+
+
+def _por_campo(fld, gy, gx, cy, cx, km_per_px, max_eta, confianza):
+    """Sigue una celda por el campo y decide si pasa por la ciudad.
+
+    Devuelve (eta, movimiento inicial, camino) o None si no viene. El
+    criterio es el mismo de la recta -un pasillo de 15 km mas el 30% de lo
+    recorrido-, pero midiendo distancia al camino curvo y recorrido a lo largo
+    de el.
+    """
+    from . import campo as _campo
+    camino = _campo.trayectoria(fld, gy, gx, max_eta, paso_min=5.0)
+    dist = [math.hypot(y - cy, x - cx) * km_per_px for _t, y, x in camino]
+    k = int(np.argmin(dist))
+    if k == 0:
+        return None                      # ya esta lo mas cerca que va a estar
+    t_k = camino[k][0]
+    recorrido = _longitud_km(camino, km_per_px, hasta=t_k)
+    if dist[k] > 15.0 + 0.3 * recorrido:
+        return None                      # pasa de largo
+    # El movimiento con que arranca: rumbo y velocidad del primer tramo, que
+    # es lo que una persona ve ahora mismo en el cielo.
+    (_t0, y0, x0), (t1, y1, x1) = camino[0], camino[1]
+    vy, vx = (y1 - y0) / t1, (x1 - x0) / t1
+    kmh = math.hypot(vy, vx) * km_per_px * 60.0
+    rumbo = ((math.degrees(math.atan2(vx, -vy)) + 360.0) % 360.0
+             if math.hypot(vy, vx) * 15 >= config.MOTION_MIN_PX else None)
+    inicial = Motion(vy_px_min=vy, vx_px_min=vx, speed_kmh=kmh,
+                     bearing_deg=rumbo, confidence=confianza)
+    # El camino se corta media hora despues de pasar por la ciudad: lo de
+    # mas alla no le importa a nadie aqui y solo alarga el dibujo.
+    fin = min(len(camino), k + 7)
+    return t_k, inicial, camino[:fin]
 
 
 def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
@@ -495,7 +554,29 @@ def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
     # (eta, dist_km, intensidad, gy, gx, movimiento usado)
     best = None
 
+    # --- el campo de movimiento, si hay nubes suficientes para medirlo
+    #
+    # Con campo, cada celda se sigue paso a paso por el camino que le marca
+    # el sitio donde esta en cada momento: si el sistema gira, el camino
+    # gira. Sin campo -poca nube, o un solo cuadro util- se vuelve a la recta
+    # de siempre, que para una traslacion limpia da lo mismo.
+    from . import campo as _campo
+    fld = _campo.medir(frames) if frames else None
+    usar_campo = fld is not None and fld.util
+    nc.giro = _campo.es_giro(fld) if usar_campo else False
+    max_eta = max(config.LEAD_TIMES_MIN) * 1.5
+
     for dist_km, gy, gx, intensity in candidatas:
+        if usar_campo:
+            r = _por_campo(fld, gy, gx, cy, cx, km_per_px, max_eta,
+                           motion.confidence or 0.5)
+            if r is None:
+                continue
+            eta, usar, camino = r
+            if best is None or eta < best[0]:
+                best = (eta, dist_km, intensity, gy, gx, usar, camino)
+            continue
+
         # --- el movimiento de ESTA celda, medido donde ella esta
         local = motion_en(frames, gy, gx) if frames else Motion()
         usar = local if local.bearing_deg is not None else motion
@@ -520,9 +601,8 @@ def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
         eta = along / speed_px_min
 
         if best is None or eta < best[0]:
-            best = (eta, dist_km, intensity, gy, gx, usar)
+            best = (eta, dist_km, intensity, gy, gx, usar, None)
 
-    max_eta = max(config.LEAD_TIMES_MIN) * 1.5
     if best and best[0] <= max_eta:
         nc.nearest_cell_eta_min = round(best[0], 1)
         nc.nearest_cell_km = round(best[1], 1)
@@ -541,7 +621,7 @@ def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
         # incertidumbre que mide decenas de kilometros. Usar algo mas fino
         # seria precision falsa.
         if frame is not None:
-            _eta, _d, _i, gy, gx, _m = best
+            _eta, _d, _i, gy, gx, _m, camino = best
             norte_km = (cy - gy) * km_per_px
             este_km = (gx - cx) * km_per_px
             lat = frame.center_lat + norte_km / 111.0
@@ -549,13 +629,23 @@ def _find_incoming_cell(nc: Nowcast, signal: np.ndarray, motion: Motion,
             lon = frame.center_lon + este_km / (111.0 * coslat)
             nc.nearest_cell_lat = round(lat, 4)
             nc.nearest_cell_lon = round(lon, 4)
+            if camino:
+                nc.nearest_cell_trayectoria = [
+                    _px_a_latlon(frame, cy, cx, km_per_px, py, px)
+                    for _t, py, px in camino]
 
         # El radio del cono con la MISMA formula que usan los horizontes, para
         # que el dibujo y los numeros no puedan contradecirse: 5 km de error
         # minimo mas lo que se ensancha con el recorrido, y se ensancha mas
         # cuanto menos fiable es la estimacion de movimiento.
         usado = best[5]
-        v_px_min = math.hypot(usado.vy_px_min, usado.vx_px_min)
-        recorrido_km = v_px_min * km_per_px * best[0]
+        if best[6]:
+            # Con camino integrado, lo recorrido es la longitud del camino
+            # hasta el punto mas cercano, no una recta: en un giro son cosas
+            # muy distintas.
+            recorrido_km = _longitud_km(best[6], km_per_px, hasta=best[0])
+        else:
+            v_px_min = math.hypot(usado.vy_px_min, usado.vx_px_min)
+            recorrido_km = v_px_min * km_per_px * best[0]
         spread = 0.25 + 0.5 * (1.0 - usado.confidence)
         nc.nearest_cell_radio_km = round(5.0 + recorrido_km * spread, 1)

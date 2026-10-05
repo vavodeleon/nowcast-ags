@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 
 from . import (archivo, calibrate, config, engine, feedback, lightning, malla,
-               muestreo, notify, overhead, salud,
+               muestreo, notify, nubes_bajas, overhead, salud,
                pressure, render, sources, store, verify)
 
 log = logging.getLogger(__name__)
@@ -364,6 +364,16 @@ def build_forecast() -> dict:
             "pres_fuente": pres.fuente if pres else "",
         })
 
+    # Nubes bajas: se miden y se guardan, NO entran en p_final. Ver
+    # nowcast/nubes_bajas.py y la seccion 9 de evaluar.py.
+    try:
+        nube_baja = nubes_bajas.medir(ir_frames[-1] if ir_frames else None)
+    except Exception as exc:
+        log.warning("no se pudo medir la nube baja: %s", exc)
+        nube_baja = {"frac": None, "contraste_k": None, "de_dia": None}
+    for r in rows:
+        r.update(nubes_bajas.filas(nube_baja))
+
     # el infrarrojo manda: es el sensor que ve la ciudad
     primary = ir_nc or radar_nc
     primary_frames = ir_frames or radar_frames
@@ -386,6 +396,10 @@ def build_forecast() -> dict:
         "motion_confidence": round(
             (deriva.confianza if usa_deriva else motion.confidence), 3),
         "motion_fuente": "rayos (nucleo)" if usa_deriva else "infrarrojo (topes)",
+        # Si lo dominante es un giro, el "vienen del X" de motion_from describe
+        # un promedio que no se traslada a ningun sitio. Se avisa aparte en vez
+        # de cambiar motion_from, que la malla lee con su propio significado.
+        "motion_giro": bool(primary.giro) if primary else False,
         "deriva": ({"desde": deriva.from_direction,
                     "bearing": round(deriva.bearing_deg, 1),
                     "kmh": deriva.speed_kmh,
@@ -417,7 +431,15 @@ def build_forecast() -> dict:
             # a 200 km, y con 488 km de ventana eso pasa a diario.
             "rumbo": primary.nearest_cell_bearing,
             "kmh": primary.nearest_cell_kmh,
+            # El camino integrado sobre el campo de movimiento, en [lat, lon]
+            # cada cinco minutos. Puede ser curvo. Vacio si no hubo campo y se
+            # uso la recta: la pagina dibuja entonces el cono recto de siempre.
+            "trayectoria": primary.nearest_cell_trayectoria,
         } if primary and primary.nearest_cell_lat is not None else None),
+        # Siempre presente; numeros a null si no se sabe. `de_dia` falso
+        # significa "este dato vale poco": de noche el suelo se enfria hasta
+        # la temperatura de la nube y el contraste desaparece.
+        "nube_baja": nube_baja,
         "cape": round(cape, 0),
         "radar_coverage": round(coverage, 3),
         "radar_usable": cov["usable"],

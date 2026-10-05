@@ -87,6 +87,17 @@ DBZ_STORM = 45.0
 IR_CONVECTIVE_K = 235.0
 IR_DEEP_K = 220.0
 
+# Nubes bajas (ver nowcast/nubes_bajas.py). No entran en el pronostico: se
+# dibujan y se miden. NUBE_ALTA_K es donde empieza la escala de color de las
+# altas; por encima, una nube cuenta como baja/media si esta al menos
+# NUBE_BAJA_CONTRASTE_K mas fria que el suelo despejado de la ventana.
+NUBE_ALTA_K = 250.0
+NUBE_BAJA_CONTRASTE_K = 8.0
+NUBE_BAJA_REF_MIN_K = 275.0     # si lo mas caliente es mas frio, todo esta cubierto
+NUBE_BAJA_RADIO_KM = 15.0
+NUBE_BAJA_DIA_DESDE_H = 9       # hora local
+NUBE_BAJA_DIA_HASTA_H = 18
+
 # ---------------------------------------------------------------- alertas
 ALERT_PROB_THRESHOLD = 0.55   # probabilidad calibrada mínima para molestarte
 ALERT_MAX_ETA_MIN = 90        # solo avisa si llega dentro de este plazo
@@ -258,3 +269,14 @@ MUESTREO_DESDE_H = 8
 MUESTREO_HASTA_H = 22
 # "¿Esta lloviendo AHORA?" deja de tener sentido pasada media hora.
 MUESTREO_VIGENCIA_MIN = 30
+
+# ---------------------------------------------------------------- campo
+# Teselas para medir un vector de movimiento por zona (ver campo.py). 40 px
+# son ~100 km: lo bastante grande para que la correlacion de fase tenga
+# estructura que seguir, y lo bastante pequeño para que dentro quepa solo un
+# trozo de un giro, no el giro entero. Paso de 20: teselas solapadas a la mitad.
+CAMPO_TESELA_PX = 40
+CAMPO_PASO_PX = 20
+# Con menos zonas con nubes que esto, el campo no describe nada y se vuelve al
+# vector por celda de siempre.
+CAMPO_MIN_TESELAS = 6

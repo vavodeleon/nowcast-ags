@@ -172,6 +172,24 @@ chk("pressure.now_msl existe", "now_msl" in claves)
 chk("pressure.sensor existe (ahí va el factor)", "sensor" in claves)
 chk("y no hay un pressure.msl paralelo", "msl" not in claves)
 
+print("\nD-sexies. Trayectorias curvas y giros (5/10/2026)")
+# Aditivos: la malla no los necesita, pero si algun dia los lee, que tengan
+# nombre fijo. `motion_from` NO cambia de significado en un giro: se avisa
+# aparte con `motion_giro`, porque la malla imprime motion_from tal cual.
+chk("celda.trayectoria se publica", '"trayectoria": primary.nearest_cell_trayectoria'
+    in fuente_run)
+chk("motion_giro se publica", '"motion_giro":' in fuente_run)
+
+print("\nD-septies. Nube baja (5/10/2026)")
+# Clave siempre presente; numeros a null si no se sabe, nunca 0 -que se
+# leeria "despejado"-. No entra en el pronostico, asi que la malla puede
+# ignorarla sin perder nada.
+chk("nube_baja se publica", '"nube_baja": nube_baja' in fuente_run)
+from nowcast import nubes_bajas as _nb  # noqa: E402
+_v = _nb.medir(None)
+chk("sin datos: frac y contraste a null", _v["frac"] is None and _v["contraste_k"] is None)
+chk("y con las tres claves", set(_v) == {"frac", "contraste_k", "de_dia"})
+
 print("\nE. temperatura.serie lleva fecha explícita")
 # Sin fecha, la malla reconstruye el cruce de medianoche contando horas. Los
 # avisos de helada necesitan el minimo QUE VIENE, no el del dia calendario.
