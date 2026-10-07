@@ -1,42 +1,42 @@
 {
-  "issued_utc": "2026-10-07T17:45:57+00:00",
-  "issued_local": "2026-10-07 11:45",
+  "issued_utc": "2026-10-07T18:00:57+00:00",
+  "issued_local": "2026-10-07 12:00",
   "probabilities": {
     "15": 0.02,
-    "30": 0.02,
+    "30": 0.026,
     "45": 0.02,
     "60": 0.02,
-    "90": 0.02,
-    "120": 0.059,
-    "180": 0.066
+    "90": 0.061,
+    "120": 0.058,
+    "180": 0.067
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 261.1,
-    "contraste": 22.8,
+    "bt_encima": 282.9,
+    "contraste": -0.1,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": null,
-    "forma": "nubes",
+    "precip_observada": 0.0,
+    "forma": "despejado",
     "lloviendo": false,
     "corroborado_por": "",
-    "estado": "Nublado"
+    "estado": "Despejado"
   },
-  "motion_speed_kmh": 54.0,
+  "motion_speed_kmh": 51.9,
   "motion_from": "oeste",
-  "motion_confidence": 0.492,
+  "motion_confidence": 0.516,
   "motion_fuente": "infrarrojo (topes)",
   "motion_giro": false,
   "deriva": null,
   "motion_ir_from": "oeste",
-  "motion_ir_kmh": 54.0,
-  "growth": 1.198,
+  "motion_ir_kmh": 51.9,
+  "growth": 0.738,
   "cell_eta_min": null,
   "cell_km": null,
   "celda": null,
   "nube_baja": {
-    "frac": 0.758,
-    "contraste_k": 13.4,
+    "frac": 0.6,
+    "contraste_k": 12.1,
     "de_dia": true
   },
   "cape": 810.0,
@@ -61,7 +61,7 @@
     "gem_seamless": 0.01
   },
   "confidence": "buena",
-  "calibration_n": 42786,
+  "calibration_n": 42793,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -74,40 +74,33 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 110.4,
+  "motion_bearing": 103.9,
   "pressure": {
-    "now_msl": 1014.3,
-    "now_surface": 815.2,
+    "now_msl": 1014.1,
+    "now_surface": 814.8,
     "fuente": "sensor local",
     "sensor": {
-      "muestras": 773,
-      "edad_min": 0.8,
+      "muestras": 788,
+      "edad_min": 0.7,
       "cadencia_s": 60,
-      "horas": 12.9,
-      "factor": 1.2442,
-      "amplitud_diaria": 12.91,
+      "horas": 13.2,
+      "factor": 1.2445,
+      "amplitud_diaria": 12.59,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": -1.0,
+    "change_1h": -0.9,
     "change_3h": -3.0,
     "change_6h": -0.4,
     "change_24h": -2.1,
     "forecast_drop": 2.4,
     "forecast_drop_at": "Wed 07, 21:00",
-    "forecast_drop_in_h": 9.2,
+    "forecast_drop_in_h": 9.0,
     "level": "tranquilo",
     "trend": "estable",
     "series": [
-      {
-        "t": "06 12:00",
-        "iso": "2026-10-06T18:00:00+00:00",
-        "msl": 1016.5,
-        "limpia": 1016.1,
-        "futuro": false
-      },
       {
         "t": "06 13:00",
         "iso": "2026-10-06T19:00:00+00:00",
@@ -274,7 +267,7 @@
         "iso": "2026-10-07T18:00:00+00:00",
         "msl": 1014.4,
         "limpia": 1014.0,
-        "futuro": true
+        "futuro": false
       },
       {
         "t": "07 13:00",
@@ -597,24 +590,25 @@
         "msl": 1016.1,
         "limpia": 1013.4,
         "futuro": true
+      },
+      {
+        "t": "09 11:00",
+        "iso": "2026-10-09T17:00:00+00:00",
+        "msl": 1015.0,
+        "limpia": 1013.2,
+        "futuro": true
       }
     ],
     "umbral_24h": 5.0,
     "ciclo_diario": 7.7
   },
   "temperatura": {
-    "ahora": 23.0,
-    "sensacion": 22.6,
-    "humedad": 51,
+    "ahora": 23.1,
+    "sensacion": 22.5,
+    "humedad": 50,
     "maxima": 24.8,
     "minima": 13.5,
     "serie": [
-      {
-        "t": "11:00",
-        "fecha": "2026-10-07",
-        "temp": 22.3,
-        "sensacion": 21.9
-      },
       {
         "t": "12:00",
         "fecha": "2026-10-07",
@@ -758,6 +752,12 @@
         "fecha": "2026-10-08",
         "temp": 21.8,
         "sensacion": 20.6
+      },
+      {
+        "t": "12:00",
+        "fecha": "2026-10-08",
+        "temp": 22.7,
+        "sensacion": 21.5
       }
     ]
   },
@@ -768,7 +768,7 @@
     "dist_km": null,
     "dist_min_hora_km": null
   },
-  "duracion_s": 55.2,
+  "duracion_s": 44.6,
   "degradado": false,
   "muestreo": null,
   "performance": {
