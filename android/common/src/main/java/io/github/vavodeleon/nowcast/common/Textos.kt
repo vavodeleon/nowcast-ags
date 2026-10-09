@@ -9,6 +9,8 @@ object Paleta {
     val TINTA = 0xFFE8ECF2.toInt()
     val TENUE = 0xFF95A0B3.toInt()
     val LINEA = 0xFF1D222B.toInt()
+    /** Carril de las barras: se ve dónde estaría el 100%. */
+    val CARRIL = 0xFF14181F.toInt()
 
     fun de(nombre: String): Int = when (nombre) {
         "rojo" -> 0xFFFF6B5E
