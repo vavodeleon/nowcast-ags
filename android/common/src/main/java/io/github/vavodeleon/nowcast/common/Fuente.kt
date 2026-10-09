@@ -1,6 +1,7 @@
 package io.github.vavodeleon.nowcast.common
 
 import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -23,15 +24,35 @@ object Fuente {
     private const val RAW =
         "https://raw.githubusercontent.com/vavodeleon/nowcast-ags/main/docs/reloj.json"
 
+    const val TAG = "nowcast"
+
     suspend fun bajar(): String? = withContext(Dispatchers.IO) {
         // El parámetro esquiva las cachés intermedias: sin él, el CDN puede
         // servir la copia de hace diez minutos.
         val t = System.currentTimeMillis()
-        val a = runCatching { leerUrl("$PAGES?t=$t") }.getOrNull()
+        val a = intentar("pages", "$PAGES?t=$t")
         val ra = Reloj.de(a)
         if (ra != null && !ra.viejo()) return@withContext a
-        val b = runCatching { leerUrl("$RAW?t=$t") }.getOrNull()
+        Log.i(TAG, "pages ${if (ra == null) "sin dato" else "viejo (${ra.hora})"}: pruebo raw")
+        val b = intentar("raw", "$RAW?t=$t")
         elegir(a, b)
+    }
+
+    /**
+     * Una descarga, dejando constancia de cómo fue. La primera versión
+     * tragaba los errores en silencio y en el reloj solo se veía "Sin datos"
+     * sin forma de saber si era la red, el tiempo o el JSON (9/10/2026).
+     */
+    private fun intentar(nombre: String, url: String): String? {
+        val t0 = System.currentTimeMillis()
+        return try {
+            leerUrl(url).also {
+                Log.i(TAG, "$nombre ok: ${it.length} bytes en ${System.currentTimeMillis() - t0} ms")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "$nombre falló en ${System.currentTimeMillis() - t0} ms: $e")
+            null
+        }
     }
 
     /** El más reciente de dos textos; el que no se pueda leer no cuenta. */

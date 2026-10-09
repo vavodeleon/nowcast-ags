@@ -14,6 +14,18 @@
              el Bluetooth del teléfono, lo que haya. -->
         <meta-data android:name="com.google.android.wearable.standalone" android:value="true" />
 
+        <!-- Una pantalla mínima. Además de servir para ver el dato, abrirla
+             descarga en primer plano, donde Wear OS nunca corta la red. -->
+        <activity
+            android:name=".Principal"
+            android:exported="true"
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".TarjetaLluvia"
             android:exported="true"

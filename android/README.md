@@ -98,7 +98,17 @@ desde el Mac, por WiFi (reloj y Mac en la misma red).
 Para actualizar, repite `adb connect` e `adb install -r`. Al terminar puedes
 apagar la depuración por Wi-Fi: gasta batería.
 
-La app del reloj no tiene ícono en la lista de apps: es solo la tarjeta.
+En el Galaxy Watch8 Classic: la opción se llama *Depuración inalámbrica*
+(no hay "Depuración ADB" aparte), el Wi-Fi del reloj tiene que estar en
+*Siempre activado* mientras tanto, y si `adb` dice "more than one device"
+usa `adb -s IP:PUERTO install -r ...`.
+
+En la lista de apps del reloj aparece *Lluvia Ags*: lo mismo que la tarjeta,
+en texto. Abrirla baja el dato en primer plano.
+
+Si algo no llega, el registro dice por qué:
+
+    adb -s IP:PUERTO logcat -d -s nowcast
 
 ## Cada cuánto se actualiza
 

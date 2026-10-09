@@ -14,21 +14,20 @@ import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
 import com.google.common.util.concurrent.ListenableFuture
+import android.util.Log
 import io.github.vavodeleon.nowcast.common.Cache
 import io.github.vavodeleon.nowcast.common.Fuente
 import io.github.vavodeleon.nowcast.common.Paleta
 import io.github.vavodeleon.nowcast.common.Reloj
 import io.github.vavodeleon.nowcast.common.Textos
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * La tarjeta del reloj: veredicto, probabilidad a 1 h, barras y la celda.
  *
- * El sistema la vuelve a pedir cada 15 minutos (freshness). Tocarla la
- * refresca en el momento. Si no hay red o tarda, se dibuja la última lectura
- * guardada con su hora, y el "⚠" si ya es vieja: nunca un dato viejo
- * haciéndose pasar por actual.
+ * Se dibuja AL INSTANTE con la última lectura guardada, con su hora y el
+ * "⚠" si ya es vieja. La descarga va aparte (TrabajoReloj): al terminar,
+ * pide que se redibuje. Tocar la tarjeta pide una descarga en el momento.
  */
 class TarjetaLluvia : TileService() {
 
@@ -36,10 +35,13 @@ class TarjetaLluvia : TileService() {
         requestParams: RequestBuilders.TileRequest,
     ): ListenableFuture<TileBuilders.Tile> =
         SuspendToFutureAdapter.launchFuture(Dispatchers.IO) {
-            // El sistema no espera para siempre a una tarjeta: tope de 6 s.
-            val texto = withTimeoutOrNull(6_000) { Fuente.bajar() }
-            Cache.guardar(this@TarjetaLluvia, texto)
-            tarjeta(Cache.leer(this@TarjetaLluvia))
+            val ctx = this@TarjetaLluvia
+            val clic = requestParams.currentState.lastClickableId == "refrescar"
+            val desde = Estado.minutosDesdeIntento(ctx)
+            Log.i(Fuente.TAG, "tarjeta pedida (toque=$clic, último intento hace $desde min)")
+            TrabajoReloj.programar(ctx)
+            if (clic || desde >= 10) TrabajoReloj.ahora(ctx)
+            tarjeta(Cache.leer(ctx))
         }
 
     override fun onTileResourcesRequest(
@@ -59,7 +61,7 @@ class TarjetaLluvia : TileService() {
     private fun contenido(r: Reloj?): L.LayoutElement {
         val columna = L.Column.Builder()
             .setHorizontalAlignment(L.HORIZONTAL_ALIGN_CENTER)
-            .addContent(texto("${r?.icono ?: "🛰️"} ${r?.titular ?: "Sin datos"}",
+            .addContent(texto("${r?.icono ?: "🛰️"} ${r?.titular ?: "Bajando datos…"}",
                               14f, Paleta.de(r?.color ?: "muted"), negrita = true, lineas = 2))
             .addContent(texto(Textos.pct(r?.p60), 30f, Paleta.prob(r?.p60), negrita = true))
             .addContent(texto("lluvia en 1 h", 11f, Paleta.TENUE))
