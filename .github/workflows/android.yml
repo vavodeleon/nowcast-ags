@@ -1,0 +1,85 @@
+name: android
+
+# Solo cuando cambia el código de la app. El Pi sube datos 96 veces al día y
+# ninguna de esas subidas debe disparar una compilación de 5 minutos.
+on:
+  push:
+    branches: [main]
+    paths: ["android/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # para publicar el release con los APK
+
+concurrency:
+  group: android
+  cancel-in-progress: true
+
+jobs:
+  compilar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      # La mitad Kotlin del contrato de reloj.json (la otra es test_reloj.py).
+      - name: Pruebas
+        run: gradle --no-daemon :common:testDebugUnitTest
+
+      - name: Llave de firma
+        env:
+          B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$B64" ]; then
+            echo "$B64" | base64 -d > "$RUNNER_TEMP/nowcast.jks"
+            echo "NOWCAST_KEYSTORE=$RUNNER_TEMP/nowcast.jks" >> "$GITHUB_ENV"
+            echo "FIRMADO=1" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Sin ANDROID_KEYSTORE_B64: se firma con llave de depuración y NO se publica release. Ver android/README.md"
+          fi
+
+      - name: Compilar
+        env:
+          NOWCAST_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          NOWCAST_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          NOWCAST_KEY_PASS: ${{ secrets.ANDROID_KEY_PASS }}
+        run: |
+          gradle --no-daemon :app:assembleRelease :wear:assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk nowcast-celular.apk
+          cp wear/build/outputs/apk/release/wear-release.apk nowcast-reloj.apk
+
+      - name: Borrar la llave
+        if: always()
+        run: rm -f "$RUNNER_TEMP/nowcast.jks"
+
+      # Siempre como artefacto, para poder probar aunque no haya llave.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apks
+          path: android/nowcast-*.apk
+
+      # Con llave propia, un release: el enlace
+      #   https://github.com/vavodeleon/nowcast-ags/releases/latest/download/nowcast-celular.apk
+      # apunta siempre a la última versión.
+      - name: Publicar
+        if: env.FIRMADO == '1'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-${{ github.run_number }}
+          name: App Android ${{ github.run_number }}
+          make_latest: true
+          files: |
+            android/nowcast-celular.apk
+            android/nowcast-reloj.apk

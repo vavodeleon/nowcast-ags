@@ -6,3 +6,16 @@ __pycache__/
 # credenciales del servidor: nunca al repositorio
 .nowcast.env
 *.env
+
+# Android: lo compila GitHub Actions; nada de esto va al repositorio
+android/.gradle/
+android/**/build/
+android/local.properties
+android/.idea/
+*.iml
+# La llave de firma de los APK. Si se publica, cualquiera puede firmar una
+# "actualización" que tu celular aceptaría como tuya.
+*.jks
+*.keystore
+*.p12
+*.pem

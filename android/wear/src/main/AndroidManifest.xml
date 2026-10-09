@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-feature android:name="android.hardware.type.watch" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@android:style/Theme.DeviceDefault">
+
+        <uses-library android:name="com.google.android.wearable" android:required="false" />
+        <!-- Funciona sin el celular: baja el dato por WiFi/LTE del reloj o por
+             el Bluetooth del teléfono, lo que haya. -->
+        <meta-data android:name="com.google.android.wearable.standalone" android:value="true" />
+
+        <service
+            android:name=".TarjetaLluvia"
+            android:exported="true"
+            android:label="@string/tarjeta"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@drawable/tarjeta_vista" />
+        </service>
+    </application>
+</manifest>

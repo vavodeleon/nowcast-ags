@@ -4,12 +4,13 @@ from __future__ import annotations
 import argparse
 import logging
 import math
+import os
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
 from . import (archivo, calibrate, config, engine, feedback, lightning, malla,
-               muestreo, notify, nubes_bajas, overhead, salud,
+               muestreo, notify, nubes_bajas, overhead, reloj, salud,
                pressure, render, sources, store, verify)
 
 log = logging.getLogger(__name__)
@@ -476,6 +477,14 @@ def publish(result: dict) -> None:
     payload = {k: v for k, v in result.items() if not k.startswith("_")}
     payload["performance"] = verify.recent_performance(days=21)
     store.save_json(config.LATEST_JSON, payload)
+    # El widget y el reloj leen esto. Si fallara, la pagina sigue: va aparte.
+    try:
+        # Junto a latest.json, sea donde sea: una prueba que redirige uno
+        # redirige los dos sin tener que acordarse.
+        store.save_json(os.path.join(os.path.dirname(config.LATEST_JSON),
+                                     "reloj.json"), reloj.compacto(payload))
+    except Exception as exc:
+        log.error("no se pudo escribir reloj.json: %s", exc)
 
     # serie de las ultimas 48 h para la grafica
     preds = store.read_predictions()

@@ -51,7 +51,7 @@ marca="$(mktemp)"
 fallos=0
 for t in selftest test_visual test_matutino test_rayos test_ahora \
          test_tormenta test_presion test_barometro test_archivo test_migracion test_salud \
-         test_malla test_muestreo test_campo test_nubes_bajas test_contrato test_pesos test_deriva test_evaluar test_presupuesto test_workflow; do
+         test_malla test_muestreo test_campo test_nubes_bajas test_reloj test_contrato test_pesos test_deriva test_evaluar test_presupuesto test_workflow; do
   printf "  %-16s " "$t"
   if salida="$("$PY" "$t.py" 2>&1)"; then
     echo "$(echo "$salida" | tail -1)"
