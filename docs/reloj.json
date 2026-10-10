@@ -1,11 +1,11 @@
 {
   "v": 1,
-  "emitido_utc": "2026-10-10T12:45:52+00:00",
-  "hora": "06:45",
-  "icono": "🌦️",
-  "titular": "Puede llover",
-  "apoyo": "Conviene llevar paraguas por si acaso.",
-  "color": "naranja",
+  "emitido_utc": "2026-10-10T13:00:52+00:00",
+  "hora": "07:00",
+  "icono": "⛈️",
+  "titular": "Lluvia en ~55 min",
+  "apoyo": "Viene una celda desde el suroeste, a 94 km/h.",
+  "color": "rojo",
   "p": [
     {
       "min": 15,
@@ -13,31 +13,36 @@
     },
     {
       "min": 30,
-      "p": 0.386
+      "p": 0.38
     },
     {
       "min": 45,
-      "p": 0.463
+      "p": 0.453
     },
     {
       "min": 60,
-      "p": 0.595
+      "p": 0.542
     },
     {
       "min": 90,
-      "p": 0.607
+      "p": 0.537
     },
     {
       "min": 120,
-      "p": 0.51
+      "p": 0.491
     },
     {
       "min": 180,
-      "p": 0.434
+      "p": 0.474
     }
   ],
-  "p60": 0.595,
-  "celda": null,
+  "p60": 0.542,
+  "celda": {
+    "eta_min": 55,
+    "km": 98,
+    "desde": "suroeste",
+    "intensidad": 0.669
+  },
   "giro": false,
   "nube_baja": null,
   "degradado": false
