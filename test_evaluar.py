@@ -214,5 +214,109 @@ chk("con respuesta sesgada por el tiempo, lo detecta (casi siempre)",
 falsos = sum("contesta distinto" in escenario(False, 300 + k) for k in range(5))
 chk("con respuesta al azar, no inventa un sesgo", falsos <= 1, f"{falsos} de 5")
 
+print("\nG. Sorteo ponderado por riesgo: con 1/π la tasa vuelve a ser la real")
+# Una población donde la lluvia se concentra en los ratos con riesgo, como
+# en la realidad. Se sortea con los π que usa el Pi y se estima la tasa de
+# lluvia de TODOS los ratos. Sin pesos, sobra lluvia; con pesos, no.
+from nowcast import muestreo as _mu  # noqa: E402
+rng = np.random.default_rng(7)
+estimadas, crudas = [], []
+for rep in range(40):
+    filas, pesos = [], {}
+    for k in range(20000):
+        riesgo = rng.random() < 0.25
+        llueve = int(rng.random() < (0.40 if riesgo else 0.03))
+        pi = _mu.pi_para(riesgo)
+        if rng.random() < pi:
+            slot = f"r{rep}-{k}"
+            filas.append((0.1, llueve, {"valid_utc": slot, "p_ir": 0.1,
+                                        "p_models": 0.1, "p_radar": 0.0}))
+            pesos[slot] = 1 / pi
+    r = evaluar.comparar_ponderado(filas, pesos)
+    estimadas.append(r["tasa"])
+    crudas.append(np.mean([y for _p, y, _f in filas]))
+real = 0.25 * 0.40 + 0.75 * 0.03
+chk("sin pesos la muestra exagera la lluvia", np.mean(crudas) > real * 1.5,
+    f"{np.mean(crudas):.3f} contra {real:.3f}")
+chk("con 1/π la estimación es la real", abs(np.mean(estimadas) - real) < 0.01,
+    f"{np.mean(estimadas):.3f} contra {real:.3f}")
+# Medido: ~2× con 25% de corridas en riesgo. Se dijo "unas 3 veces" antes de
+# medirlo; subir más el peso del riesgo ganaría poco y haría la estimación
+# ruidosa (cada respuesta tranquila pesaría demasiado).
+chk("y el sorteo junta del orden del doble de lluvias por pregunta",
+    np.mean(crudas) / real > 1.8, f"{np.mean(crudas) / real:.1f}× más lluvia por pregunta")
+
+print("\nH. Sección 7: anticipa, reacciona, o es la hora del día")
+# Tres mundos sintéticos donde se sabe la respuesta. La versión anterior
+# (presión media cuando llovió menos cuando no, con todo mezclado) los
+# confundía: en los tres daba una diferencia, y en dos de ellos no la hay.
+from nowcast import config as _cfg, store as _st  # noqa: E402
+
+
+def mundo(tipo, semilla=0):
+    rng = np.random.default_rng(semilla)
+    filas, obs = [], {}
+    for dia in range(40):
+        lluvia_previa = 0
+        for h in range(8, 23):
+            t_loc = datetime(2026, 9, 1, h, tzinfo=_cfg.TZ) + timedelta(days=dia)
+            t = t_loc.astimezone(timezone.utc)
+            p_ll = 0.25 if (tipo == "hora" and h >= 18) else 0.08
+            ahora = lluvia_previa
+            # La lluvia persiste: si ya llueve, sigue con 70%. Es lo que hacía
+            # que una presión que sube DURANTE la lluvia pareciera predecirla.
+            empieza = int(rng.random() < (0.7 if ahora else p_ll))
+            pres = rng.normal(0, 0.5)
+            if tipo == "reaccion" and ahora:
+                pres += 1.5                 # sube MIENTRAS llueve
+            if tipo == "anticipa" and empieza and not ahora:
+                pres -= 1.0                 # baja ANTES de que empiece
+            if tipo == "hora" and h >= 18:
+                pres += 0.8                 # la tarde sube: marea, no lluvia
+            obs[_st.round_slot(t)] = (ahora, "x")
+            filas.append((0.1, empieza, {"issued_utc": t.isoformat(), "pres_3h": pres}))
+            lluvia_previa = empieza
+    return filas, obs
+
+
+for tipo, esperado in (("anticipa", "negativo"), ("reaccion", "cero"), ("hora", "cero")):
+    f, o = mundo(tipo)
+    r = evaluar.presion_mecanismo(f, o)
+    if esperado == "negativo":
+        cond = r["hi"] < 0
+    else:
+        cond = r["lo"] <= 0 <= r["hi"]
+    crudo = (np.mean([x["pres_3h"] for _p, y, x in f if y == 1])
+             - np.mean([x["pres_3h"] for _p, y, x in f if y == 0]))
+    chk(f"{tipo}: {'baja antes de llover' if esperado == 'negativo' else 'no confunde con anticipación'}",
+        cond, f"dif {r['dif']:+.2f} [{r['lo']:+.2f}, {r['hi']:+.2f}]; "
+              f"la comparación vieja daba {crudo:+.2f}")
+
+print("\nI. La prueba de ganancia: encuentra lo que hay y no lo que no")
+
+
+def ganancia_mundo(con_señal, semilla, dias=30):
+    rng = np.random.default_rng(semilla)
+    fs = []
+    for d in range(dias):
+        regimen = rng.normal()
+        for _ in range(50):
+            x = regimen + rng.normal(0, 0.5)
+            pf = float(rng.uniform(0.02, 0.4))
+            lo = np.log(pf / (1 - pf)) + (1.2 * x if con_señal else 0.0)
+            fs.append({"p": pf, "y": int(rng.random() < 1 / (1 + np.exp(-lo))),
+                       "x": x, "dia": f"d{d}"})
+    return fs
+
+
+r = evaluar.ganancia_cv(ganancia_mundo(True, 1))
+chk("con un dato que sí informa: gana", evaluar.veredicto_ganancia(r) == "gana",
+    f"{r['ganancia']:+.1%} [{r['lo']:+.1%}, {r['hi']:+.1%}]")
+falsos = sum(evaluar.veredicto_ganancia(evaluar.ganancia_cv(ganancia_mundo(False, 10 + k)))
+             == "gana" for k in range(8))
+chk("con un dato que no informa nada, no gana (≤1 de 8)", falsos <= 1, f"{falsos} de 8")
+chk("con pocos días, no decide",
+    evaluar.veredicto_ganancia(evaluar.ganancia_cv(ganancia_mundo(True, 2, dias=4))) == "aun_no")
+
 print("\n" + ("TODO EN ORDEN" if ok else "HAY FALLOS"))
 sys.exit(0 if ok else 1)

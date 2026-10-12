@@ -63,8 +63,8 @@ def _num(v):
         return None
 
 
-def cargar() -> dict[int, list[tuple[float, int, dict]]]:
-    """Cruza predicciones con observaciones. Devuelve {lead: [(p, llovio, fila)]}."""
+def observaciones() -> dict[str, tuple[int, str]]:
+    """{franja: (llovió, fuente)}, con la humana ganando si hay varias."""
     obs: dict[str, tuple[int, str]] = {}
     for o in store.read_observations():
         valid = o.get("valid_utc")
@@ -76,7 +76,12 @@ def cargar() -> dict[int, list[tuple[float, int, dict]]]:
             # sigue funcionando en el apagón. Mismo ojo, distinto camino.
             if valid not in obs or o.get("source") in INDEPENDIENTES:
                 obs[valid] = (int(llovio), str(o.get("source") or "?"))
+    return obs
 
+
+def cargar() -> dict[int, list[tuple[float, int, dict]]]:
+    """Cruza predicciones con observaciones. Devuelve {lead: [(p, llovio, fila)]}."""
+    obs = observaciones()
     por_lead: dict[int, list] = defaultdict(list)
     for p in store.read_predictions():
         lead = _num(p.get("lead_min"))
@@ -113,6 +118,69 @@ def solo_manuales(datos: list) -> list:
 def solo_muestra(datos: list) -> list:
     """Las respuestas a preguntas al azar: la unica verdad sin ese sesgo."""
     return [d for d in datos if str(d[2].get("_verdad", "")).strip() == "muestra"]
+
+
+def pesos_muestra(registro: list[dict]) -> dict[str, float]:
+    """{franja de la observación: 1/π} para cada pregunta contestada a tiempo.
+
+    Desde el 12/10/2026 se pregunta más en los ratos con riesgo. Promediadas
+    tal cual, las respuestas tendrían más lluvia de la que hay. Pesando cada
+    una por 1/π (Horvitz-Thompson), cada respuesta vale por todos los ratos
+    que representa, y el promedio vuelve a ser el de todos los ratos.
+
+    La clave es la franja de la respuesta, que es donde `registrar` la pone
+    en las observaciones.
+    """
+    pesos = {}
+    for f in registro:
+        pi = _num(f.get("pi"))
+        if f.get("estado") != "respondida" or not pi or pi <= 0:
+            continue
+        t = f.get("respondido_utc") or ""
+        try:
+            slot = store.round_slot(datetime.fromisoformat(t))
+        except ValueError:
+            continue
+        pesos[slot] = 1.0 / pi
+    return pesos
+
+
+def brier_w(ps: np.ndarray, ys: np.ndarray, ws: np.ndarray) -> float:
+    return float(np.sum(ws * (ps - ys) ** 2) / np.sum(ws))
+
+
+def comparar_ponderado(m: list, pesos: dict) -> dict:
+    """Brier, separación y skill de cada fuente y de la mezcla, con 1/π."""
+    filas = [(pf, y, f, pesos.get(f.get("valid_utc"), None)) for pf, y, f in m]
+    filas = [x for x in filas if x[3] is not None]
+    if not filas:
+        return {}
+    ws = np.array([x[3] for x in filas])
+    ys = np.array([x[1] for x in filas], dtype=float)
+    tasa = float(np.sum(ws * ys) / np.sum(ws))
+    clima = brier_w(np.full_like(ys, tasa), ys, ws)
+    out = {"n": len(filas), "lluvias": int(ys.sum()),
+           "n_efectivo": float(ws.sum() ** 2 / np.sum(ws ** 2)),
+           "tasa": tasa, "fuentes": {}}
+
+    def resumen(ps):
+        con, sin = ys == 1, ys == 0
+        sep = None
+        if con.any() and sin.any():
+            sep = float(np.average(ps[con], weights=ws[con])
+                        - np.average(ps[sin], weights=ws[sin]))
+        b = brier_w(ps, ys, ws)
+        return {"brier": b, "separacion": sep,
+                "skill": (1 - b / clima) if clima > 0 else None}
+
+    out["mezcla"] = resumen(np.array([x[0] for x in filas], dtype=float))
+    for col, nombre in (("p_ir", "infrarrojo"), ("p_models", "modelos"),
+                        ("p_radar", "radar")):
+        vals = [_num(x[2].get(col)) for x in filas]
+        if any(v is None for v in vals):
+            continue
+        out["fuentes"][nombre] = resumen(np.array(vals, dtype=float))
+    return out
 
 
 def muestreo_al_azar(datos: dict) -> None:
@@ -188,25 +256,36 @@ def muestreo_al_azar(datos: dict) -> None:
         print("\n   Aún no hay suficientes contestadas y no contestadas para")
         print("   saber si contestar depende del tiempo (hacen falta 10 y 10).")
 
-    # --- la comparacion de fuentes, en cada plazo que tenga datos
+    # --- la comparacion de fuentes, en cada plazo que tenga datos. Cada
+    # respuesta pesa 1/π: desde el 12/10/2026 se pregunta mas cuando hay
+    # riesgo, y sin el peso los ratos lluviosos contarian de mas.
+    pesos = pesos_muestra(registro)
+    con_riesgo = sum(1 for f in registro if str(f.get("riesgo")) == "1")
+    if con_riesgo:
+        print(f"   {con_riesgo} de las {hechas} se sortearon con riesgo (π mayor); "
+              "todo lo de abajo va ponderado por 1/π.")
     hay_algo = False
     for lead, d in datos.items():
         m = solo_muestra(d)
         if not m:
             continue
         hay_algo = True
-        lluvias = sum(y for _p, y, _f in m)
-        print(f"\n   Plazo {lead} min: {len(m)} casos, {lluvias} con lluvia.")
-        if len(m) < 30 or lluvias < 8:
+        r = comparar_ponderado(m, pesos)
+        if not r:
+            continue
+        print(f"\n   Plazo {lead} min: {r['n']} casos, {r['lluvias']} con lluvia "
+              f"(tasa estimada de todos los ratos: {r['tasa']:.0%}).")
+        if r["n"] < 30 or r["lluvias"] < 8:
             print("   Todavía no alcanza: hacen falta ~30 casos y al menos 8 con")
             print("   lluvia para que una diferencia entre fuentes signifique algo.")
             continue
-        fm = por_fuente(m)
+        print(f"   (con los pesos, valen como {r['n_efectivo']:.0f} casos sin ponderar)")
         print(f"   {'fuente':>12} {'Brier':>8} {'separación':>11}")
-        for nombre, x in sorted(fm.items(), key=lambda kv: kv[1]["brier"]):
+        for nombre, x in sorted(r["fuentes"].items(), key=lambda kv: kv[1]["brier"]):
             print(f"   {nombre:>12} {x['brier']:>8.4f} {_pc(x['separacion']):>11}")
-        rep = informe_lead(lead, m)
-        print(f"   mezcla: Brier {rep['brier']:.4f}, skill {rep['skill']:+.3f}")
+        mz = r["mezcla"]
+        print(f"   mezcla: Brier {mz['brier']:.4f}, separación {_pc(mz['separacion'])}"
+              + (f", skill {mz['skill']:+.3f}" if mz["skill"] is not None else ""))
     if not hay_algo:
         print("\n   Ninguna respuesta cruza todavía con una predicción guardada.")
 
@@ -299,30 +378,6 @@ def ganadoras(fuentes: dict) -> list:
     return [(n, d) for n, d in fuentes.items()
             if d["brier"] < d["brier_mezcla"] - 0.001
             and (d["separacion"] or 0) >= 0.01]
-
-
-def presion_vs_lluvia(datos: list, col: str = "pres_3h") -> dict | None:
-    """La hipótesis abierta: ¿la caída de presión anticipa la lluvia AQUÍ?
-
-    Nació de un caso: el 30 de agosto el aviso de presión salió 30 minutos
-    antes de la lluvia y 90 antes del aviso de lluvia. Un caso no es
-    evidencia; esto la busca.
-    """
-    pares = [(_num(f.get(col)), y) for _p, y, f in datos]
-    pares = [(v, y) for v, y in pares if v is not None]
-    if len(pares) < 30:
-        return {"n": len(pares), "suficientes": False}
-    vs = np.array([v for v, _ in pares])
-    ys = np.array([y for _, y in pares], dtype=float)
-    con, sin = vs[ys == 1], vs[ys == 0]
-    if not len(con) or not len(sin):
-        return {"n": len(vs), "suficientes": False}
-    return {
-        "n": len(vs), "suficientes": True,
-        "presion_si_llovio": float(con.mean()),
-        "presion_si_no": float(sin.mean()),
-        "diferencia": float(con.mean() - sin.mean()),
-    }
 
 
 def curva_calibracion() -> dict:
@@ -515,34 +570,7 @@ def main() -> int:
     else:
         print("   Todavía no hay curva aprendida.")
 
-    print("\n7. LA HIPÓTESIS ABIERTA: ¿la presión anticipa la lluvia aquí?")
-    print("   Se mira en cada plazo y en dos ventanas: un frente se anuncia")
-    print("   antes, así que la señal debería verse mejor a plazos largos.\n")
-    print(f"   {'plazo':>7} {'ventana':>9} {'casos':>7} {'llovió':>9} "
-          f"{'no llovió':>10} {'dif.':>8}")
-    for col, etiqueta in (("pres_1h", "1 h"), ("pres_3h", "3 h")):
-        for r in informes:
-            d = presion_vs_lluvia(r["datos"], col)
-            if not d or not d.get("suficientes"):
-                continue
-            print(f"   {r['lead']:>5} m {etiqueta:>9} {d['n']:>7} "
-                  f"{d['presion_si_llovio']:>+9.2f} {d['presion_si_no']:>+10.2f} "
-                  f"{d['diferencia']:>+8.2f}")
-    print()
-    pr = presion_vs_lluvia(ref["datos"])
-    if pr and pr.get("suficientes"):
-        print(f"\n   Cambio de presión en 3 h, según lo que pasó ({pr['n']} casos):")
-        print(f"     cuando llovió:    {pr['presion_si_llovio']:+.2f} hPa")
-        print(f"     cuando no llovió: {pr['presion_si_no']:+.2f} hPa")
-        print(f"     diferencia:       {pr['diferencia']:+.2f} hPa")
-        if abs(pr["diferencia"]) < 0.3:
-            print("\n   Diferencia pequeña: por ahora no parece anticipar nada.")
-        else:
-            print("\n   Hay señal. Merece entrar como fuente del pronóstico.")
-    else:
-        n = pr.get("n", 0) if pr else 0
-        print(f"\n   Solo {n} casos con presión registrada; hacen falta ~30.")
-        print("   Las columnas se añadieron el 31 de agosto; hay que esperar.")
+    seccion_presion(datos)
 
     print("\n8. ¿MEJORÓ DESDE EL ÚLTIMO CAMBIO? — el número acumulado no lo dice")
     por_tramo(ref)
@@ -563,91 +591,309 @@ def main() -> int:
     return 0
 
 
-def nubes_bajas_vs_lluvia(datos: dict, lead: int = 15, umbral: float = 0.3,
-                          p_max: float = 0.2, barajadas: int = 400,
-                          semilla: int = 0) -> dict:
-    """9. ¿La nube baja avisa de lluvia que el pronóstico no ve?
+# ====================================================================
+# ¿UN DATO NUEVO MEJORA EL PRONÓSTICO? — la prueba común de las secciones 7 y 9
+# ====================================================================
+#
+# Hasta el 12/10/2026 cada hipótesis tenía su propia prueba, y las dos
+# preguntaban otra cosa:
+#
+# - La 7 comparaba la presión media cuando llovió y cuando no, mezclando los
+#   ratos en que ya llovía al emitir. Así cualquier cosa que acompañe a la
+#   lluvia parece predecirla. Y con 0.3 hPa de diferencia declaraba "merece
+#   entrar", sin intervalo ni signo, con 4,000 filas que son ~60 días.
+# - La 9 comparaba solo dentro de cada día, copiado de la 8-bis. Allí tenía
+#   sentido (separar el enlace del tiempo); aquí descartaba justo lo útil: un
+#   día entero bajo nube baja no tiene con qué compararse y no contaba.
+#
+# La pregunta que decide es una sola: si al pronóstico de siempre se le añade
+# este dato, ¿acierta más? Se responde recalibrando p_final con y sin el dato
+# (regresión logística de tres números), dejando fuera un día cada vez para
+# calificar, y con un intervalo que remuestrea DÍAS completos: los ratos de
+# un mismo día no son independientes, y contarlos como si lo fueran da una
+# seguridad que no existe.
 
-    Solo mira los casos donde el pronóstico dijo que NO (p_final < p_max): ahí
-    es donde la nube baja podría aportar algo. Si separara lluvia solo donde
-    el pronóstico ya decía que sí, no añadiría nada.
+def _sig(z):
+    return 1.0 / (1.0 + np.exp(-z))
 
-    Se compara la tasa de lluvia con y sin nube baja DENTRO de cada día, y el
-    valor p sale de barajar la marca dentro del día. Es la misma trampa que
-    tuvo 8-bis: un día nublado y lluvioso contra uno despejado y seco "separa"
-    perfectamente sin que la nube tenga mérito propio... salvo que la nube sea
-    justo lo que llueve. Comparar dentro del día lo deja limpio.
+
+def _logit(p):
+    p = np.clip(np.asarray(p, dtype=float), 1e-3, 1 - 1e-3)
+    return np.log(p / (1 - p))
+
+
+def _ajustar(X: np.ndarray, y: np.ndarray, l2: float = 1e-2) -> np.ndarray:
+    """Regresión logística por Newton. Pocas variables: no hace falta más."""
+    w = np.zeros(X.shape[1])
+    for _ in range(30):
+        p = _sig(X @ w)
+        g = X.T @ (p - y) + l2 * w
+        H = X.T @ (X * (p * (1 - p))[:, None]) + l2 * np.eye(X.shape[1])
+        paso = np.linalg.solve(H, g)
+        w -= paso
+        if np.max(np.abs(paso)) < 1e-6:
+            break
+    return w
+
+
+def ganancia_cv(filas: list[dict], reps: int = 400, semilla: int = 0) -> dict | None:
+    """¿Añadir `x` a p_final mejora el Brier? Validación dejando fuera un día.
+
+    `filas`: [{"p": p_final, "y": 0/1, "x": dato, "dia": "AAAA-MM-DD"}].
+    Devuelve los dos Brier, la ganancia relativa y su intervalo del 95%.
     """
-    out = {}
-    for franja, quiero in (("día", 1), ("noche", 0)):
-        por_dia: dict[str, list] = defaultdict(list)
-        for pf, y, fila in datos.get(lead, []):
-            fr, dia = _num(fila.get("nb_frac")), _num(fila.get("nb_dia"))
-            if fr is None or dia is None or int(dia) != quiero or pf >= p_max:
-                continue
-            por_dia[str(fila.get("valid_utc", ""))[:10]].append(
-                (1 if fr >= umbral else 0, y))
-        todos = [c for v in por_dia.values() for c in v]
-        con = [y for m, y in todos if m]
-        sin = [y for m, y in todos if not m]
-        r = {"n": len(todos), "n_con": len(con),
-             "tasa_con": float(np.mean(con)) if con else None,
-             "tasa_sin": float(np.mean(sin)) if sin else None,
-             "dif": None, "p": None}
+    if not filas:
+        return None
+    dias = sorted({f["dia"] for f in filas})
+    ys = np.array([f["y"] for f in filas], dtype=float)
+    out = {"n": len(filas), "lluvias": int(ys.sum()), "dias": len(dias)}
+    if len(dias) < 3 or ys.sum() < 2 or ys.sum() == len(ys):
+        return out
+    lp = _logit([f["p"] for f in filas])
+    xs = np.array([f["x"] for f in filas], dtype=float)
+    xs = (xs - xs.mean()) / (xs.std() or 1.0)
+    uno = np.ones_like(lp)
+    X0 = np.column_stack([uno, lp])
+    X1 = np.column_stack([uno, lp, xs])
+    idx = np.array([dias.index(f["dia"]) for f in filas])
 
-        def dif(marcas_por_dia):
-            num = den = 0.0
-            for k, v in por_dia.items():
-                m = marcas_por_dia[k]
-                ys = np.array([y for _, y in v])
-                if m.all() or not m.any():
-                    continue
-                peso = min(m.sum(), (1 - m).sum())
-                num += peso * (ys[m == 1].mean() - ys[m == 0].mean())
-                den += peso
-            return num / den if den else None
+    e0 = np.zeros(len(dias))
+    e1 = np.zeros(len(dias))
+    cnt = np.zeros(len(dias))
+    for k in range(len(dias)):
+        fuera = idx == k
+        dentro = ~fuera
+        if ys[dentro].sum() == 0 or ys[dentro].sum() == dentro.sum():
+            continue
+        w0 = _ajustar(X0[dentro], ys[dentro])
+        w1 = _ajustar(X1[dentro], ys[dentro])
+        e0[k] = np.sum((_sig(X0[fuera] @ w0) - ys[fuera]) ** 2)
+        e1[k] = np.sum((_sig(X1[fuera] @ w1) - ys[fuera]) ** 2)
+        cnt[k] = fuera.sum()
 
-        marcas = {k: np.array([m for m, _ in v]) for k, v in por_dia.items()}
-        d0 = dif(marcas)
-        if d0 is not None:
-            rng = np.random.default_rng(semilla)
-            mayores = 0
-            for _ in range(barajadas):
-                b = {k: rng.permutation(m) for k, m in marcas.items()}
-                db = dif(b)
-                if db is not None and db >= d0:
-                    mayores += 1
-            r["dif"], r["p"] = d0, (mayores + 1) / (barajadas + 1)
-        out[franja] = r
+    total = cnt.sum()
+    b0, b1 = e0.sum() / total, e1.sum() / total
+    rng = np.random.default_rng(semilla)
+    boot = []
+    for _ in range(reps):
+        m = rng.integers(0, len(dias), len(dias))
+        if cnt[m].sum() == 0:
+            continue
+        bb0 = e0[m].sum() / cnt[m].sum()
+        bb1 = e1[m].sum() / cnt[m].sum()
+        boot.append((bb0 - bb1) / bb0 if bb0 > 0 else 0.0)
+    lo, hi = np.percentile(boot, [2.5, 97.5]) if boot else (None, None)
+    out.update({"brier_sin": b0, "brier_con": b1,
+                "ganancia": (b0 - b1) / b0 if b0 > 0 else 0.0,
+                "lo": float(lo) if lo is not None else None,
+                "hi": float(hi) if hi is not None else None})
     return out
 
 
-def nubes_bajas_seccion(datos: dict) -> None:
-    print("\n9. NUBES BAJAS — ¿avisan de lluvia que el pronóstico no ve?")
-    print("   Solo casos a 15 min donde el pronóstico dijo <20%, comparados")
-    print("   dentro del mismo día. Se registran desde el 5/10/2026.\n")
-    res = nubes_bajas_vs_lluvia(datos)
-    print(f"   {'franja':>7} {'casos':>6} {'con nube':>9} {'llueve con':>11} "
-          f"{'sin':>6} {'dif. mismo día':>15} {'p':>6}")
-    for franja, r in res.items():
-        dif = f"{r['dif'] * 100:+.1f} pts" if r["dif"] is not None else "—"
-        pv = f"{r['p']:.2f}" if r["p"] is not None else "—"
-        print(f"   {franja:>7} {r['n']:>6} {r['n_con']:>9} "
-              f"{_pc(r['tasa_con']):>11} {_pc(r['tasa_sin']):>6} "
-              f"{dif:>15} {pv:>6}")
-    d = res["día"]
-    print()
-    if d["n_con"] < 30:
-        print(f"   De día hay {d['n_con']} casos con nube baja; hacen falta ~30.")
-        print("   Hasta entonces la capa gris es solo para mirar.")
-    elif d["dif"] is not None and d["dif"] >= 0.10 and d["p"] < 0.05:
-        print("   De día GANA: llueve claramente más con nube baja, en el mismo")
-        print("   día, y no es azar. Merece entrar como fuente (solo de día).")
+# Por debajo de esto no importa. Añadir un dato inútil siempre cuesta un
+# poco fuera de muestra (el ajuste aprende su ruido): con ruido puro y mil
+# casos salía "empeora" por -0.2%, cierto e irrelevante.
+GANANCIA_MINIMA = 0.01
+
+
+def veredicto_ganancia(r: dict | None, min_lluvias: int = 20,
+                       min_dias: int = 8) -> str:
+    """'aun_no', 'gana', 'empeora' o 'nada', con la misma regla para todo."""
+    if not r or "ganancia" not in r or r["lluvias"] < min_lluvias \
+            or r["dias"] < min_dias or r["lo"] is None:
+        return "aun_no"
+    if r["lo"] > 0 and r["ganancia"] >= GANANCIA_MINIMA:
+        return "gana"
+    if r["hi"] < -GANANCIA_MINIMA:
+        return "empeora"
+    return "nada"
+
+
+def _imprimir_ganancia(r: dict | None, etiqueta: str) -> str:
+    v = veredicto_ganancia(r)
+    if r and "ganancia" in r:
+        print(f"   {etiqueta:>10} {r['n']:>6} {r['lluvias']:>7} {r['dias']:>5} "
+              f"{r['brier_sin']:>9.4f} {r['brier_con']:>9.4f} "
+              f"{r['ganancia'] * 100:>+7.1f}%  [{r['lo'] * 100:+.1f}%, {r['hi'] * 100:+.1f}%]")
     else:
-        print("   De día no separa lo bastante (regla: ≥10 pts y p<0.05).")
-        print("   Se queda en el mapa y fuera del pronóstico.")
-    print("   La noche se muestra para ver, no para decidir: ahí el satélite")
-    print("   confunde la nube con el suelo frío.")
+        n = r["n"] if r else 0
+        ll = r["lluvias"] if r else 0
+        print(f"   {etiqueta:>10} {n:>6} {ll:>7}   — pocos datos para probar")
+    return v
+
+
+def _dia_local(txt: str) -> str | None:
+    try:
+        t = datetime.fromisoformat(str(txt).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    from nowcast import config as _c
+    return t.astimezone(_c.TZ).strftime("%Y-%m-%d")
+
+
+def _hora_local(txt: str) -> int | None:
+    try:
+        t = datetime.fromisoformat(str(txt).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    from nowcast import config as _c
+    return t.astimezone(_c.TZ).hour
+
+
+_CABECERA_GANANCIA = (f"   {'':>10} {'casos':>6} {'lluvias':>7} {'días':>5} "
+                      f"{'Brier sin':>9} {'Brier con':>9} {'ganancia':>8}  intervalo 95%")
+
+
+def _explicar(veredictos: list[str], que: str) -> None:
+    if "gana" in veredictos:
+        print(f"\n   GANA en algún plazo: {que} mejora el pronóstico fuera de los")
+        print("   días con que se ajustó, y el intervalo no toca el cero. Merece")
+        print("   probarse como fuente (y volver a medirlo ya dentro).")
+    elif all(v == "aun_no" for v in veredictos):
+        print("\n   Aún no hay con qué decidir: hacen falta ~20 lluvias en al menos")
+        print("   8 días distintos en el plazo que se mire.")
+    elif "empeora" in veredictos:
+        print(f"\n   Empeora en algún plazo: {que} confunde más de lo que ayuda.")
+    else:
+        print(f"\n   No aporta: {que} no mejora el pronóstico en más de 1% fuera de")
+        print("   los días del ajuste. Fuera del pronóstico.")
+
+
+# --------------------------------------------------------------- sección 7
+
+def presion_mecanismo(datos_lead: list, obs: dict, col: str = "pres_3h",
+                      reps: int = 400, semilla: int = 0) -> dict | None:
+    """Descriptivo: en ratos SECOS al emitir, ¿qué hace la presión antes de que
+    empiece a llover? Comparado a la misma hora del día, con intervalo por días.
+
+    Negativo = baja antes de llover (frente, baja que se acerca). Positivo =
+    sube (el aire frío que empuja una tormenta cercana). Las dos pueden servir
+    para pronosticar; esto solo dice cuál es, no si sirve.
+    """
+    from nowcast import store as _s
+    filas = []
+    for _p, y, f in datos_lead:
+        v = _num(f.get(col))
+        if v is None:
+            continue
+        try:
+            slot = _s.round_slot(datetime.fromisoformat(f.get("issued_utc", "")))
+        except ValueError:
+            continue
+        o = obs.get(slot)
+        if o is None or o[0] != 0:
+            continue                       # ya llovía, o no se sabe
+        h, d = _hora_local(f["issued_utc"]), _dia_local(f["issued_utc"])
+        if h is None or d is None:
+            continue
+        filas.append((v, y, h, d))
+    if not filas:
+        return None
+
+    v = np.array([f[0] for f in filas], dtype=float)
+    y = np.array([f[1] for f in filas], dtype=int)
+    h = np.array([f[2] for f in filas], dtype=int)
+    dias = sorted({f[3] for f in filas})
+    di = {d: k for k, d in enumerate(dias)}
+    dia = np.array([di[f[3]] for f in filas])
+    por_dia = [np.flatnonzero(dia == k) for k in range(len(dias))]
+
+    def dif(ix):
+        # Por hora del día: media con lluvia menos media sin, pesada por el
+        # grupo más chico. En numpy: el remuestreo lo llama 400 veces y en el
+        # Pi 3 un bucle de Python por fila tardaba minutos.
+        hh, vv, yy = h[ix], v[ix], y[ix]
+        n1 = np.bincount(hh[yy == 1], minlength=24)
+        n0 = np.bincount(hh[yy == 0], minlength=24)
+        s1 = np.bincount(hh[yy == 1], weights=vv[yy == 1], minlength=24)
+        s0 = np.bincount(hh[yy == 0], weights=vv[yy == 0], minlength=24)
+        ok = (n1 > 0) & (n0 > 0)
+        if not ok.any():
+            return None
+        peso = np.minimum(n1, n0)[ok]
+        return float(np.sum(peso * (s1[ok] / n1[ok] - s0[ok] / n0[ok])) / peso.sum())
+
+    d0 = dif(np.arange(len(v)))
+    rng = np.random.default_rng(semilla)
+    boot = []
+    for _ in range(reps):
+        ix = np.concatenate([por_dia[k] for k in rng.integers(0, len(dias), len(dias))])
+        b = dif(ix)
+        if b is not None:
+            boot.append(b)
+    lo, hi = (np.percentile(boot, [2.5, 97.5]) if boot else (None, None))
+    return {"n": len(filas), "lluvias": sum(y for _v, y, *_r in filas),
+            "dias": len(dias), "dif": d0,
+            "lo": float(lo) if lo is not None else None,
+            "hi": float(hi) if hi is not None else None}
+
+
+def seccion_presion(datos: dict, plazos=(15, 60, 180)) -> None:
+    print("\n7. LA PRESIÓN — ¿mejora el pronóstico? y ¿anticipa o reacciona?")
+    print("   (reescrita el 12/10/2026: ver el comentario de ganancia_cv)\n")
+    print("   a) La decisión: p_final recalibrado con y sin el cambio de presión")
+    print("      en 3 h, calificado en días que el ajuste no vio.\n")
+    print(_CABECERA_GANANCIA)
+    vs = []
+    for lead in plazos:
+        filas = []
+        for pf, y, f in datos.get(lead, []):
+            x, d = _num(f.get("pres_3h")), _dia_local(f.get("issued_utc", ""))
+            if x is not None and d is not None:
+                filas.append({"p": pf, "y": y, "x": x, "dia": d})
+        vs.append(_imprimir_ganancia(ganancia_cv(filas), f"{lead} min"))
+    _explicar(vs, "la presión")
+
+    print("\n   b) El mecanismo (no decide nada): solo ratos SECOS al emitir,")
+    print("      presión en 3 h cuando empezó a llover menos cuando no, a la")
+    print("      misma hora del día. Negativo: baja antes de llover. Positivo:")
+    print("      sube, como con el aire frío que empuja una tormenta cercana.\n")
+    obs = observaciones()
+    print(f"   {'plazo':>7} {'casos':>6} {'empezó':>7} {'días':>5} {'dif. hPa':>9}  intervalo 95%")
+    for lead in plazos:
+        r = presion_mecanismo(datos.get(lead, []), obs)
+        if not r or r["dif"] is None or r["lo"] is None:
+            print(f"   {lead:>5} m   — pocos datos")
+            continue
+        print(f"   {lead:>5} m {r['n']:>6} {r['lluvias']:>7} {r['dias']:>5} "
+              f"{r['dif']:>+9.2f}  [{r['lo']:+.2f}, {r['hi']:+.2f}]")
+
+
+# --------------------------------------------------------------- sección 9
+
+def nubes_bajas_seccion(datos: dict, plazos=(15, 60)) -> None:
+    print("\n9. NUBES BAJAS — ¿mejoran el pronóstico?")
+    print("   (reescrita el 12/10/2026: ver el comentario de ganancia_cv)")
+    print("   Solo de día: de noche el satélite confunde la nube con el suelo")
+    print("   frío. Se registran desde el 5/10/2026.\n")
+    print(_CABECERA_GANANCIA)
+    vs = []
+    for lead in plazos:
+        filas = []
+        for pf, y, f in datos.get(lead, []):
+            x, dia = _num(f.get("nb_frac")), _num(f.get("nb_dia"))
+            d = _dia_local(f.get("issued_utc", ""))
+            if x is not None and dia == 1 and d is not None:
+                filas.append({"p": pf, "y": y, "x": x, "dia": d})
+        vs.append(_imprimir_ganancia(ganancia_cv(filas), f"{lead} min"))
+    _explicar(vs, "la nube baja")
+
+    # Lo que motivó la pregunta, para leerlo con los ojos: cuando el
+    # pronóstico dijo menos de 20%, ¿llovió más bajo nube baja?
+    con = [y for pf, y, f in datos.get(15, [])
+           if pf < 0.2 and _num(f.get("nb_dia")) == 1
+           and (_num(f.get("nb_frac")) or 0) >= 0.3]
+    sin = [y for pf, y, f in datos.get(15, [])
+           if pf < 0.2 and _num(f.get("nb_dia")) == 1
+           and _num(f.get("nb_frac")) is not None
+           and (_num(f.get("nb_frac")) or 0) < 0.3]
+    if con or sin:
+        print(f"\n   Para leer, no para decidir: a 15 min, de día, con pronóstico <20%,")
+        print(f"   llovió {sum(con)} de {len(con)} veces bajo nube baja y "
+              f"{sum(sin)} de {len(sin)} sin ella.")
+        if con and len(con) + len(sin) and len(con) / (len(con) + len(sin)) > 0.7:
+            print(f"   Ojo: el {len(con) / (len(con) + len(sin)):.0%} de los ratos marca nube baja;")
+            print("   un umbral tan generoso diluye la señal.")
 
 
 def _dif_estratos(estratos: dict, marcas: dict,

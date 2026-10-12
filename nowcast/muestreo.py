@@ -20,11 +20,19 @@ que trescientas correcciones espontáneas.
 
 ## Las tres reglas, y qué rompería cada una
 
-1. **Probabilidad fija por corrida.** Nunca depende del pronóstico, de las
-   alertas ni de nada que tenga que ver con el tiempo. Si se preguntara más
-   cuando «parece que va a llover», volvería exactamente el sesgo que esto
-   existe para quitar. La probabilidad se guarda con cada pregunta: si algún
-   día se quiere preguntar más en temporada, se puede, ponderando por 1/π.
+1. **Probabilidad conocida, nunca cero.** Hasta el 12/10/2026 era la misma
+   en todas las corridas. Ahora es mayor cuando hay riesgo (ver
+   `riesgo()`), porque con una tasa fija salían 2 lluvias de cada 16
+   preguntas y la temporada se acababa antes de juntar las necesarias.
+
+   Preguntar más cuando «parece que va a llover» sesgaría la muestra SI se
+   promediara tal cual: habría más ratos lluviosos de los que hay. No la
+   sesga si cada respuesta pesa 1/π, que es lo que hace evaluar.py
+   (estimador de Horvitz-Thompson). Para eso hacen falta dos cosas, y las
+   dos se comprueban en test_muestreo.py: que π se guarde con cada pregunta
+   tal como se usó, y que nunca sea cero. Con π=0 en los ratos tranquilos,
+   esos ratos no existirían para la evaluación y ningún peso los
+   recuperaría.
 
 2. **Se guardan también las que nadie contesta.** Si se contesta más cuando
    llueve -uno se asoma más, o solo ve el teléfono cuando está bajo techo- la
@@ -64,7 +72,7 @@ from . import config, store
 log = logging.getLogger(__name__)
 
 CAMPOS = ["id", "preguntado_utc", "vence_utc", "pi", "p60",
-          "respuesta", "canal", "respondido_utc", "estado"]
+          "respuesta", "canal", "respondido_utc", "estado", "riesgo"]
 
 _CLAVE = "muestreo"
 
@@ -120,15 +128,32 @@ def _reescribir(filas: list[dict]) -> None:
 # ---------------------------------------------------------------- preguntar
 
 def probabilidad_por_corrida() -> float:
-    """π: la probabilidad de preguntar en una corrida dentro del horario.
-
-    Sale de cuántas preguntas al día se quieren y de cuántas corridas caben en
-    el horario. Es la misma para todas las corridas: esa igualdad es lo que
-    hace que la muestra no necesite ponderarse.
-    """
+    """La tasa base: cuántas preguntas al día, entre las corridas del horario."""
     horas = max(1, config.MUESTREO_HASTA_H - config.MUESTREO_DESDE_H)
     corridas = horas * 60 / 15
     return min(1.0, config.MUESTREO_POR_DIA / corridas)
+
+
+def pi_para(hay_riesgo: bool) -> float:
+    """π de esta corrida. Nunca cero: ver la regla 1 del docstring."""
+    peso = config.MUESTREO_PESO_RIESGO if hay_riesgo else config.MUESTREO_PESO_TRANQUILO
+    return min(1.0, max(1e-4, probabilidad_por_corrida() * peso))
+
+
+def riesgo(resultado: dict | None) -> bool:
+    """¿Esta corrida tiene riesgo de lluvia? Solo decide CUÁNTO se pregunta.
+
+    Mira lo que se publica -probabilidades y celda- y nada más, para que se
+    pueda reconstruir después desde latest.json si hiciera falta.
+    """
+    if not resultado:
+        return False
+    probs = [v for v in (resultado.get("probabilities") or {}).values()
+             if v is not None]
+    if probs and max(float(v) for v in probs) >= config.MUESTREO_RIESGO_P:
+        return True
+    eta = resultado.get("cell_eta_min")
+    return eta is not None and float(eta) <= config.MUESTREO_RIESGO_ETA_MIN
 
 
 def vigente(ahora: datetime | None = None) -> dict | None:
@@ -148,13 +173,12 @@ def vigente(ahora: datetime | None = None) -> dict | None:
 
 
 def decidir(ahora: datetime | None = None, p60: float | None = None,
-            azar: random.Random | None = None) -> dict | None:
+            azar: random.Random | None = None,
+            hay_riesgo: bool = False) -> dict | None:
     """Tira el dado. Si toca, abre una pregunta, la envía por ntfy y la devuelve.
 
-    `p60` solo se GUARDA, para poder revisar después si la gente contesta más
-    cuando se esperaba lluvia. No interviene en la decisión, y así tiene que
-    seguir: en el momento en que el pronóstico influya en cuándo preguntar, la
-    muestra deja de ser al azar.
+    `hay_riesgo` cambia la probabilidad del dado, y esa probabilidad se guarda
+    con la pregunta para poder ponderar. `p60` solo se guarda: no interviene.
     """
     if not config.MUESTREO_ACTIVO:
         return None
@@ -167,7 +191,7 @@ def decidir(ahora: datetime | None = None, p60: float | None = None,
     if vigente(ahora) is not None:
         return vigente(ahora)
 
-    pi = probabilidad_por_corrida()
+    pi = pi_para(hay_riesgo)
     if azar.random() >= pi:
         return None
 
@@ -182,9 +206,10 @@ def decidir(ahora: datetime | None = None, p60: float | None = None,
              "vence_utc": vence.isoformat(), "pi": round(pi, 6),
              "p60": "" if p60 is None else round(float(p60), 4),
              "respuesta": "", "canal": "", "respondido_utc": "",
-             "estado": "abierta"})
-    log.info("muestreo: pregunta #%s abierta hasta las %s", nuevo,
-             vence.astimezone(config.TZ).strftime("%H:%M"))
+             "estado": "abierta", "riesgo": int(bool(hay_riesgo))})
+    log.info("muestreo: pregunta #%s abierta hasta las %s (π=%.4f%s)", nuevo,
+             vence.astimezone(config.TZ).strftime("%H:%M"), pi,
+             ", con riesgo" if hay_riesgo else "")
 
     try:
         from . import notify
@@ -294,7 +319,7 @@ def forzar(ahora: datetime | None = None) -> dict:
     _añadir({"id": nuevo, "preguntado_utc": ahora.isoformat(),
              "vence_utc": vence.isoformat(), "pi": "", "p60": "",
              "respuesta": "", "canal": "", "respondido_utc": "",
-             "estado": "prueba"})
+             "estado": "prueba", "riesgo": ""})
     try:
         from . import notify
         notify.enviar_muestra(nuevo, vence)

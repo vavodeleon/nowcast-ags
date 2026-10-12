@@ -255,8 +255,8 @@ CELDAS_A_EVALUAR = 6
 
 # ---------------------------------------------------------------- muestreo
 # Preguntas a ratos al azar, por ntfy y por la malla a la vez. Ver el
-# docstring de muestreo.py: el momento lo elige el sistema, nunca el
-# pronostico, y eso es lo unico que las hace valer para comparar fuentes.
+# docstring de muestreo.py: el momento lo elige un sorteo con probabilidad
+# CONOCIDA y nunca cero, y eso es lo que las hace valer para comparar fuentes.
 MUESTREO_ACTIVO = os.environ.get("MUESTREO", "1") != "0"
 MUESTREO_CSV = os.path.join(DATA_DIR, "muestreo.csv")
 # Uno y medio al dia es lo que se puede contestar sin que canse. En temporada,
@@ -269,6 +269,19 @@ MUESTREO_DESDE_H = 8
 MUESTREO_HASTA_H = 22
 # "¿Esta lloviendo AHORA?" deja de tener sentido pasada media hora.
 MUESTREO_VIGENCIA_MIN = 30
+# Sorteo ponderado (12/10/2026). Con 1.5 preguntas al dia salieron 2 lluvias
+# en 16 preguntas: para las 8 que hacen falta eran seis semanas, y la
+# temporada se acaba antes. Ahora, en las corridas con riesgo se pregunta
+# 2.4 veces la tasa base y en las tranquilas 0.6 veces: si una de cada cuatro
+# corridas tiene riesgo, el total al dia queda casi igual (1.05x) y salen
+# del orden del doble de lluvias por pregunta (medido en test_evaluar.py G). La evaluacion pondera cada respuesta por 1/pi, asi que la
+# comparacion de fuentes sigue sin sesgo.
+MUESTREO_PESO_TRANQUILO = 0.6
+MUESTREO_PESO_RIESGO = 2.4
+# Que cuenta como riesgo: alguna probabilidad publicada desde este umbral, o
+# una celda que llega dentro de este plazo.
+MUESTREO_RIESGO_P = 0.25
+MUESTREO_RIESGO_ETA_MIN = 120
 
 # ---------------------------------------------------------------- campo
 # Teselas para medir un vector de movimiento por zona (ver campo.py). 40 px

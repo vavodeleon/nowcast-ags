@@ -77,29 +77,42 @@ f = nb.filas({"frac": None, "contraste_k": None, "de_dia": None})
 chk("vacías si no se sabe", f == {"nb_frac": "", "nb_contraste": "", "nb_dia": ""})
 
 print("\nH. La sección 9 encuentra una señal real y no inventa una falsa")
-rng = np.random.default_rng(3)
+# Desde el 12/10/2026 la 9 pregunta si la nube baja mejora el pronóstico,
+# calificando en días que el ajuste no vio. Caso clave, el que la versión
+# anterior no veía: días ENTEROS bajo nube baja que llueven más. Comparar solo
+# dentro del día los descartaba.
+import contextlib, io  # noqa: E401,E402
+from datetime import datetime as _dt, timedelta as _td, timezone as _tz  # noqa: E402
 
 
-def datos(con_señal):
+def datos(con_señal, semilla):
+    rng = np.random.default_rng(semilla)
     filas = []
-    for dia in range(12):
+    for dia in range(30):
+        nublado = rng.random() < 0.5            # el día entero, o casi
         for k in range(40):
-            nube = rng.random() < 0.4
-            p_llover = (0.5 if nube else 0.05) if con_señal else 0.15
-            filas.append((0.05, int(rng.random() < p_llover),
-                          {"nb_frac": 0.8 if nube else 0.0, "nb_dia": 1,
-                           "valid_utc": f"2026-10-{dia + 1:02d}T18:{k:02d}"}))
-    return {15: filas}
+            t = _dt(2026, 9, 1, 15, tzinfo=_tz.utc) + _td(days=dia, minutes=10 * k)
+            frac = (0.8 if nublado else 0.05) + rng.normal(0, 0.05)
+            pf = 0.08
+            p = (0.30 if nublado else 0.02) if con_señal else pf
+            filas.append((pf, int(rng.random() < p),
+                          {"nb_frac": frac, "nb_dia": 1,
+                           "issued_utc": t.isoformat()}))
+    return {15: filas, 60: filas}
 
 
-r = evaluar.nubes_bajas_vs_lluvia(datos(True))["día"]
-chk("señal real: diferencia grande", r["dif"] is not None and r["dif"] > 0.3, f"{r['dif']:.2f}")
-chk("y p pequeño", r["p"] < 0.01, f"{r['p']:.3f}")
-r = evaluar.nubes_bajas_vs_lluvia(datos(False))["día"]
-chk("sin señal: p grande", r["p"] is not None and r["p"] > 0.05, f"{r['p']:.3f}")
-chk("ignora casos donde ya decía que sí",
-    evaluar.nubes_bajas_vs_lluvia({15: [(0.9, 1, {"nb_frac": 1, "nb_dia": 1,
-                                                  "valid_utc": "2026-10-01"})]})["día"]["n"] == 0)
+def salida(d):
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        evaluar.nubes_bajas_seccion(d)
+    return buf.getvalue()
+
+
+txt = salida(datos(True, 1))
+chk("con señal de días enteros: GANA", "GANA" in txt, txt.split("\n")[6])
+falsos = sum("GANA" in salida(datos(False, 50 + k)) for k in range(6))
+chk("sin señal no inventa una (≤1 de 6 semillas)", falsos <= 1, f"{falsos} de 6")
+chk("con pocos días no decide", "Aún no hay" in salida({15: datos(True, 2)[15][:80]}))
 
 print("\n" + ("TODO EN ORDEN" if ok else "HAY FALLOS"))
 sys.exit(0 if ok else 1)

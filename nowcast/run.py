@@ -584,7 +584,8 @@ def main() -> None:
         try:
             muestreo.cerrar_vencidas()
             result["muestreo"] = muestreo.decidir(
-                p60=(result.get("probabilities") or {}).get("60"))
+                p60=(result.get("probabilities") or {}).get("60"),
+                hay_riesgo=muestreo.riesgo(result))
         except Exception as exc:
             log.error("muestreo fallo: %s", exc)
     publish(result)

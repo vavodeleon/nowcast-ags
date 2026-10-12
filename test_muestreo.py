@@ -53,16 +53,17 @@ def limpiar():
     enviados.clear()
 
 
-print("A. El pronóstico NO decide cuándo se pregunta")
-# Misma semilla, pronósticos opuestos: tienen que salir exactamente las mismas
-# decisiones. Si algún día alguien hace que p60 influya, esto falla.
-def decisiones(p60):
+print("A. El riesgo decide CUÁNTO se pregunta, y queda registrado")
+# Desde el 12/10/2026 el sorteo pondera por riesgo. Lo que tiene que seguir
+# siendo cierto: dentro de un mismo nivel de riesgo el pronóstico no influye,
+# la probabilidad usada es la que se guarda, y nunca es cero.
+def decisiones(p60, hay_riesgo):
     limpiar()
     azar = random.Random(42)
     salen = []
     t = MEDIODIA
     for _ in range(400):
-        d = muestreo.decidir(t, p60=p60, azar=azar)
+        d = muestreo.decidir(t, p60=p60, azar=azar, hay_riesgo=hay_riesgo)
         salen.append(d is not None and d.get("preguntado_utc") == t.isoformat())
         # cerrar para que la siguiente pueda abrirse
         e = store.load_json(config.STATE_JSON, {}).get("muestreo") or {}
@@ -73,16 +74,65 @@ def decisiones(p60):
             store.save_json(config.STATE_JSON, todo)
     return salen
 
-seco, lluvioso = decisiones(0.02), decisiones(0.95)
-chk("con lluvia segura o cielo despejado se pregunta en los mismos momentos",
+seco, lluvioso = decisiones(0.02, False), decisiones(0.95, False)
+chk("con el mismo riesgo, p60 no cambia ni una decisión",
     seco == lluvioso, f"{sum(seco)} y {sum(lluvioso)} preguntas")
-pi = muestreo.probabilidad_por_corrida()
-esperadas = 400 * pi
-chk("y con la frecuencia prevista", abs(sum(seco) - esperadas) < 4 * esperadas ** 0.5,
-    f"{sum(seco)} de ~{esperadas:.0f}")
+for nivel in (False, True):
+    sal = decisiones(0.3, nivel)
+    pi = muestreo.pi_para(nivel)
+    esperadas = 400 * pi
+    chk(f"{'con' if nivel else 'sin'} riesgo, con la frecuencia de su π",
+        abs(sum(sal) - esperadas) < 4 * esperadas ** 0.5,
+        f"{sum(sal)} de ~{esperadas:.0f}")
+    filas = muestreo.leer()
+    chk(f"  y ese π queda guardado en cada pregunta ({pi:.4f})",
+        filas and all(abs(float(f["pi"]) - pi) < 1e-5 for f in filas))
+    chk("  con la marca de riesgo",
+        all(str(f.get("riesgo")) == str(int(nivel)) for f in filas))
+chk("π nunca es cero, ni en el rato más tranquilo", muestreo.pi_para(False) > 0)
+base = muestreo.probabilidad_por_corrida()
+total = 0.75 * muestreo.pi_para(False) + 0.25 * muestreo.pi_para(True)
+chk("con una de cada cuatro corridas en riesgo, el total al día casi no cambia",
+    abs(total / base - 1) < 0.1, f"{total / base:.2f}× la tasa anterior")
+
+print("\nA-bis. Qué cuenta como riesgo")
+chk("nada publicado: sin riesgo", muestreo.riesgo({"probabilities": {}}) is False)
+chk("todo por debajo de 25%: sin riesgo",
+    muestreo.riesgo({"probabilities": {"15": 0.1, "180": 0.24}}) is False)
+chk("alguna desde 25%: riesgo",
+    muestreo.riesgo({"probabilities": {"15": 0.1, "180": 0.25}}) is True)
+chk("celda a 90 min aunque las probabilidades sean bajas: riesgo",
+    muestreo.riesgo({"probabilities": {"60": 0.05}, "cell_eta_min": 90}) is True)
+chk("celda a 4 h: no", muestreo.riesgo({"probabilities": {"60": 0.05},
+                                         "cell_eta_min": 240}) is False)
+chk("nulls no rompen", muestreo.riesgo({"probabilities": {"60": None},
+                                        "cell_eta_min": None}) is False)
+
+print("\nA-ter. El registro viejo del Pi, sin columna de riesgo, se migra")
+limpiar()
+import csv as _csv  # noqa: E402
+viejos = ["id", "preguntado_utc", "vence_utc", "pi", "p60",
+          "respuesta", "canal", "respondido_utc", "estado"]
+os.makedirs(os.path.dirname(config.MUESTREO_CSV), exist_ok=True)
+with open(config.MUESTREO_CSV, "w", newline="", encoding="utf-8") as fh:
+    w = _csv.DictWriter(fh, fieldnames=viejos)
+    w.writeheader()
+    w.writerow({"id": 1, "preguntado_utc": "2026-10-01T18:00:00+00:00",
+                "vence_utc": "2026-10-01T18:30:00+00:00", "pi": 0.026786,
+                "p60": 0.1, "respuesta": "no", "canal": "ntfy",
+                "respondido_utc": "2026-10-01T18:05:00+00:00",
+                "estado": "respondida"})
+todo = store.load_json(config.STATE_JSON, {})
+todo["muestreo"] = {"id": 1, "ultimo_id": 1, "respondida": True,
+                    "preguntado_utc": "2026-10-01T18:00:00+00:00",
+                    "vence_utc": "2026-10-01T18:30:00+00:00"}
+store.save_json(config.STATE_JSON, todo)
+siempre_ = type("S", (), {"random": lambda self: 0.0})()   # el dado siempre sale
+muestreo.decidir(MEDIODIA, azar=siempre_, hay_riesgo=True)
 filas = muestreo.leer()
-chk("la probabilidad queda guardada con cada pregunta",
-    all(abs(float(f["pi"]) - pi) < 1e-5 for f in filas), f"π={pi:.4f}")
+chk("la fila vieja sigue ahí, con su π de entonces",
+    filas[0]["id"] == "1" and filas[0]["pi"] == "0.026786", str(filas[0]))
+chk("y la nueva lleva riesgo", filas[-1].get("riesgo") == "1", str(filas[-1]))
 
 print("\nB. De noche no se pregunta")
 limpiar()
