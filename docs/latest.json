@@ -1,6 +1,6 @@
 {
-  "issued_utc": "2026-10-20T20:02:19+00:00",
-  "issued_local": "2026-10-20 14:02",
+  "issued_utc": "2026-10-20T20:15:58+00:00",
+  "issued_local": "2026-10-20 14:15",
   "probabilities": {
     "15": 0.02,
     "30": 0.02,
@@ -12,8 +12,8 @@
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 301.9,
-    "contraste": -0.0,
+    "bt_encima": 301.6,
+    "contraste": -0.1,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
     "precip_observada": 0.0,
@@ -29,10 +29,10 @@
   "motion_giro": false,
   "deriva": {
     "desde": "sureste",
-    "bearing": 333.3,
-    "kmh": 22.6,
-    "confianza": 0.092,
-    "destellos": 21,
+    "bearing": 313.1,
+    "kmh": 81.7,
+    "confianza": 0.327,
+    "destellos": 58,
     "usada": false
   },
   "motion_ir_from": "sin movimiento definido",
@@ -68,7 +68,7 @@
     "gem_seamless": 0.0
   },
   "confidence": "baja",
-  "calibration_n": 51585,
+  "calibration_n": 51592,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -83,28 +83,28 @@
   ],
   "motion_bearing": null,
   "pressure": {
-    "now_msl": 1013.5,
-    "now_surface": 815.3,
+    "now_msl": 1013.7,
+    "now_surface": 815.2,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1797,
-      "edad_min": 0.2,
+      "edad_min": 0.8,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2431,
-      "amplitud_diaria": 5.59,
+      "factor": 1.2435,
+      "amplitud_diaria": 5.6,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": -0.1,
-    "change_3h": -0.4,
+    "change_1h": 0.0,
+    "change_3h": -0.3,
     "change_6h": -1.5,
     "change_24h": -2.0,
     "forecast_drop": 1.9,
     "forecast_drop_at": "Tue 20, 15:00",
-    "forecast_drop_in_h": 1.0,
+    "forecast_drop_in_h": 0.7,
     "level": "tranquilo",
     "trend": "bajando",
     "series": [
@@ -610,9 +610,9 @@
     "ciclo_diario": 10.0
   },
   "temperatura": {
-    "ahora": 26.5,
-    "sensacion": 25.3,
-    "humedad": 27,
+    "ahora": 26.7,
+    "sensacion": 25.2,
+    "humedad": 26,
     "maxima": 27.0,
     "minima": 11.2,
     "serie": [
@@ -769,13 +769,13 @@
     ]
   },
   "rayos": {
-    "total_hora": 81,
+    "total_hora": 166,
     "bloques": 4,
     "fase": "despejado",
-    "dist_km": 306.0,
+    "dist_km": 311.6,
     "dist_min_hora_km": 306.0
   },
-  "duracion_s": 26.2,
+  "duracion_s": 20.3,
   "degradado": false,
   "muestreo": null,
   "performance": {
@@ -823,10 +823,10 @@
     },
     "180": {
       "n": 2004,
-      "brier": 0.0947,
-      "skill_vs_climatologia": 0.279,
-      "acierto_binario": 0.855,
-      "frecuencia_lluvia": 0.156
+      "brier": 0.0943,
+      "skill_vs_climatologia": 0.28,
+      "acierto_binario": 0.856,
+      "frecuencia_lluvia": 0.155
     }
   }
 }
