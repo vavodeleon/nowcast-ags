@@ -1,6 +1,6 @@
 {
-  "issued_utc": "2026-10-22T13:48:46+00:00",
-  "issued_local": "2026-10-22 07:48",
+  "issued_utc": "2026-10-22T14:04:57+00:00",
+  "issued_local": "2026-10-22 08:04",
   "probabilities": {
     "15": 0.02,
     "30": 0.02,
@@ -12,11 +12,11 @@
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 283.5,
+    "bt_encima": 285.2,
     "contraste": -0.1,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": null,
+    "precip_observada": 0.0,
     "forma": "despejado",
     "lloviendo": false,
     "corroborado_por": "",
@@ -39,7 +39,7 @@
     "contraste_k": 0.0,
     "de_dia": false
   },
-  "cape": 190.0,
+  "cape": 80.0,
   "radar_coverage": 0.0,
   "radar_usable": false,
   "primary_sensor": "infrarrojo (GOES-19)",
@@ -61,7 +61,7 @@
     "gem_seamless": 0.0
   },
   "confidence": "baja",
-  "calibration_n": 52754,
+  "calibration_n": 52761,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -76,38 +76,31 @@
   ],
   "motion_bearing": null,
   "pressure": {
-    "now_msl": 1023.2,
-    "now_surface": 818.5,
+    "now_msl": 1023.4,
+    "now_surface": 818.7,
     "fuente": "sensor local",
     "sensor": {
-      "muestras": 1659,
-      "edad_min": 0.9,
+      "muestras": 1660,
+      "edad_min": 0.0,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2502,
-      "amplitud_diaria": 5.57,
+      "factor": 1.25,
+      "amplitud_diaria": 5.56,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": 0.0,
-    "change_3h": -0.5,
+    "change_1h": 0.1,
+    "change_3h": -0.4,
     "change_6h": -0.4,
     "change_24h": -0.5,
     "forecast_drop": 2.4,
     "forecast_drop_at": "Fri 23, 10:00",
-    "forecast_drop_in_h": 26.2,
+    "forecast_drop_in_h": 25.9,
     "level": "tranquilo",
     "trend": "estable",
     "series": [
-      {
-        "t": "21 08:00",
-        "iso": "2026-10-21T14:00:00+00:00",
-        "msl": 1023.7,
-        "limpia": 1019.6,
-        "futuro": false
-      },
       {
         "t": "21 09:00",
         "iso": "2026-10-21T15:00:00+00:00",
@@ -168,7 +161,7 @@
         "t": "21 17:00",
         "iso": "2026-10-21T23:00:00+00:00",
         "msl": 1012.8,
-        "limpia": 1018.9,
+        "limpia": 1019.0,
         "futuro": false
       },
       {
@@ -274,7 +267,7 @@
         "iso": "2026-10-22T14:00:00+00:00",
         "msl": 1023.2,
         "limpia": 1019.1,
-        "futuro": true
+        "futuro": false
       },
       {
         "t": "22 09:00",
@@ -336,7 +329,7 @@
         "t": "22 17:00",
         "iso": "2026-10-22T23:00:00+00:00",
         "msl": 1012.3,
-        "limpia": 1018.4,
+        "limpia": 1018.5,
         "futuro": true
       },
       {
@@ -504,7 +497,7 @@
         "t": "23 17:00",
         "iso": "2026-10-23T23:00:00+00:00",
         "msl": 1010.1,
-        "limpia": 1016.2,
+        "limpia": 1016.3,
         "futuro": true
       },
       {
@@ -597,24 +590,25 @@
         "msl": 1018.8,
         "limpia": 1015.7,
         "futuro": true
+      },
+      {
+        "t": "24 07:00",
+        "iso": "2026-10-24T13:00:00+00:00",
+        "msl": 1019.8,
+        "limpia": 1016.1,
+        "futuro": true
       }
     ],
     "umbral_24h": 5.0,
-    "ciclo_diario": 10.3
+    "ciclo_diario": 10.4
   },
   "temperatura": {
-    "ahora": 13.0,
-    "sensacion": 11.1,
-    "humedad": 83,
+    "ahora": 13.5,
+    "sensacion": 11.6,
+    "humedad": 79,
     "maxima": 27.4,
     "minima": 11.6,
     "serie": [
-      {
-        "t": "07:00",
-        "fecha": "2026-10-22",
-        "temp": 11.6,
-        "sensacion": 9.9
-      },
       {
         "t": "08:00",
         "fecha": "2026-10-22",
@@ -758,6 +752,12 @@
         "fecha": "2026-10-23",
         "temp": 11.6,
         "sensacion": 10.1
+      },
+      {
+        "t": "08:00",
+        "fecha": "2026-10-23",
+        "temp": 13.7,
+        "sensacion": 11.9
       }
     ]
   },
@@ -768,7 +768,7 @@
     "dist_km": null,
     "dist_min_hora_km": null
   },
-  "duracion_s": 195.5,
+  "duracion_s": 169.2,
   "degradado": false,
   "muestreo": null,
   "performance": {
