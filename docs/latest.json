@@ -1,20 +1,20 @@
 {
-  "issued_utc": "2026-10-28T06:00:58+00:00",
-  "issued_local": "2026-10-28 00:00",
+  "issued_utc": "2026-10-28T06:15:52+00:00",
+  "issued_local": "2026-10-28 00:15",
   "probabilities": {
-    "15": 0.217,
-    "30": 0.119,
-    "45": 0.12,
+    "15": 0.121,
+    "30": 0.122,
+    "45": 0.124,
     "60": 0.119,
-    "90": 0.093,
-    "120": 0.087,
-    "180": 0.054
+    "90": 0.095,
+    "120": 0.089,
+    "180": 0.055
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 247.3,
-    "contraste": 15.2,
-    "fraccion_fria": 0.04,
+    "bt_encima": 248.8,
+    "contraste": 15.0,
+    "fraccion_fria": 0.05,
     "rayos_cerca": 0,
     "precip_observada": 0.3,
     "forma": "nubes",
@@ -22,21 +22,21 @@
     "corroborado_por": "",
     "estado": "Nublado"
   },
-  "motion_speed_kmh": 96.0,
-  "motion_from": "oeste",
-  "motion_confidence": 0.358,
+  "motion_speed_kmh": 95.8,
+  "motion_from": "suroeste",
+  "motion_confidence": 0.117,
   "motion_fuente": "infrarrojo (topes)",
   "motion_giro": false,
   "deriva": null,
-  "motion_ir_from": "oeste",
-  "motion_ir_kmh": 96.0,
-  "growth": 0.768,
+  "motion_ir_from": "suroeste",
+  "motion_ir_kmh": 95.8,
+  "growth": 0.986,
   "cell_eta_min": null,
   "cell_km": null,
   "celda": null,
   "nube_baja": {
-    "frac": 0.833,
-    "contraste_k": 21.9,
+    "frac": 0.925,
+    "contraste_k": 19.7,
     "de_dia": false
   },
   "cape": 80.0,
@@ -61,7 +61,7 @@
     "gem_seamless": 0.6
   },
   "confidence": "baja",
-  "calibration_n": 56569,
+  "calibration_n": 56576,
   "lat": 21.84,
   "lon": -102.28,
   "map_bounds": [
@@ -74,30 +74,30 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 67.6,
+  "motion_bearing": 67.3,
   "pressure": {
     "now_msl": 1020.3,
-    "now_surface": 817.1,
+    "now_surface": 817.2,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1781,
-      "edad_min": 0.3,
+      "edad_min": 0.2,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2486,
-      "amplitud_diaria": 5.41,
+      "factor": 1.2485,
+      "amplitud_diaria": 5.43,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": 0.3,
-    "change_3h": 0.0,
+    "change_1h": 0.4,
+    "change_3h": 0.2,
     "change_6h": 0.9,
     "change_24h": 0.1,
     "forecast_drop": 1.6,
     "forecast_drop_at": "Wed 28, 06:00",
-    "forecast_drop_in_h": 6.0,
+    "forecast_drop_in_h": 5.7,
     "level": "tranquilo",
     "trend": "estable",
     "series": [
@@ -603,9 +603,9 @@
     "ciclo_diario": 7.0
   },
   "temperatura": {
-    "ahora": 15.6,
-    "sensacion": 16.2,
-    "humedad": 89,
+    "ahora": 15.4,
+    "sensacion": 16.0,
+    "humedad": 90,
     "maxima": 22.0,
     "minima": 12.6,
     "serie": [
@@ -762,13 +762,13 @@
     ]
   },
   "rayos": {
-    "total_hora": 18,
+    "total_hora": 12,
     "bloques": 4,
-    "fase": "vigilando",
-    "dist_km": null,
-    "dist_min_hora_km": 35.5
+    "fase": "acercandose",
+    "dist_km": 50.3,
+    "dist_min_hora_km": 50.3
   },
-  "duracion_s": 24.0,
+  "duracion_s": 24.4,
   "degradado": false,
   "muestreo": null,
   "performance": {
@@ -796,28 +796,28 @@
     "60": {
       "n": 2003,
       "brier": 0.0494,
-      "skill_vs_climatologia": 0.321,
+      "skill_vs_climatologia": 0.32,
       "acierto_binario": 0.932,
       "frecuencia_lluvia": 0.079
     },
     "90": {
       "n": 2001,
-      "brier": 0.0495,
-      "skill_vs_climatologia": 0.32,
+      "brier": 0.0496,
+      "skill_vs_climatologia": 0.319,
       "acierto_binario": 0.928,
       "frecuencia_lluvia": 0.079
     },
     "120": {
       "n": 1999,
-      "brier": 0.0505,
-      "skill_vs_climatologia": 0.306,
+      "brier": 0.0506,
+      "skill_vs_climatologia": 0.305,
       "acierto_binario": 0.928,
       "frecuencia_lluvia": 0.079
     },
     "180": {
       "n": 1995,
-      "brier": 0.0508,
-      "skill_vs_climatologia": 0.304,
+      "brier": 0.0509,
+      "skill_vs_climatologia": 0.302,
       "acierto_binario": 0.924,
       "frecuencia_lluvia": 0.079
     }
