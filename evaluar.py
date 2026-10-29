@@ -706,6 +706,12 @@ def veredicto_ganancia(r: dict | None, min_lluvias: int = 20,
         return "gana"
     if r["hi"] < -GANANCIA_MINIMA:
         return "empeora"
+    # El intervalo cabe tanto una ganancia como una pérdida que importan: no
+    # es "no aporta", es "no se sabe". La primera versión los juntaba, y la
+    # nube baja salió "fuera del pronóstico" con un intervalo de -20% a +25%
+    # (25/10/2026): veinte días, casi toda la lluvia en unos pocos.
+    if r["lo"] < -GANANCIA_MINIMA and r["hi"] > GANANCIA_MINIMA:
+        return "incierto"
     return "nada"
 
 
@@ -754,6 +760,10 @@ def _explicar(veredictos: list[str], que: str) -> None:
         print("   8 días distintos en el plazo que se mire.")
     elif "empeora" in veredictos:
         print(f"\n   Empeora en algún plazo: {que} confunde más de lo que ayuda.")
+    elif "incierto" in veredictos:
+        print(f"\n   No se sabe todavía: el intervalo cabe una mejora y una pérdida")
+        print(f"   que importan. Con {que} así no se decide nada; hacen falta más")
+        print("   días distintos con lluvia, no más ratos del mismo día.")
     else:
         print(f"\n   No aporta: {que} no mejora el pronóstico en más de 1% fuera de")
         print("   los días del ajuste. Fuera del pronóstico.")

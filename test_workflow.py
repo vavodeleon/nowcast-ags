@@ -128,6 +128,16 @@ chk("el push va autenticado",
     "credential.helper" in correr, "git push sin credenciales falla en systemd")
 chk("el token no acaba en .git/config",
     "credential.helper store" not in correr and "remote set-url" not in correr)
+chk("antes de tocar git, repara lo que deja un apagón (29/10/2026)",
+    "reparar-git.sh" in correr
+    and correr.index("reparar-git.sh") < correr.index("git pull --rebase"))
+chk("git manda cada objeto al disco", "core.fsync" in correr)
+chk("vigila la alimentación", "get_throttled" in correr)
+chk("avisa si lleva una hora sin publicar", "fallando_desde" in correr and "-ge 60" in correr)
+chk("el estado de la vigilancia no va a lo que se publica",
+    re.search(r'VIG="\$\{XDG_STATE_HOME', correr) is not None)
+chk("el nombre del canal de ntfy no se imprime nunca",
+    not re.search(r"echo[^\n]*NTFY_TOPIC", correr))
 chk("un fallo no se reporta como exito",
     not re.search(r"^SuccessExitStatus", servicio, re.M))
 

@@ -318,5 +318,14 @@ chk("con un dato que no informa nada, no gana (≤1 de 8)", falsos <= 1, f"{fals
 chk("con pocos días, no decide",
     evaluar.veredicto_ganancia(evaluar.ganancia_cv(ganancia_mundo(True, 2, dias=4))) == "aun_no")
 
+print("\nJ. Un intervalo ancho es 'no se sabe', no 'no aporta'")
+base = {"n": 700, "lluvias": 60, "dias": 20, "brier_sin": 0.054, "brier_con": 0.052}
+chk("nube baja del 25/10 (-19.7% a +24.9%): incierto",
+    evaluar.veredicto_ganancia(dict(base, ganancia=0.042, lo=-0.197, hi=0.249)) == "incierto")
+chk("presión del 25/10 (-2.5% a +0.1%): no aporta",
+    evaluar.veredicto_ganancia(dict(base, ganancia=-0.007, lo=-0.025, hi=0.001)) == "nada")
+chk("y uno estrecho alrededor de cero también es 'no aporta'",
+    evaluar.veredicto_ganancia(dict(base, ganancia=0.0, lo=-0.005, hi=0.005)) == "nada")
+
 print("\n" + ("TODO EN ORDEN" if ok else "HAY FALLOS"))
 sys.exit(0 if ok else 1)
