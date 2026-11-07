@@ -1,6 +1,6 @@
 {
-  "issued_utc": "2026-11-07T22:01:10+00:00",
-  "issued_local": "2026-11-07 16:01",
+  "issued_utc": "2026-11-07T22:16:05+00:00",
+  "issued_local": "2026-11-07 16:16",
   "probabilities": {
     "15": 0.02,
     "30": 0.02,
@@ -12,8 +12,8 @@
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 291.6,
-    "contraste": 1.8,
+    "bt_encima": 293.2,
+    "contraste": -0.1,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
     "precip_observada": 0.0,
@@ -24,15 +24,15 @@
   },
   "motion_speed_kmh": 0.0,
   "motion_from": "sin movimiento definido",
-  "motion_confidence": 0.0,
+  "motion_confidence": 0.024,
   "motion_fuente": "infrarrojo (topes)",
   "motion_giro": false,
   "deriva": {
     "desde": "este",
     "bearing": 267.6,
     "kmh": 13.5,
-    "confianza": 0.709,
-    "destellos": 213,
+    "confianza": 0.304,
+    "destellos": 117,
     "usada": false
   },
   "motion_ir_from": "sin movimiento definido",
@@ -42,8 +42,8 @@
   "cell_km": null,
   "celda": null,
   "nube_baja": {
-    "frac": 0.192,
-    "contraste_k": 9.9,
+    "frac": 0.158,
+    "contraste_k": 10.4,
     "de_dia": true
   },
   "cape": 10.0,
@@ -88,11 +88,11 @@
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1799,
-      "edad_min": 0.7,
+      "edad_min": 0.6,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2446,
-      "amplitud_diaria": 5.17,
+      "factor": 1.2447,
+      "amplitud_diaria": 5.15,
       "ventanas": [
         "change_1h",
         "change_3h"
@@ -104,7 +104,7 @@
     "change_24h": -1.0,
     "forecast_drop": 2.4,
     "forecast_drop_at": "Sun 08, 00:00",
-    "forecast_drop_in_h": 8.0,
+    "forecast_drop_in_h": 7.7,
     "level": "tranquilo",
     "trend": "estable",
     "series": [
@@ -610,7 +610,7 @@
     "ciclo_diario": 8.3
   },
   "temperatura": {
-    "ahora": 25.1,
+    "ahora": 25.0,
     "sensacion": 22.1,
     "humedad": 28,
     "maxima": 25.3,
@@ -769,13 +769,13 @@
     ]
   },
   "rayos": {
-    "total_hora": 430,
+    "total_hora": 307,
     "bloques": 4,
     "fase": "despejado",
-    "dist_km": 296.8,
+    "dist_km": 197.1,
     "dist_min_hora_km": 81.7
   },
-  "duracion_s": 28.8,
+  "duracion_s": 32.1,
   "degradado": false,
   "muestreo": null,
   "performance": {
@@ -817,7 +817,7 @@
     "120": {
       "n": 1991,
       "brier": 0.0232,
-      "skill_vs_climatologia": 0.316,
+      "skill_vs_climatologia": 0.317,
       "acierto_binario": 0.972,
       "frecuencia_lluvia": 0.035
     },
