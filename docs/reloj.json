@@ -1,7 +1,7 @@
 {
   "v": 1,
-  "emitido_utc": "2026-11-10T12:16:03+00:00",
-  "hora": "06:16",
+  "emitido_utc": "2026-11-10T12:31:04+00:00",
+  "hora": "06:31",
   "icono": "☀️",
   "titular": "No va a llover",
   "apoyo": "Despejado en las próximas horas.",
@@ -9,11 +9,11 @@
   "p": [
     {
       "min": 15,
-      "p": 0.085
+      "p": 0.086
     },
     {
       "min": 30,
-      "p": 0.073
+      "p": 0.072
     },
     {
       "min": 45,
@@ -21,23 +21,28 @@
     },
     {
       "min": 60,
-      "p": 0.059
+      "p": 0.037
     },
     {
       "min": 90,
-      "p": 0.039
+      "p": 0.038
     },
     {
       "min": 120,
-      "p": 0.03
+      "p": 0.02
     },
     {
       "min": 180,
       "p": 0.02
     }
   ],
-  "p60": 0.059,
-  "celda": null,
+  "p60": 0.037,
+  "celda": {
+    "eta_min": 110,
+    "km": 220,
+    "desde": "oeste",
+    "intensidad": 0.554
+  },
   "giro": false,
   "nube_baja": true,
   "degradado": false
