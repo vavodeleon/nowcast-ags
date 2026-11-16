@@ -1,6 +1,6 @@
 {
-  "issued_utc": "2026-11-16T00:31:10+00:00",
-  "issued_local": "2026-11-15 18:31",
+  "issued_utc": "2026-11-16T00:46:04+00:00",
+  "issued_local": "2026-11-15 18:46",
   "probabilities": {
     "15": 0.02,
     "30": 0.02,
@@ -12,8 +12,8 @@
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 285.6,
-    "contraste": -0.2,
+    "bt_encima": 285.0,
+    "contraste": -0.1,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
     "precip_observada": null,
@@ -36,7 +36,7 @@
   "celda": null,
   "nube_baja": {
     "frac": 0.025,
-    "contraste_k": 8.4,
+    "contraste_k": 8.2,
     "de_dia": false
   },
   "cape": 10.0,
@@ -76,28 +76,28 @@
   ],
   "motion_bearing": null,
   "pressure": {
-    "now_msl": 1015.4,
-    "now_surface": 814.4,
+    "now_msl": 1015.5,
+    "now_surface": 814.7,
     "fuente": "sensor local",
     "sensor": {
-      "muestras": 1800,
-      "edad_min": 0.0,
+      "muestras": 1799,
+      "edad_min": 0.8,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2468,
+      "factor": 1.2466,
       "amplitud_diaria": 5.24,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": 0.1,
+    "change_1h": 0.2,
     "change_3h": 0.3,
     "change_6h": 1.0,
     "change_24h": 0.6,
     "forecast_drop": 0.3,
     "forecast_drop_at": "Mon 16, 19:00",
-    "forecast_drop_in_h": 24.5,
+    "forecast_drop_in_h": 24.2,
     "level": "tranquilo",
     "trend": "subiendo",
     "series": [
@@ -603,8 +603,8 @@
     "ciclo_diario": 8.1
   },
   "temperatura": {
-    "ahora": 18.7,
-    "sensacion": 18.1,
+    "ahora": 18.3,
+    "sensacion": 17.6,
     "humedad": 52,
     "maxima": 23.3,
     "minima": 8.8,
@@ -768,9 +768,15 @@
     "dist_km": null,
     "dist_min_hora_km": null
   },
-  "duracion_s": 21.7,
+  "duracion_s": 27.6,
   "degradado": false,
-  "muestreo": null,
+  "muestreo": {
+    "id": 61,
+    "pregunta": "¿Está lloviendo ahora mismo donde estás?",
+    "preguntado_utc": "2026-11-16T00:46:46.608614+00:00",
+    "vence_utc": "2026-11-16T01:16:46.608614+00:00",
+    "vence_local": "19:16"
+  },
   "performance": {
     "15": {
       "n": 2007,
