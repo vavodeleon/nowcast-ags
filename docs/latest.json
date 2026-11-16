@@ -1,93 +1,97 @@
 {
-  "issued_utc": "2026-11-16T21:16:05+00:00",
-  "issued_local": "2026-11-16 15:16",
+  "issued_utc": "2026-11-16T21:31:10+00:00",
+  "issued_local": "2026-11-16 15:31",
   "probabilities": {
-    "15": 0.123,
-    "30": 0.15,
-    "45": 0.073,
-    "60": 0.062,
-    "90": 0.046,
-    "120": 0.041,
+    "15": 0.04,
+    "30": 0.148,
+    "45": 0.127,
+    "60": 0.055,
+    "90": 0.037,
+    "120": 0.029,
     "180": 0.02
   },
-  "raining_now": 0.011,
+  "raining_now": 0.326,
   "ahora": {
-    "bt_encima": 234.9,
-    "contraste": 10.6,
-    "fraccion_fria": 0.27,
+    "bt_encima": 230.0,
+    "contraste": 16.3,
+    "fraccion_fria": 0.22,
     "rayos_cerca": 0,
-    "precip_observada": 0.0,
-    "forma": "nubes",
+    "precip_observada": null,
+    "forma": "nucleo",
     "lloviendo": false,
     "corroborado_por": "",
-    "estado": "Muy nublado"
+    "estado": "Nube cargada encima"
   },
   "motion_speed_kmh": 120.0,
   "motion_from": "oeste",
-  "motion_confidence": 0.39,
+  "motion_confidence": 0.369,
   "motion_fuente": "infrarrojo (topes)",
   "motion_giro": false,
   "deriva": null,
   "motion_ir_from": "oeste",
   "motion_ir_kmh": 120.0,
-  "growth": 0.89,
-  "cell_eta_min": 15.0,
-  "cell_km": 34.2,
+  "growth": 0.947,
+  "cell_eta_min": 20.0,
+  "cell_km": 46.6,
   "celda": {
-    "lat": 22.0071,
-    "lon": -102.5584,
-    "km": 34.2,
-    "eta_min": 15.0,
-    "intensidad": 0.583,
-    "radio_km": 21.6,
-    "rumbo": 89.2,
+    "lat": 22.0297,
+    "lon": -102.6839,
+    "km": 46.6,
+    "eta_min": 20.0,
+    "intensidad": 0.635,
+    "radio_km": 27.6,
+    "rumbo": 89.7,
     "kmh": 120.0,
     "trayectoria": [
       [
-        22.0071,
-        -102.5584
+        22.0297,
+        -102.6839
       ],
       [
-        22.0083,
-        -102.4614
+        22.0302,
+        -102.5868
       ],
       [
-        22.0094,
-        -102.3643
+        22.0307,
+        -102.4898
       ],
       [
-        22.0104,
-        -102.2673
+        22.0313,
+        -102.3927
       ],
       [
-        22.0111,
-        -102.1702
+        22.0319,
+        -102.2956
       ],
       [
-        22.0117,
-        -102.0732
+        22.0325,
+        -102.1986
       ],
       [
-        22.0121,
-        -101.9761
+        22.0327,
+        -102.1015
       ],
       [
-        22.0122,
-        -101.8791
+        22.0326,
+        -102.0045
       ],
       [
-        22.0122,
-        -101.782
+        22.0322,
+        -101.9074
       ],
       [
-        22.0119,
-        -101.685
+        22.0315,
+        -101.8104
+      ],
+      [
+        22.0306,
+        -101.7133
       ]
     ]
   },
   "nube_baja": {
-    "frac": 0.075,
-    "contraste_k": 39.6,
+    "frac": 0.0,
+    "contraste_k": 0.0,
     "de_dia": true
   },
   "frio": {
@@ -147,32 +151,32 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 90.4,
+  "motion_bearing": 91.2,
   "pressure": {
-    "now_msl": 1014.4,
-    "now_surface": 815.1,
+    "now_msl": 1014.3,
+    "now_surface": 815.0,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1794,
-      "edad_min": 0.8,
+      "edad_min": 0.9,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2446,
+      "factor": 1.2445,
       "amplitud_diaria": 5.58,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": 0.4,
-    "change_3h": 0.0,
-    "change_6h": -1.1,
-    "change_24h": 0.1,
+    "change_1h": 0.5,
+    "change_3h": 0.2,
+    "change_6h": -0.0,
+    "change_24h": 0.6,
     "forecast_drop": 1.2,
     "forecast_drop_at": "Wed 18, 03:00",
-    "forecast_drop_in_h": 35.7,
+    "forecast_drop_in_h": 35.5,
     "level": "tranquilo",
-    "trend": "bajando",
+    "trend": "estable",
     "series": [
       {
         "t": "15 16:00",
@@ -676,9 +680,9 @@
     "ciclo_diario": 8.2
   },
   "temperatura": {
-    "ahora": 23.3,
-    "sensacion": 21.2,
-    "humedad": 34,
+    "ahora": 23.2,
+    "sensacion": 21.0,
+    "humedad": 33,
     "maxima": 23.3,
     "minima": 8.5,
     "serie": [
@@ -841,7 +845,7 @@
     "dist_km": null,
     "dist_min_hora_km": null
   },
-  "duracion_s": 32.8,
+  "duracion_s": 29.5,
   "degradado": false,
   "muestreo": null,
   "performance": {
