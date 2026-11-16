@@ -40,7 +40,7 @@ import csv
 import os
 import sys
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
@@ -576,6 +576,7 @@ def main() -> int:
     por_tramo(ref)
     por_salud(datos)
     nubes_bajas_seccion(datos)
+    seccion_frio()
 
     print("\n" + "=" * 66)
     peor = min(informes, key=lambda r: r["skill"])
@@ -904,6 +905,120 @@ def nubes_bajas_seccion(datos: dict, plazos=(15, 60)) -> None:
         if con and len(con) + len(sin) and len(con) / (len(con) + len(sin)) > 0.7:
             print(f"   Ojo: el {len(con) / (len(con) + len(sin)):.0%} de los ratos marca nube baja;")
             print("   un umbral tan generoso diluye la señal.")
+
+
+# --------------------------------------------------------------- sección 10
+
+def evaluar_heladas(filas: list[dict], minimas: dict) -> dict:
+    """La mínima de la tarde anterior contra la del aeropuerto."""
+    from nowcast import config as _c, frio as _f
+    tarde = _f.de_la_tarde(filas, minimas)
+    out = {"noches": len(tarde)}
+    if not tarde:
+        return out
+    obs = np.array([minimas[k] for k in sorted(tarde)])
+    cruda = np.array([float(tarde[k]["tmin_mediana"]) for k in sorted(tarde)])
+    corr = np.array([_num(tarde[k].get("tmin_corregida")) for k in sorted(tarde)], dtype=float)
+    ps = np.array([_num(tarde[k].get("p_helada")) for k in sorted(tarde)], dtype=float)
+    heló = (obs <= _c.HELADA_UMBRAL_C).astype(float)
+    avisó = ps >= _c.HELADA_AVISO_P
+    out.update({
+        "sesgo": float(np.mean(obs - cruda)),
+        "mae_cruda": float(np.mean(np.abs(obs - cruda))),
+        "mae_corregida": float(np.nanmean(np.abs(obs - corr))),
+        "heladas": int(heló.sum()),
+        "brier": float(np.mean((ps - heló) ** 2)),
+        "brier_clima": float(np.mean((heló.mean() - heló) ** 2)),
+        "aviso_bien": int(np.sum(avisó & (heló == 1))),
+        "aviso_falso": int(np.sum(avisó & (heló == 0))),
+        "sin_aviso": int(np.sum(~avisó & (heló == 1))),
+    })
+    return out
+
+
+def evaluar_frentes(filas: list[dict], eventos: list, hasta=None) -> dict:
+    """Frentes del aeropuerto contra lo que se anunció 6-48 h antes.
+
+    Acertado: alguna corrida de 6 a 48 h antes puso la llegada a ±6 h. Falsa
+    alarma: un frente anunciado que, pasada su hora y con el aeropuerto
+    reportando, no aparece a ±12 h de ningún frente observado.
+    """
+    from nowcast import config as _c
+    anunciados = []
+    for f in filas:
+        try:
+            emit = datetime.fromisoformat(f["emitido_utc"])
+            eta = datetime.fromisoformat(f["frente_eta_utc"]) if f.get("frente_eta_utc") else None
+        except (ValueError, KeyError):
+            continue
+        if eta is None:
+            continue
+        en_h = (eta - emit).total_seconds() / 3600
+        if _c.FRENTE_AVISO_H[0] <= en_h <= _c.FRENTE_AVISO_H[1]:
+            anunciados.append((emit, eta))
+    acertados, errores = 0, []
+    for ev in eventos:
+        cerca = [(eta - ev).total_seconds() / 3600 for emit, eta in anunciados
+                 if abs((eta - ev).total_seconds()) <= 6 * 3600]
+        if cerca:
+            acertados += 1
+            errores.append(float(np.median(cerca)))
+    # Agrupar anuncios por su llegada (un frente se anuncia en muchas corridas).
+    grupos = []
+    for _e, eta in sorted(anunciados, key=lambda x: x[1]):
+        if grupos and (eta - grupos[-1][-1]).total_seconds() <= 24 * 3600:
+            grupos[-1].append(eta)
+        else:
+            grupos.append([eta])
+    hasta = hasta or datetime.now(timezone.utc)
+    falsas = 0
+    for g in grupos:
+        eta = sorted(g)[len(g) // 2]
+        if eta + timedelta(hours=12) > hasta:
+            continue                      # todavía no pasa: no se puede juzgar
+        if not any(abs((eta - ev).total_seconds()) <= 12 * 3600 for ev in eventos):
+            falsas += 1
+    return {"observados": len(eventos), "acertados": acertados,
+            "perdidos": len(eventos) - acertados, "falsas": falsas,
+            "anunciados": len(grupos),
+            "error_h": float(np.median(errores)) if errores else None}
+
+
+def seccion_frio() -> None:
+    from nowcast import frio as _f, metar as _m
+    print("\n10. FRÍO — frentes y heladas contra el aeropuerto (desde 16/11/2026)")
+    filas = _f.leer()
+    obs = _m.leer()
+    if not filas or not obs:
+        print("\n   Todavía no hay pronósticos de frío o lecturas del aeropuerto.")
+        return
+    h = evaluar_heladas(filas, _m.minimas_observadas(obs))
+    print(f"\n   a) Heladas: {h['noches']} noches con mínima del aeropuerto y "
+          "pronóstico de la tarde anterior.")
+    if h["noches"]:
+        print(f"      El aeropuerto amanece {h['sesgo']:+.1f} °C respecto a los modelos "
+              "(negativo: más frío).")
+        print(f"      Error medio de la mínima: {h['mae_cruda']:.1f} °C crudo, "
+              f"{h['mae_corregida']:.1f} °C corregido.")
+        print(f"      Noches de 3 °C o menos: {h['heladas']}. Avisos acertados "
+              f"{h['aviso_bien']}, falsos {h['aviso_falso']}, heladas sin aviso {h['sin_aviso']}.")
+        if h["noches"] >= 10 and h["brier_clima"] > 0:
+            sk = 1 - h["brier"] / h["brier_clima"]
+            print(f"      Probabilidad de helada: Brier {h['brier']:.3f}, skill {sk:+.2f} "
+                  "contra la tasa de heladas del periodo.")
+        else:
+            print("      Con menos de 10 noches no tiene sentido calificar la probabilidad.")
+    fr = evaluar_frentes(filas, _m.frentes_observados(obs))
+    print(f"\n   b) Frentes: el aeropuerto registró {fr['observados']}; se anunciaron "
+          f"{fr['anunciados']} (de 6 a 48 h antes).")
+    if fr["observados"] or fr["anunciados"]:
+        print(f"      Acertados {fr['acertados']}, perdidos {fr['perdidos']}, "
+              f"falsas alarmas {fr['falsas']}." + (
+              f" La llegada se anunció con {fr['error_h']:+.1f} h de error típico "
+              "(positivo: llegó antes de lo dicho)." if fr["error_h"] is not None else ""))
+    print("      Los umbrales de la firma de frente (config.FRENTE_*) son de partida:")
+    print("      si se pierden frentes que el SMN numeró, o salen falsas alarmas,")
+    print("      se ajustan con estos números, no a ojo.")
 
 
 def _dif_estratos(estratos: dict, marcas: dict,

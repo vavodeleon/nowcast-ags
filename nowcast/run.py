@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 
 from . import (archivo, calibrate, config, engine, feedback, lightning, malla,
-               muestreo, notify, nubes_bajas, overhead, reloj, salud,
+               frio, metar, muestreo, notify, nubes_bajas, overhead, reloj, salud,
                pressure, render, sources, store, verify)
 
 log = logging.getLogger(__name__)
@@ -140,6 +140,23 @@ def build_forecast() -> dict:
             log.error("temperatura fallo: %s", exc)
     else:
         log.warning("presupuesto agotado: se omite la temperatura")
+
+    # Frentes y heladas (temporada seca). El aeropuerto se guarda siempre:
+    # es la verdad contra la que se califica el pronóstico de frío.
+    frio_res, frio_fila = {"frente": None, "helada": None, "aeropuerto": None}, None
+    if queda():
+        try:
+            metar.actualizar()
+        except Exception as exc:
+            log.error("METAR fallo: %s", exc)
+    if queda():
+        try:
+            frio_res = frio.calcular()
+            frio_fila = frio_res.pop("_fila", None)
+        except Exception as exc:
+            log.error("frio fallo: %s", exc)
+    else:
+        log.warning("presupuesto agotado: se omiten frentes y heladas")
 
     # rayos detectados por el GLM
     bloques_rayos = []
@@ -441,6 +458,10 @@ def build_forecast() -> dict:
         # significa "este dato vale poco": de noche el suelo se enfria hasta
         # la temperatura de la nube y el contraste desaparece.
         "nube_baja": nube_baja,
+        # Frentes fríos y heladas. Siempre presente; cada parte null si no se
+        # sabe. Ver nowcast/frio.py.
+        "frio": frio_res,
+        "_frio_fila": frio_fila,
         "cape": round(cape, 0),
         "radar_coverage": round(coverage, 3),
         "radar_usable": cov["usable"],
@@ -572,6 +593,10 @@ def main() -> None:
         f["degradado"] = 1 if result.get("degradado") else 0
         f["duracion_s"] = result.get("duracion_s", "")
     store.append_predictions(filas)
+    try:
+        frio.registrar(result.pop("_frio_fila", None))
+    except Exception as exc:
+        log.error("no se pudo registrar el frio: %s", exc)
     pres = result.pop("_pressure", None)
     tormenta = result.pop("_tormenta", None)
     store.prune()
@@ -608,6 +633,10 @@ def main() -> None:
                 notify.maybe_storm_alert(tormenta)
             except Exception as exc:
                 log.error("alerta de tormenta fallo: %s", exc)
+        try:
+            frio.avisar(result.get("frio") or {})
+        except Exception as exc:
+            log.error("aviso de frio fallo: %s", exc)
 
         # 5. reporte matutino: se comprueba aqui y no con un cron propio,
         #    porque los cron de GitHub no se cumplen

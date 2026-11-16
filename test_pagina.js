@@ -652,6 +652,30 @@ const espera = () => new Promise((r) => process.nextTick(r));
   puente.render(nubla);
   chk("null: no dice nada", el("nota-nube-baja").hidden === true);
 
+  console.log("\nN-nonies. Frío: frente, helada y aeropuerto");
+  const fria = JSON.parse(JSON.stringify(RESPUESTAS["latest.json"]));
+  fria.frio = {
+    frente: {eta_utc: "2026-11-18T04:00:00+00:00", eta_local: "mar 17 ~22:00", en_h: 30,
+             modelos: "3 de 5", margen_h: 2, max_antes: 24, max_despues: 17,
+             racha_kmh: 45, viento_de: "norte", enfria_700: -3},
+    helada: {fecha: "2026-11-18", tmin: 1.6, p: 0.72, umbral: 3, calibrada: false, noches: 4},
+    aeropuerto: {obs_utc: new Date().toISOString(), temp: 9, rocio: 2, viento_de: "norte", viento_kmh: 15},
+  };
+  puente.render(fria);
+  chk("dice cuándo llega el frente", /mar 17 ~22:00/.test(el("frio-frente").innerHTML || ""));
+  chk("y cuánto baja la máxima", /24 a 17/.test(el("frio-frente").innerHTML || ""));
+  chk("la helada con su probabilidad", /72%/.test(el("frio-helada").innerHTML || ""));
+  chk("y que aún no está calibrada", /sin calibrar/.test(el("frio-helada").innerHTML || ""));
+  chk("el aeropuerto ahora", /Aeropuerto ahora: 9 °C/.test(el("frio-aero").textContent || ""));
+  fria.frio = {frente: null, helada: null, aeropuerto: null};
+  puente.render(fria);
+  chk("sin frente lo dice, sin inventar", /Sin frentes/.test(el("frio-frente").innerHTML || ""));
+  delete fria.frio;
+  let reviento = false;
+  try { puente.render(fria); } catch (e) { reviento = true; }
+  chk("un latest.json viejo, sin 'frio', no rompe la página", !reviento &&
+      /Sin datos/.test(el("frio-frente").textContent || ""));
+
   console.log("\nN-quater. Sin rumbo no hay cono, porque no hay hacia dónde");
   const sinRumbo = JSON.parse(JSON.stringify(conDato));
   delete sinRumbo.motion_bearing;

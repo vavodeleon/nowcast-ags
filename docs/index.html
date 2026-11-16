@@ -180,6 +180,10 @@
   th{color:var(--muted);font-weight:600;font-size:12px}
   td.num{text-align:right;font-variant-numeric:tabular-nums}
   .nota{font-size:13px;color:var(--muted);line-height:1.5;margin-top:12px}
+  .frio-bloque{margin:4px 0 14px}
+  .frio-bloque b{font-size:17px}
+  .frio-barra{height:8px;border-radius:99px;background:var(--sup);margin-top:8px;overflow:hidden}
+  .frio-barra>div{height:100%;border-radius:99px;background:var(--azul)}
   footer{text-align:center;color:var(--muted);font-size:12px;margin:22px 0}
   a{color:var(--azul)}
   @media(max-width:520px){
@@ -196,9 +200,9 @@
     .wrap{max-width:1600px;display:grid;gap:0 18px;
       grid-template-columns:minmax(0,1fr) minmax(360px,440px);
       grid-template-areas:
-        "mapa hero" "mapa barras" "mapa temp" "mapa pres" "mapa tec" "pie pie";
+        "mapa hero" "mapa barras" "mapa temp" "mapa frio" "mapa pres" "mapa tec" "pie pie";
       align-items:start}
-    .c-hero{grid-area:hero} .c-barras{grid-area:barras} .c-temp{grid-area:temp}
+    .c-hero{grid-area:hero} .c-barras{grid-area:barras} .c-temp{grid-area:temp} .c-frio{grid-area:frio}
     .c-pres{grid-area:pres} .c-tec{grid-area:tec} .wrap>footer{grid-area:pie}
     .c-mapa{grid-area:mapa;position:sticky;top:20px}
     #mapa{height:calc(100vh - 360px);min-height:480px}
@@ -314,6 +318,20 @@
       La sensación térmica combina temperatura, humedad, viento y sol: es lo
       que de verdad sientes al salir, que puede diferir varios grados del
       número del termómetro.
+    </p>
+  </div>
+
+  <div class="card c-frio">
+    <h2>Frío: frentes y heladas</h2>
+    <div id="frio-frente" class="frio-bloque"></div>
+    <div id="frio-helada" class="frio-bloque"></div>
+    <p class="nota" id="frio-aero"></p>
+    <p class="nota">
+      Frente: lo detectan los modelos cuando la presión sube y el aire se enfría
+      o se seca respecto a la misma hora del día anterior. Helada: mínima de
+      3&nbsp;°C o menos a 2&nbsp;m, que con cielo despejado ya congela suelo y
+      plantas. La verdad es el aeropuerto, que de madrugada suele estar algo más
+      frío que la ciudad.
     </p>
   </div>
 
@@ -528,6 +546,50 @@ function pintarPresion(p){
 }
 
 /* ---------- temperatura ---------- */
+// Frentes y heladas. Cada parte puede venir null: se dice "sin datos" y no
+// se inventa un "no hay frente", que no es lo mismo.
+function pintarFrio(f){
+  const fe = q("#frio-frente"), he = q("#frio-helada"), ae = q("#frio-aero");
+  if (!fe || !he || !ae) return;
+  const esc = s => String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+  if (!f){ fe.textContent = "Sin datos de frío en esta corrida."; he.textContent = ""; ae.textContent = ""; return; }
+  const fr = f.frente;
+  if (fr){
+    let t = `<b>❄️ Frente frío: ${esc(fr.eta_local)}</b>`;
+    if (hay(fr.margen_h) && fr.margen_h >= 1) t += ` <span class="nivel-sub">(±${Math.round(fr.margen_h)} h)</span>`;
+    const det = [];
+    if (hay(fr.max_antes) && hay(fr.max_despues)) det.push(`la máxima pasa de ${fr.max_antes} a ${fr.max_despues} °C`);
+    if (hay(fr.racha_kmh)) det.push(`viento del ${esc(fr.viento_de || "norte")} con rachas de ~${fr.racha_kmh} km/h`);
+    det.push(`lo ven ${esc(fr.modelos)} modelos`);
+    fe.innerHTML = t + `<div class="nivel-sub">${det.join(" · ")}</div>`;
+  } else {
+    fe.innerHTML = `<b>Sin frentes en los próximos 3 días</b>`;
+  }
+  const h = f.helada;
+  if (h){
+    const p = Math.round(h.p * 100);
+    const d = new Date(h.fecha + "T12:00:00");
+    const dia = d.toLocaleDateString("es-MX", {weekday:"long", day:"numeric"});
+    const col = h.p >= .6 ? "var(--azul)" : h.p >= .3 ? "var(--amarillo)" : "var(--muted)";
+    he.innerHTML = `<b>${h.p >= .4 ? "🥶 " : ""}Madrugada del ${esc(dia)}: ~${Math.round(h.tmin)} °C</b>` +
+      `<div class="nivel-sub">Probabilidad de ${h.umbral} °C o menos: <b style="font-size:inherit">${p}%</b>` +
+      (h.calibrada ? "" : ` · aún sin calibrar (${h.noches} de 10 noches verificadas)`) + `</div>` +
+      `<div class="frio-barra"><div style="width:${p}%;background:${col}"></div></div>`;
+  } else {
+    he.textContent = "";
+  }
+  const a = f.aeropuerto;
+  if (a && hay(a.temp)){
+    const min = Math.round((Date.now() - Date.parse(a.obs_utc)) / 60000);
+    ae.textContent = `Aeropuerto ahora: ${a.temp} °C` +
+      (hay(a.rocio) ? `, rocío ${a.rocio} °C` : "") +
+      (hay(a.viento_kmh) ? `, viento ${a.viento_de ? "del " + a.viento_de + " " : ""}${a.viento_kmh} km/h` : "") +
+      ` (hace ${min} min).`;
+  } else {
+    ae.textContent = "";
+  }
+}
+
 function pintarTemperatura(t){
   if (!t || !hay(t.ahora)) return;
   q("#temp-ahora").textContent = `${Math.round(t.ahora)}°`;
@@ -1190,6 +1252,7 @@ function render(d){
   conectarCorreccion(d);
   pintarMapa(d);
   pintarTemperatura(d.temperatura);
+  pintarFrio(d.frio);
   pintarPresion(d.pressure);
 
   // técnicos

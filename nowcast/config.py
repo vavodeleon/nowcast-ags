@@ -283,6 +283,34 @@ MUESTREO_PESO_RIESGO = 2.4
 MUESTREO_RIESGO_P = 0.25
 MUESTREO_RIESGO_ETA_MIN = 120
 
+# ---------------------------------------------------------------- frío
+# Frentes y heladas (ver nowcast/frio.py y nowcast/metar.py), 16/11/2026.
+#
+# Firma de un frente, igual para pronóstico y observación: contra la MISMA
+# hora del día anterior (quita el ciclo diario de 15-20 °C y la marea de
+# ~4 hPa), sube la presión y además se enfría o se seca el aire. Valores de
+# partida razonables para la meseta; la sección 10 de evaluar.py dirá si
+# detectan los frentes que el aeropuerto ve, y se ajustan con eso.
+FRENTE_DP24_HPA = 3.0
+FRENTE_DT24_C = 4.0
+FRENTE_DTD24_C = 5.0
+# Cuántos modelos tienen que verlo para hablar de frente (de los 5).
+FRENTE_MIN_MODELOS = 2
+# Avisar con esta anticipación: antes de 48 h los modelos aún bailan, y con
+# menos de 6 h ya es tarde para que sirva de algo.
+FRENTE_AVISO_H = (6, 48)
+
+# "Helada" para Álvaro: 3 °C o menos en el aire a 2 m. Con cielo despejado
+# el suelo y las plantas se congelan aunque el aire siga arriba de cero.
+HELADA_UMBRAL_C = 3.0
+# Probabilidad desde la que se avisa, y a qué hora (local) se manda.
+HELADA_AVISO_P = 0.4
+HELADA_AVISO_HORAS = (17, 22)
+# Mientras no haya noches verificadas contra el aeropuerto, la incertidumbre
+# de la mínima es esta (°C). Ancha a propósito: es honesto no saber.
+HELADA_SIGMA_INICIAL = 2.5
+HELADA_MIN_NOCHES = 10
+
 # ---------------------------------------------------------------- campo
 # Teselas para medir un vector de movimiento por zona (ver campo.py). 40 px
 # son ~100 km: lo bastante grande para que la correlacion de fase tenga

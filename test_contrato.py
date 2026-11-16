@@ -190,6 +190,16 @@ _v = _nb.medir(None)
 chk("sin datos: frac y contraste a null", _v["frac"] is None and _v["contraste_k"] is None)
 chk("y con las tres claves", set(_v) == {"frac", "contraste_k", "de_dia"})
 
+print("\nD-octies. Frío (16/11/2026)")
+# Para la malla: si algún día retransmite el aviso de helada o de frente,
+# estas claves no cambian de nombre. Siempre presentes; null si no se sabe.
+chk("frio se publica", '"frio": frio_res' in fuente_run)
+from nowcast import frio as _fr  # noqa: E402
+_v = _fr.calcular(datos={})
+_v.pop("_fila", None)
+chk("sin datos: las tres claves, todas null",
+    _v == {"frente": None, "helada": None, "aeropuerto": None}, str(_v))
+
 print("\nE. temperatura.serie lleva fecha explícita")
 # Sin fecha, la malla reconstruye el cruce de medianoche contando horas. Los
 # avisos de helada necesitan el minimo QUE VIENE, no el del dia calendario.
