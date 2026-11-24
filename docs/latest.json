@@ -1,6 +1,6 @@
 {
-  "issued_utc": "2026-11-24T15:45:48+00:00",
-  "issued_local": "2026-11-24 09:45",
+  "issued_utc": "2026-11-24T16:00:48+00:00",
+  "issued_local": "2026-11-24 10:00",
   "probabilities": {
     "15": 0.02,
     "30": 0.02,
@@ -12,38 +12,38 @@
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 278.9,
-    "contraste": 3.9,
+    "bt_encima": 251.8,
+    "contraste": 30.4,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": null,
-    "forma": "despejado",
+    "precip_observada": 0.0,
+    "forma": "nubes",
     "lloviendo": false,
     "corroborado_por": "",
-    "estado": "Despejado"
+    "estado": "Nublado"
   },
   "motion_speed_kmh": 120.0,
   "motion_from": "oeste",
-  "motion_confidence": 0.159,
+  "motion_confidence": 0.036,
   "motion_fuente": "infrarrojo (topes)",
   "motion_giro": false,
   "deriva": null,
   "motion_ir_from": "oeste",
   "motion_ir_kmh": 120.0,
-  "growth": 1.414,
+  "growth": 1.241,
   "cell_eta_min": null,
   "cell_km": null,
   "celda": null,
   "nube_baja": {
-    "frac": 0.725,
-    "contraste_k": 10.1,
+    "frac": 0.817,
+    "contraste_k": 30.1,
     "de_dia": true
   },
   "frio": {
     "frente": {
       "eta_utc": "2026-11-25T04:00:00+00:00",
       "eta_local": "mar 24 ~22:00",
-      "en_h": 12.2,
+      "en_h": 12.0,
       "modelos": "5 de 5",
       "margen_h": 6.5,
       "max_antes": 24,
@@ -53,23 +53,23 @@
       "enfria_700": -1.5
     },
     "helada": {
-      "fecha": "2026-11-24",
-      "tmin_mediana": 13.0,
-      "spread": 2.5,
-      "tmin": 13.0,
-      "p": 0.003,
-      "sigma": 3.57,
+      "fecha": "2026-11-25",
+      "tmin_mediana": 9.8,
+      "spread": 2.1,
+      "tmin": 9.8,
+      "p": 0.018,
+      "sigma": 3.24,
       "umbral": 3.0,
       "calibrada": false,
       "noches": 8,
       "modelos": 5
     },
     "aeropuerto": {
-      "obs_utc": "2026-11-24T14:40:00+00:00",
-      "temp": 13.0,
-      "rocio": 12.0,
-      "viento_de": "norte",
-      "viento_kmh": 9
+      "obs_utc": "2026-11-24T15:40:00+00:00",
+      "temp": 17.0,
+      "rocio": 13.0,
+      "viento_de": "suroeste",
+      "viento_kmh": 4
     }
   },
   "cape": 300.0,
@@ -107,7 +107,7 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 101.1,
+  "motion_bearing": 104.8,
   "pressure": {
     "now_msl": 1018.6,
     "now_surface": 816.0,
@@ -118,29 +118,22 @@
       "cadencia_s": 60,
       "horas": 30.0,
       "factor": 1.2483,
-      "amplitud_diaria": 5.82,
+      "amplitud_diaria": 5.85,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": 0.2,
-    "change_3h": 0.7,
+    "change_1h": 0.3,
+    "change_3h": 0.6,
     "change_6h": -0.1,
     "change_24h": -0.4,
     "forecast_drop": 0.5,
     "forecast_drop_at": "Tue 24, 12:00",
-    "forecast_drop_in_h": 2.2,
+    "forecast_drop_in_h": 2.0,
     "level": "tranquilo",
     "trend": "estable",
     "series": [
-      {
-        "t": "23 10:00",
-        "iso": "2026-11-23T16:00:00+00:00",
-        "msl": 1019.0,
-        "limpia": 1015.8,
-        "futuro": false
-      },
       {
         "t": "23 11:00",
         "iso": "2026-11-23T17:00:00+00:00",
@@ -159,7 +152,7 @@
         "t": "23 13:00",
         "iso": "2026-11-23T19:00:00+00:00",
         "msl": 1015.0,
-        "limpia": 1016.1,
+        "limpia": 1016.0,
         "futuro": false
       },
       {
@@ -250,7 +243,7 @@
         "t": "24 02:00",
         "iso": "2026-11-24T08:00:00+00:00",
         "msl": 1016.9,
-        "limpia": 1015.6,
+        "limpia": 1015.7,
         "futuro": false
       },
       {
@@ -271,7 +264,7 @@
         "t": "24 05:00",
         "iso": "2026-11-24T11:00:00+00:00",
         "msl": 1016.8,
-        "limpia": 1015.2,
+        "limpia": 1015.3,
         "futuro": false
       },
       {
@@ -307,7 +300,7 @@
         "iso": "2026-11-24T16:00:00+00:00",
         "msl": 1018.6,
         "limpia": 1015.4,
-        "futuro": true
+        "futuro": false
       },
       {
         "t": "24 11:00",
@@ -327,7 +320,7 @@
         "t": "24 13:00",
         "iso": "2026-11-24T19:00:00+00:00",
         "msl": 1014.6,
-        "limpia": 1015.7,
+        "limpia": 1015.6,
         "futuro": true
       },
       {
@@ -418,7 +411,7 @@
         "t": "25 02:00",
         "iso": "2026-11-25T08:00:00+00:00",
         "msl": 1020.4,
-        "limpia": 1019.1,
+        "limpia": 1019.2,
         "futuro": true
       },
       {
@@ -439,7 +432,7 @@
         "t": "25 05:00",
         "iso": "2026-11-25T11:00:00+00:00",
         "msl": 1021.7,
-        "limpia": 1020.1,
+        "limpia": 1020.2,
         "futuro": true
       },
       {
@@ -495,7 +488,7 @@
         "t": "25 13:00",
         "iso": "2026-11-25T19:00:00+00:00",
         "msl": 1018.1,
-        "limpia": 1019.2,
+        "limpia": 1019.1,
         "futuro": true
       },
       {
@@ -586,7 +579,7 @@
         "t": "26 02:00",
         "iso": "2026-11-26T08:00:00+00:00",
         "msl": 1020.6,
-        "limpia": 1019.3,
+        "limpia": 1019.4,
         "futuro": true
       },
       {
@@ -607,7 +600,7 @@
         "t": "26 05:00",
         "iso": "2026-11-26T11:00:00+00:00",
         "msl": 1021.2,
-        "limpia": 1019.6,
+        "limpia": 1019.7,
         "futuro": true
       },
       {
@@ -630,24 +623,25 @@
         "msl": 1022.9,
         "limpia": 1019.5,
         "futuro": true
+      },
+      {
+        "t": "26 09:00",
+        "iso": "2026-11-26T15:00:00+00:00",
+        "msl": 1023.5,
+        "limpia": 1019.9,
+        "futuro": true
       }
     ],
     "umbral_24h": 5.0,
     "ciclo_diario": 8.6
   },
   "temperatura": {
-    "ahora": 17.1,
-    "sensacion": 17.0,
-    "humedad": 72,
+    "ahora": 17.6,
+    "sensacion": 17.4,
+    "humedad": 69,
     "maxima": 23.7,
     "minima": 12.2,
     "serie": [
-      {
-        "t": "09:00",
-        "fecha": "2026-11-24",
-        "temp": 15.4,
-        "sensacion": 15.7
-      },
       {
         "t": "10:00",
         "fecha": "2026-11-24",
@@ -791,17 +785,23 @@
         "fecha": "2026-11-25",
         "temp": 12.5,
         "sensacion": 9.2
+      },
+      {
+        "t": "10:00",
+        "fecha": "2026-11-25",
+        "temp": 14.4,
+        "sensacion": 11.2
       }
     ]
   },
   "rayos": {
-    "total_hora": 2,
+    "total_hora": 0,
     "bloques": 4,
     "fase": "despejado",
     "dist_km": null,
-    "dist_min_hora_km": 309.0
+    "dist_min_hora_km": null
   },
-  "duracion_s": 16.9,
+  "duracion_s": 27.9,
   "degradado": false,
   "muestreo": null,
   "performance": {
