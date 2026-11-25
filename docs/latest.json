@@ -1,6 +1,6 @@
 {
-  "issued_utc": "2026-11-25T17:45:53+00:00",
-  "issued_local": "2026-11-25 11:45",
+  "issued_utc": "2026-11-25T18:00:47+00:00",
+  "issued_local": "2026-11-25 12:00",
   "probabilities": {
     "15": 0.02,
     "30": 0.02,
@@ -12,11 +12,11 @@
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 291.3,
-    "contraste": 6.2,
+    "bt_encima": 279.0,
+    "contraste": 19.3,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": null,
+    "precip_observada": 0.0,
     "forma": "despejado",
     "lloviendo": false,
     "corroborado_por": "",
@@ -35,22 +35,22 @@
   "cell_km": null,
   "celda": null,
   "nube_baja": {
-    "frac": 0.433,
-    "contraste_k": 15.6,
+    "frac": 0.817,
+    "contraste_k": 16.2,
     "de_dia": true
   },
   "frio": {
     "frente": {
-      "eta_utc": "2026-11-26T19:00:00+00:00",
-      "eta_local": "jue 26 ~13:00",
-      "en_h": 25.2,
+      "eta_utc": "2026-11-26T21:00:00+00:00",
+      "eta_local": "jue 26 ~15:00",
+      "en_h": 27.0,
       "modelos": "5 de 5",
-      "margen_h": 13.5,
+      "margen_h": 1.5,
       "max_antes": 22,
-      "max_despues": 14,
-      "racha_kmh": 28,
-      "viento_de": "norte",
-      "enfria_700": -0.6
+      "max_despues": 13,
+      "racha_kmh": 18,
+      "viento_de": "noreste",
+      "enfria_700": -0.9
     },
     "helada": {
       "fecha": "2026-11-26",
@@ -65,14 +65,14 @@
       "modelos": 5
     },
     "aeropuerto": {
-      "obs_utc": "2026-11-25T16:43:00+00:00",
-      "temp": 17.0,
+      "obs_utc": "2026-11-25T17:46:00+00:00",
+      "temp": 18.0,
       "rocio": 7.0,
-      "viento_de": "noreste",
-      "viento_kmh": 20
+      "viento_de": "noroeste",
+      "viento_kmh": 13
     }
   },
-  "cape": 150.0,
+  "cape": 25.0,
   "radar_coverage": 0.0,
   "radar_usable": false,
   "primary_sensor": "infrarrojo (GOES-19)",
@@ -109,38 +109,31 @@
   ],
   "motion_bearing": null,
   "pressure": {
-    "now_msl": 1020.1,
-    "now_surface": 817.4,
+    "now_msl": 1020.0,
+    "now_surface": 817.1,
     "fuente": "sensor local",
     "sensor": {
       "muestras": 1316,
-      "edad_min": 0.5,
+      "edad_min": 0.4,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.248,
-      "amplitud_diaria": 4.66,
+      "factor": 1.2484,
+      "amplitud_diaria": 4.69,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": -0.3,
-    "change_3h": -0.0,
-    "change_6h": -1.7,
+    "change_1h": -0.5,
+    "change_3h": -0.3,
+    "change_6h": -1.6,
     "change_24h": 3.2,
     "forecast_drop": 1.6,
     "forecast_drop_at": "Thu 26, 06:00",
-    "forecast_drop_in_h": 18.2,
+    "forecast_drop_in_h": 18.0,
     "level": "tranquilo",
     "trend": "bajando",
     "series": [
-      {
-        "t": "24 12:00",
-        "iso": "2026-11-24T18:00:00+00:00",
-        "msl": 1017.1,
-        "limpia": 1016.3,
-        "futuro": false
-      },
       {
         "t": "24 13:00",
         "iso": "2026-11-24T19:00:00+00:00",
@@ -187,7 +180,7 @@
         "t": "24 19:00",
         "iso": "2026-11-25T01:00:00+00:00",
         "msl": 1014.6,
-        "limpia": 1017.0,
+        "limpia": 1017.1,
         "futuro": false
       },
       {
@@ -236,21 +229,21 @@
         "t": "25 02:00",
         "iso": "2026-11-25T08:00:00+00:00",
         "msl": 1021.1,
-        "limpia": 1020.3,
+        "limpia": 1020.2,
         "futuro": false
       },
       {
         "t": "25 03:00",
         "iso": "2026-11-25T09:00:00+00:00",
         "msl": 1021.1,
-        "limpia": 1020.6,
+        "limpia": 1020.5,
         "futuro": false
       },
       {
         "t": "25 04:00",
         "iso": "2026-11-25T10:00:00+00:00",
         "msl": 1021.4,
-        "limpia": 1021.0,
+        "limpia": 1020.9,
         "futuro": false
       },
       {
@@ -292,7 +285,7 @@
         "t": "25 10:00",
         "iso": "2026-11-25T16:00:00+00:00",
         "msl": 1023.1,
-        "limpia": 1020.5,
+        "limpia": 1020.6,
         "futuro": false
       },
       {
@@ -307,7 +300,7 @@
         "iso": "2026-11-25T18:00:00+00:00",
         "msl": 1020.3,
         "limpia": 1019.5,
-        "futuro": true
+        "futuro": false
       },
       {
         "t": "25 13:00",
@@ -355,7 +348,7 @@
         "t": "25 19:00",
         "iso": "2026-11-26T01:00:00+00:00",
         "msl": 1015.6,
-        "limpia": 1018.0,
+        "limpia": 1018.1,
         "futuro": true
       },
       {
@@ -404,21 +397,21 @@
         "t": "26 02:00",
         "iso": "2026-11-26T08:00:00+00:00",
         "msl": 1020.5,
-        "limpia": 1019.7,
+        "limpia": 1019.6,
         "futuro": true
       },
       {
         "t": "26 03:00",
         "iso": "2026-11-26T09:00:00+00:00",
         "msl": 1020.2,
-        "limpia": 1019.7,
+        "limpia": 1019.6,
         "futuro": true
       },
       {
         "t": "26 04:00",
         "iso": "2026-11-26T10:00:00+00:00",
         "msl": 1019.9,
-        "limpia": 1019.5,
+        "limpia": 1019.4,
         "futuro": true
       },
       {
@@ -460,7 +453,7 @@
         "t": "26 10:00",
         "iso": "2026-11-26T16:00:00+00:00",
         "msl": 1023.4,
-        "limpia": 1020.8,
+        "limpia": 1020.9,
         "futuro": true
       },
       {
@@ -523,7 +516,7 @@
         "t": "26 19:00",
         "iso": "2026-11-27T01:00:00+00:00",
         "msl": 1020.5,
-        "limpia": 1022.9,
+        "limpia": 1023.0,
         "futuro": true
       },
       {
@@ -572,21 +565,21 @@
         "t": "27 02:00",
         "iso": "2026-11-27T08:00:00+00:00",
         "msl": 1021.0,
-        "limpia": 1020.2,
+        "limpia": 1020.1,
         "futuro": true
       },
       {
         "t": "27 03:00",
         "iso": "2026-11-27T09:00:00+00:00",
         "msl": 1020.7,
-        "limpia": 1020.2,
+        "limpia": 1020.1,
         "futuro": true
       },
       {
         "t": "27 04:00",
         "iso": "2026-11-27T10:00:00+00:00",
         "msl": 1020.5,
-        "limpia": 1020.1,
+        "limpia": 1020.0,
         "futuro": true
       },
       {
@@ -628,7 +621,14 @@
         "t": "27 10:00",
         "iso": "2026-11-27T16:00:00+00:00",
         "msl": 1024.2,
-        "limpia": 1021.6,
+        "limpia": 1021.7,
+        "futuro": true
+      },
+      {
+        "t": "27 11:00",
+        "iso": "2026-11-27T17:00:00+00:00",
+        "msl": 1024.0,
+        "limpia": 1022.1,
         "futuro": true
       }
     ],
@@ -636,18 +636,12 @@
     "ciclo_diario": 6.6
   },
   "temperatura": {
-    "ahora": 17.5,
-    "sensacion": 15.3,
-    "humedad": 42,
+    "ahora": 18.0,
+    "sensacion": 15.9,
+    "humedad": 40,
     "maxima": 21.2,
     "minima": 8.7,
     "serie": [
-      {
-        "t": "11:00",
-        "fecha": "2026-11-25",
-        "temp": 15.9,
-        "sensacion": 13.0
-      },
       {
         "t": "12:00",
         "fecha": "2026-11-25",
@@ -791,6 +785,12 @@
         "fecha": "2026-11-26",
         "temp": 12.3,
         "sensacion": 10.8
+      },
+      {
+        "t": "12:00",
+        "fecha": "2026-11-26",
+        "temp": 13.4,
+        "sensacion": 11.8
       }
     ]
   },
@@ -801,7 +801,7 @@
     "dist_km": null,
     "dist_min_hora_km": null
   },
-  "duracion_s": 19.2,
+  "duracion_s": 17.0,
   "degradado": false,
   "muestreo": null,
   "performance": {
