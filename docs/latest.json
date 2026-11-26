@@ -1,22 +1,22 @@
 {
-  "issued_utc": "2026-11-26T07:45:50+00:00",
-  "issued_local": "2026-11-26 01:45",
+  "issued_utc": "2026-11-26T08:00:49+00:00",
+  "issued_local": "2026-11-26 02:00",
   "probabilities": {
     "15": 0.02,
-    "30": 0.02,
-    "45": 0.038,
-    "60": 0.039,
-    "90": 0.05,
-    "120": 0.157,
-    "180": 0.456
+    "30": 0.038,
+    "45": 0.039,
+    "60": 0.04,
+    "90": 0.162,
+    "120": 0.159,
+    "180": 0.459
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 242.0,
-    "contraste": 7.8,
+    "bt_encima": 239.8,
+    "contraste": 8.6,
     "fraccion_fria": 0.0,
     "rayos_cerca": 0,
-    "precip_observada": null,
+    "precip_observada": 0.0,
     "forma": "nubes",
     "lloviendo": false,
     "corroborado_por": "",
@@ -24,13 +24,13 @@
   },
   "motion_speed_kmh": 120.0,
   "motion_from": "suroeste",
-  "motion_confidence": 0.026,
+  "motion_confidence": 0.024,
   "motion_fuente": "infrarrojo (topes)",
   "motion_giro": false,
   "deriva": null,
   "motion_ir_from": "suroeste",
   "motion_ir_kmh": 120.0,
-  "growth": 0.93,
+  "growth": 1.098,
   "cell_eta_min": null,
   "cell_km": null,
   "celda": null,
@@ -43,7 +43,7 @@
     "frente": {
       "eta_utc": "2026-11-26T21:00:00+00:00",
       "eta_local": "jue 26 ~15:00",
-      "en_h": 13.2,
+      "en_h": 13.0,
       "modelos": "5 de 5",
       "margen_h": 2.5,
       "max_antes": 22,
@@ -107,59 +107,52 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 62.1,
+  "motion_bearing": 63.1,
   "pressure": {
-    "now_msl": 1020.3,
-    "now_surface": 815.7,
+    "now_msl": 1020.1,
+    "now_surface": 815.6,
     "fuente": "sensor local",
     "sensor": {
-      "muestras": 1800,
-      "edad_min": 0.0,
+      "muestras": 1799,
+      "edad_min": 0.3,
       "cadencia_s": 60,
       "horas": 30.0,
-      "factor": 1.2508,
-      "amplitud_diaria": 5.46,
+      "factor": 1.2507,
+      "amplitud_diaria": 5.43,
       "ventanas": [
         "change_1h",
         "change_3h"
       ]
     },
     "change_1h": 0.4,
-    "change_3h": -0.4,
-    "change_6h": 1.8,
-    "change_24h": -0.8,
-    "forecast_drop": 1.6,
-    "forecast_drop_at": "Thu 26, 06:00",
-    "forecast_drop_in_h": 4.2,
+    "change_3h": -0.3,
+    "change_6h": 2.6,
+    "change_24h": -0.9,
+    "forecast_drop": 2.1,
+    "forecast_drop_at": "Thu 26, 05:00",
+    "forecast_drop_in_h": 3.0,
     "level": "tranquilo",
     "trend": "subiendo",
     "series": [
       {
-        "t": "25 02:00",
-        "iso": "2026-11-25T08:00:00+00:00",
-        "msl": 1021.1,
-        "limpia": 1020.7,
-        "futuro": false
-      },
-      {
         "t": "25 03:00",
         "iso": "2026-11-25T09:00:00+00:00",
         "msl": 1021.1,
-        "limpia": 1020.8,
+        "limpia": 1021.1,
         "futuro": false
       },
       {
         "t": "25 04:00",
         "iso": "2026-11-25T10:00:00+00:00",
         "msl": 1021.4,
-        "limpia": 1021.1,
+        "limpia": 1021.3,
         "futuro": false
       },
       {
         "t": "25 05:00",
         "iso": "2026-11-25T11:00:00+00:00",
         "msl": 1021.7,
-        "limpia": 1021.1,
+        "limpia": 1021.2,
         "futuro": false
       },
       {
@@ -173,7 +166,7 @@
         "t": "25 07:00",
         "iso": "2026-11-25T13:00:00+00:00",
         "msl": 1023.0,
-        "limpia": 1021.4,
+        "limpia": 1021.5,
         "futuro": false
       },
       {
@@ -187,21 +180,21 @@
         "t": "25 09:00",
         "iso": "2026-11-25T15:00:00+00:00",
         "msl": 1023.3,
-        "limpia": 1020.8,
+        "limpia": 1020.9,
         "futuro": false
       },
       {
         "t": "25 10:00",
         "iso": "2026-11-25T16:00:00+00:00",
         "msl": 1022.8,
-        "limpia": 1020.3,
+        "limpia": 1020.4,
         "futuro": false
       },
       {
         "t": "25 11:00",
         "iso": "2026-11-25T17:00:00+00:00",
         "msl": 1021.6,
-        "limpia": 1019.5,
+        "limpia": 1019.6,
         "futuro": false
       },
       {
@@ -222,586 +215,593 @@
         "t": "25 14:00",
         "iso": "2026-11-25T20:00:00+00:00",
         "msl": 1016.5,
-        "limpia": 1017.4,
+        "limpia": 1017.3,
         "futuro": false
       },
       {
         "t": "25 15:00",
         "iso": "2026-11-25T21:00:00+00:00",
         "msl": 1015.4,
-        "limpia": 1017.3,
+        "limpia": 1017.1,
         "futuro": false
       },
       {
         "t": "25 16:00",
         "iso": "2026-11-25T22:00:00+00:00",
         "msl": 1014.8,
-        "limpia": 1017.5,
+        "limpia": 1017.2,
         "futuro": false
       },
       {
         "t": "25 17:00",
         "iso": "2026-11-25T23:00:00+00:00",
         "msl": 1014.3,
-        "limpia": 1017.3,
+        "limpia": 1017.0,
         "futuro": false
       },
       {
         "t": "25 18:00",
         "iso": "2026-11-26T00:00:00+00:00",
-        "msl": 1014.6,
-        "limpia": 1017.5,
+        "msl": 1015.1,
+        "limpia": 1017.6,
         "futuro": false
       },
       {
         "t": "25 19:00",
         "iso": "2026-11-26T01:00:00+00:00",
-        "msl": 1015.0,
-        "limpia": 1017.4,
+        "msl": 1015.2,
+        "limpia": 1017.3,
         "futuro": false
       },
       {
         "t": "25 20:00",
         "iso": "2026-11-26T02:00:00+00:00",
-        "msl": 1016.4,
-        "limpia": 1018.0,
+        "msl": 1016.0,
+        "limpia": 1017.4,
         "futuro": false
       },
       {
         "t": "25 21:00",
         "iso": "2026-11-26T03:00:00+00:00",
-        "msl": 1018.3,
-        "limpia": 1019.1,
+        "msl": 1018.2,
+        "limpia": 1018.9,
         "futuro": false
       },
       {
         "t": "25 22:00",
         "iso": "2026-11-26T04:00:00+00:00",
-        "msl": 1019.4,
-        "limpia": 1019.5,
+        "msl": 1019.0,
+        "limpia": 1019.2,
         "futuro": false
       },
       {
         "t": "25 23:00",
         "iso": "2026-11-26T05:00:00+00:00",
-        "msl": 1020.3,
-        "limpia": 1020.0,
+        "msl": 1019.5,
+        "limpia": 1019.3,
         "futuro": false
       },
       {
         "t": "26 00:00",
         "iso": "2026-11-26T06:00:00+00:00",
-        "msl": 1020.4,
-        "limpia": 1019.9,
+        "msl": 1019.7,
+        "limpia": 1019.4,
         "futuro": false
       },
       {
         "t": "26 01:00",
         "iso": "2026-11-26T07:00:00+00:00",
-        "msl": 1020.3,
-        "limpia": 1019.8,
+        "msl": 1019.8,
+        "limpia": 1019.6,
         "futuro": false
       },
       {
         "t": "26 02:00",
         "iso": "2026-11-26T08:00:00+00:00",
-        "msl": 1020.3,
-        "limpia": 1019.9,
-        "futuro": true
+        "msl": 1020.2,
+        "limpia": 1020.1,
+        "futuro": false
       },
       {
         "t": "26 03:00",
         "iso": "2026-11-26T09:00:00+00:00",
-        "msl": 1020.2,
-        "limpia": 1019.9,
+        "msl": 1019.7,
+        "limpia": 1019.7,
         "futuro": true
       },
       {
         "t": "26 04:00",
         "iso": "2026-11-26T10:00:00+00:00",
-        "msl": 1020.0,
-        "limpia": 1019.7,
+        "msl": 1019.6,
+        "limpia": 1019.5,
         "futuro": true
       },
       {
         "t": "26 05:00",
         "iso": "2026-11-26T11:00:00+00:00",
-        "msl": 1020.2,
-        "limpia": 1019.6,
+        "msl": 1019.6,
+        "limpia": 1019.1,
         "futuro": true
       },
       {
         "t": "26 06:00",
         "iso": "2026-11-26T12:00:00+00:00",
-        "msl": 1020.9,
-        "limpia": 1019.9,
+        "msl": 1020.4,
+        "limpia": 1019.4,
         "futuro": true
       },
       {
         "t": "26 07:00",
         "iso": "2026-11-26T13:00:00+00:00",
-        "msl": 1021.5,
-        "limpia": 1019.9,
+        "msl": 1021.1,
+        "limpia": 1019.6,
         "futuro": true
       },
       {
         "t": "26 08:00",
         "iso": "2026-11-26T14:00:00+00:00",
-        "msl": 1022.2,
-        "limpia": 1020.1,
+        "msl": 1022.1,
+        "limpia": 1020.0,
         "futuro": true
       },
       {
         "t": "26 09:00",
         "iso": "2026-11-26T15:00:00+00:00",
-        "msl": 1023.2,
-        "limpia": 1020.7,
+        "msl": 1022.4,
+        "limpia": 1020.0,
         "futuro": true
       },
       {
         "t": "26 10:00",
         "iso": "2026-11-26T16:00:00+00:00",
-        "msl": 1023.6,
-        "limpia": 1021.1,
+        "msl": 1022.8,
+        "limpia": 1020.4,
         "futuro": true
       },
       {
         "t": "26 11:00",
         "iso": "2026-11-26T17:00:00+00:00",
-        "msl": 1023.3,
-        "limpia": 1021.2,
+        "msl": 1022.7,
+        "limpia": 1020.7,
         "futuro": true
       },
       {
         "t": "26 12:00",
         "iso": "2026-11-26T18:00:00+00:00",
-        "msl": 1022.4,
-        "limpia": 1021.1,
+        "msl": 1022.1,
+        "limpia": 1020.8,
         "futuro": true
       },
       {
         "t": "26 13:00",
         "iso": "2026-11-26T19:00:00+00:00",
-        "msl": 1021.5,
-        "limpia": 1021.2,
+        "msl": 1021.1,
+        "limpia": 1020.8,
         "futuro": true
       },
       {
         "t": "26 14:00",
         "iso": "2026-11-26T20:00:00+00:00",
-        "msl": 1020.2,
-        "limpia": 1021.1,
+        "msl": 1020.1,
+        "limpia": 1020.9,
         "futuro": true
       },
       {
         "t": "26 15:00",
         "iso": "2026-11-26T21:00:00+00:00",
-        "msl": 1019.7,
-        "limpia": 1021.6,
+        "msl": 1019.5,
+        "limpia": 1021.2,
         "futuro": true
       },
       {
         "t": "26 16:00",
         "iso": "2026-11-26T22:00:00+00:00",
-        "msl": 1019.6,
-        "limpia": 1022.3,
+        "msl": 1019.2,
+        "limpia": 1021.6,
         "futuro": true
       },
       {
         "t": "26 17:00",
         "iso": "2026-11-26T23:00:00+00:00",
-        "msl": 1019.7,
-        "limpia": 1022.7,
+        "msl": 1019.5,
+        "limpia": 1022.2,
         "futuro": true
       },
       {
         "t": "26 18:00",
         "iso": "2026-11-27T00:00:00+00:00",
         "msl": 1020.0,
-        "limpia": 1022.9,
+        "limpia": 1022.5,
         "futuro": true
       },
       {
         "t": "26 19:00",
         "iso": "2026-11-27T01:00:00+00:00",
-        "msl": 1020.6,
-        "limpia": 1023.0,
+        "msl": 1019.7,
+        "limpia": 1021.8,
         "futuro": true
       },
       {
         "t": "26 20:00",
         "iso": "2026-11-27T02:00:00+00:00",
-        "msl": 1021.5,
-        "limpia": 1023.1,
+        "msl": 1019.7,
+        "limpia": 1021.1,
         "futuro": true
       },
       {
         "t": "26 21:00",
         "iso": "2026-11-27T03:00:00+00:00",
-        "msl": 1022.3,
-        "limpia": 1023.1,
+        "msl": 1020.4,
+        "limpia": 1021.1,
         "futuro": true
       },
       {
         "t": "26 22:00",
         "iso": "2026-11-27T04:00:00+00:00",
-        "msl": 1022.4,
-        "limpia": 1022.5,
+        "msl": 1021.2,
+        "limpia": 1021.4,
         "futuro": true
       },
       {
         "t": "26 23:00",
         "iso": "2026-11-27T05:00:00+00:00",
-        "msl": 1022.6,
-        "limpia": 1022.3,
+        "msl": 1021.1,
+        "limpia": 1020.9,
         "futuro": true
       },
       {
         "t": "27 00:00",
         "iso": "2026-11-27T06:00:00+00:00",
-        "msl": 1022.3,
-        "limpia": 1021.8,
+        "msl": 1020.9,
+        "limpia": 1020.6,
         "futuro": true
       },
       {
         "t": "27 01:00",
         "iso": "2026-11-27T07:00:00+00:00",
-        "msl": 1021.5,
-        "limpia": 1021.0,
+        "msl": 1020.5,
+        "limpia": 1020.3,
         "futuro": true
       },
       {
         "t": "27 02:00",
         "iso": "2026-11-27T08:00:00+00:00",
-        "msl": 1021.5,
-        "limpia": 1021.1,
+        "msl": 1020.1,
+        "limpia": 1020.0,
         "futuro": true
       },
       {
         "t": "27 03:00",
         "iso": "2026-11-27T09:00:00+00:00",
-        "msl": 1021.0,
-        "limpia": 1020.7,
+        "msl": 1019.3,
+        "limpia": 1019.3,
         "futuro": true
       },
       {
         "t": "27 04:00",
         "iso": "2026-11-27T10:00:00+00:00",
-        "msl": 1020.2,
-        "limpia": 1019.9,
+        "msl": 1019.1,
+        "limpia": 1019.0,
         "futuro": true
       },
       {
         "t": "27 05:00",
         "iso": "2026-11-27T11:00:00+00:00",
-        "msl": 1020.5,
-        "limpia": 1019.9,
+        "msl": 1019.3,
+        "limpia": 1018.8,
         "futuro": true
       },
       {
         "t": "27 06:00",
         "iso": "2026-11-27T12:00:00+00:00",
-        "msl": 1020.9,
-        "limpia": 1019.9,
+        "msl": 1019.6,
+        "limpia": 1018.6,
         "futuro": true
       },
       {
         "t": "27 07:00",
         "iso": "2026-11-27T13:00:00+00:00",
-        "msl": 1021.6,
-        "limpia": 1020.0,
+        "msl": 1020.4,
+        "limpia": 1018.9,
         "futuro": true
       },
       {
         "t": "27 08:00",
         "iso": "2026-11-27T14:00:00+00:00",
-        "msl": 1022.8,
-        "limpia": 1020.7,
+        "msl": 1021.1,
+        "limpia": 1019.0,
         "futuro": true
       },
       {
         "t": "27 09:00",
         "iso": "2026-11-27T15:00:00+00:00",
-        "msl": 1023.3,
-        "limpia": 1020.8,
+        "msl": 1022.2,
+        "limpia": 1019.8,
         "futuro": true
       },
       {
         "t": "27 10:00",
         "iso": "2026-11-27T16:00:00+00:00",
-        "msl": 1023.9,
-        "limpia": 1021.4,
+        "msl": 1022.9,
+        "limpia": 1020.5,
         "futuro": true
       },
       {
         "t": "27 11:00",
         "iso": "2026-11-27T17:00:00+00:00",
-        "msl": 1023.9,
-        "limpia": 1021.8,
+        "msl": 1022.9,
+        "limpia": 1020.9,
         "futuro": true
       },
       {
         "t": "27 12:00",
         "iso": "2026-11-27T18:00:00+00:00",
-        "msl": 1023.6,
-        "limpia": 1022.3,
+        "msl": 1022.0,
+        "limpia": 1020.7,
         "futuro": true
       },
       {
         "t": "27 13:00",
         "iso": "2026-11-27T19:00:00+00:00",
-        "msl": 1022.5,
-        "limpia": 1022.2,
+        "msl": 1021.6,
+        "limpia": 1021.3,
         "futuro": true
       },
       {
         "t": "27 14:00",
         "iso": "2026-11-27T20:00:00+00:00",
-        "msl": 1022.1,
-        "limpia": 1023.0,
+        "msl": 1020.5,
+        "limpia": 1021.3,
         "futuro": true
       },
       {
         "t": "27 15:00",
         "iso": "2026-11-27T21:00:00+00:00",
-        "msl": 1021.7,
-        "limpia": 1023.6,
+        "msl": 1020.3,
+        "limpia": 1022.0,
         "futuro": true
       },
       {
         "t": "27 16:00",
         "iso": "2026-11-27T22:00:00+00:00",
-        "msl": 1021.6,
-        "limpia": 1024.3,
+        "msl": 1019.8,
+        "limpia": 1022.2,
         "futuro": true
       },
       {
         "t": "27 17:00",
         "iso": "2026-11-27T23:00:00+00:00",
-        "msl": 1021.4,
-        "limpia": 1024.4,
+        "msl": 1020.0,
+        "limpia": 1022.7,
         "futuro": true
       },
       {
         "t": "27 18:00",
         "iso": "2026-11-28T00:00:00+00:00",
-        "msl": 1021.3,
-        "limpia": 1024.2,
+        "msl": 1019.9,
+        "limpia": 1022.4,
         "futuro": true
       },
       {
         "t": "27 19:00",
         "iso": "2026-11-28T01:00:00+00:00",
-        "msl": 1021.2,
-        "limpia": 1023.6,
+        "msl": 1020.6,
+        "limpia": 1022.7,
         "futuro": true
       },
       {
         "t": "27 20:00",
         "iso": "2026-11-28T02:00:00+00:00",
-        "msl": 1020.2,
-        "limpia": 1021.8,
+        "msl": 1021.0,
+        "limpia": 1022.4,
         "futuro": true
       },
       {
         "t": "27 21:00",
         "iso": "2026-11-28T03:00:00+00:00",
-        "msl": 1021.4,
-        "limpia": 1022.2,
+        "msl": 1020.3,
+        "limpia": 1021.0,
         "futuro": true
       },
       {
         "t": "27 22:00",
         "iso": "2026-11-28T04:00:00+00:00",
-        "msl": 1021.7,
-        "limpia": 1021.8,
+        "msl": 1021.4,
+        "limpia": 1021.6,
         "futuro": true
       },
       {
         "t": "27 23:00",
         "iso": "2026-11-28T05:00:00+00:00",
-        "msl": 1021.9,
-        "limpia": 1021.6,
+        "msl": 1020.8,
+        "limpia": 1020.6,
         "futuro": true
       },
       {
         "t": "28 00:00",
         "iso": "2026-11-28T06:00:00+00:00",
-        "msl": 1022.0,
-        "limpia": 1021.5,
+        "msl": 1020.8,
+        "limpia": 1020.5,
+        "futuro": true
+      },
+      {
+        "t": "28 01:00",
+        "iso": "2026-11-28T07:00:00+00:00",
+        "msl": 1021.1,
+        "limpia": 1020.9,
         "futuro": true
       }
     ],
     "umbral_24h": 5.0,
-    "ciclo_diario": 5.5
+    "ciclo_diario": 5.1
   },
   "temperatura": {
-    "ahora": 11.9,
-    "sensacion": 8.8,
-    "humedad": 68,
-    "maxima": 12.6,
-    "minima": 9.9,
+    "ahora": 12.0,
+    "sensacion": 9.3,
+    "humedad": 70,
+    "maxima": 12.8,
+    "minima": 10.6,
     "serie": [
-      {
-        "t": "01:00",
-        "fecha": "2026-11-26",
-        "temp": 12.1,
-        "sensacion": 9.0
-      },
       {
         "t": "02:00",
         "fecha": "2026-11-26",
-        "temp": 11.8,
-        "sensacion": 8.7
+        "temp": 12.0,
+        "sensacion": 9.3
       },
       {
         "t": "03:00",
         "fecha": "2026-11-26",
-        "temp": 11.5,
-        "sensacion": 8.7
+        "temp": 11.8,
+        "sensacion": 8.9
       },
       {
         "t": "04:00",
         "fecha": "2026-11-26",
-        "temp": 10.7,
-        "sensacion": 8.1
+        "temp": 11.5,
+        "sensacion": 8.8
       },
       {
         "t": "05:00",
         "fecha": "2026-11-26",
-        "temp": 10.3,
-        "sensacion": 8.1
+        "temp": 11.4,
+        "sensacion": 9.0
       },
       {
         "t": "06:00",
         "fecha": "2026-11-26",
-        "temp": 10.1,
-        "sensacion": 8.5
+        "temp": 11.2,
+        "sensacion": 9.2
       },
       {
         "t": "07:00",
         "fecha": "2026-11-26",
-        "temp": 9.9,
-        "sensacion": 8.4
+        "temp": 10.7,
+        "sensacion": 9.4
       },
       {
         "t": "08:00",
         "fecha": "2026-11-26",
-        "temp": 10.1,
-        "sensacion": 8.4
+        "temp": 10.6,
+        "sensacion": 9.2
       },
       {
         "t": "09:00",
         "fecha": "2026-11-26",
-        "temp": 10.3,
-        "sensacion": 8.7
+        "temp": 10.8,
+        "sensacion": 9.2
       },
       {
         "t": "10:00",
         "fecha": "2026-11-26",
-        "temp": 10.4,
-        "sensacion": 8.6
+        "temp": 11.4,
+        "sensacion": 9.9
       },
       {
         "t": "11:00",
         "fecha": "2026-11-26",
-        "temp": 10.8,
-        "sensacion": 9.0
+        "temp": 11.4,
+        "sensacion": 9.8
       },
       {
         "t": "12:00",
         "fecha": "2026-11-26",
-        "temp": 11.9,
-        "sensacion": 10.0
+        "temp": 11.4,
+        "sensacion": 9.9
       },
       {
         "t": "13:00",
         "fecha": "2026-11-26",
-        "temp": 12.3,
-        "sensacion": 10.4
+        "temp": 11.7,
+        "sensacion": 10.3
       },
       {
         "t": "14:00",
         "fecha": "2026-11-26",
-        "temp": 12.5,
-        "sensacion": 10.6
+        "temp": 11.6,
+        "sensacion": 9.9
       },
       {
         "t": "15:00",
         "fecha": "2026-11-26",
-        "temp": 11.8,
-        "sensacion": 9.8
+        "temp": 11.7,
+        "sensacion": 10.1
       },
       {
         "t": "16:00",
         "fecha": "2026-11-26",
-        "temp": 11.3,
-        "sensacion": 9.1
+        "temp": 11.7,
+        "sensacion": 10.2
       },
       {
         "t": "17:00",
         "fecha": "2026-11-26",
-        "temp": 11.1,
-        "sensacion": 9.3
+        "temp": 11.6,
+        "sensacion": 10.4
       },
       {
         "t": "18:00",
         "fecha": "2026-11-26",
-        "temp": 11.2,
-        "sensacion": 9.7
+        "temp": 11.6,
+        "sensacion": 10.5
       },
       {
         "t": "19:00",
         "fecha": "2026-11-26",
-        "temp": 11.2,
-        "sensacion": 9.5
+        "temp": 11.5,
+        "sensacion": 10.4
       },
       {
         "t": "20:00",
         "fecha": "2026-11-26",
-        "temp": 10.8,
-        "sensacion": 8.9
+        "temp": 11.6,
+        "sensacion": 10.7
       },
       {
         "t": "21:00",
         "fecha": "2026-11-26",
-        "temp": 10.4,
-        "sensacion": 8.5
+        "temp": 11.6,
+        "sensacion": 11.0
       },
       {
         "t": "22:00",
         "fecha": "2026-11-26",
-        "temp": 10.3,
-        "sensacion": 8.3
+        "temp": 11.8,
+        "sensacion": 11.3
       },
       {
         "t": "23:00",
         "fecha": "2026-11-26",
-        "temp": 10.4,
-        "sensacion": 8.9
+        "temp": 11.8,
+        "sensacion": 11.2
       },
       {
         "t": "00:00",
         "fecha": "2026-11-27",
-        "temp": 10.5,
-        "sensacion": 8.9
+        "temp": 11.6,
+        "sensacion": 10.8
       },
       {
         "t": "01:00",
         "fecha": "2026-11-27",
-        "temp": 10.3,
-        "sensacion": 8.4
+        "temp": 11.7,
+        "sensacion": 11.4
+      },
+      {
+        "t": "02:00",
+        "fecha": "2026-11-27",
+        "temp": 11.5,
+        "sensacion": 11.3
       }
     ]
   },
   "rayos": {
-    "total_hora": 0,
+    "total_hora": 2,
     "bloques": 4,
     "fase": "despejado",
-    "dist_km": null,
-    "dist_min_hora_km": null
+    "dist_km": 178.4,
+    "dist_min_hora_km": 178.4
   },
-  "duracion_s": 16.1,
+  "duracion_s": 57.9,
   "degradado": false,
   "muestreo": null,
   "performance": {
