@@ -1,7 +1,7 @@
 {
   "v": 1,
-  "emitido_utc": "2026-11-27T13:15:48+00:00",
-  "hora": "07:15",
+  "emitido_utc": "2026-11-27T13:30:50+00:00",
+  "hora": "07:30",
   "icono": "🌧️",
   "titular": "Va a llover",
   "apoyo": "Alta probabilidad en la próxima hora.",
@@ -9,19 +9,19 @@
   "p": [
     {
       "min": 15,
-      "p": 0.903
+      "p": 0.904
     },
     {
       "min": 30,
-      "p": 0.895
-    },
-    {
-      "min": 45,
       "p": 0.896
     },
     {
-      "min": 60,
+      "min": 45,
       "p": 0.897
+    },
+    {
+      "min": 60,
+      "p": 0.912
     },
     {
       "min": 90,
@@ -29,15 +29,20 @@
     },
     {
       "min": 120,
-      "p": 0.899
+      "p": 0.907
     },
     {
       "min": 180,
       "p": 0.97
     }
   ],
-  "p60": 0.897,
-  "celda": null,
+  "p60": 0.912,
+  "celda": {
+    "eta_min": 145,
+    "km": 307,
+    "desde": "suroeste",
+    "intensidad": 0.46
+  },
   "giro": false,
   "nube_baja": null,
   "degradado": false
