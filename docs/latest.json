@@ -1,20 +1,20 @@
 {
-  "issued_utc": "2026-11-28T07:00:47+00:00",
-  "issued_local": "2026-11-28 01:00",
+  "issued_utc": "2026-11-28T07:15:47+00:00",
+  "issued_local": "2026-11-28 01:15",
   "probabilities": {
-    "15": 0.196,
-    "30": 0.129,
+    "15": 0.124,
+    "30": 0.133,
     "45": 0.124,
-    "60": 0.104,
-    "90": 0.066,
-    "120": 0.06,
-    "180": 0.045
+    "60": 0.105,
+    "90": 0.068,
+    "120": 0.058,
+    "180": 0.046
   },
   "raining_now": 0.0,
   "ahora": {
-    "bt_encima": 237.7,
-    "contraste": 5.5,
-    "fraccion_fria": 0.16,
+    "bt_encima": 236.5,
+    "contraste": 3.1,
+    "fraccion_fria": 0.31,
     "rayos_cerca": 0,
     "precip_observada": 0.4,
     "forma": "nubes",
@@ -24,13 +24,13 @@
   },
   "motion_speed_kmh": 120.0,
   "motion_from": "suroeste",
-  "motion_confidence": 0.031,
+  "motion_confidence": 0.033,
   "motion_fuente": "infrarrojo (topes)",
   "motion_giro": false,
   "deriva": null,
   "motion_ir_from": "suroeste",
   "motion_ir_kmh": 120.0,
-  "growth": 1.545,
+  "growth": 1.136,
   "cell_eta_min": null,
   "cell_km": null,
   "celda": null,
@@ -96,30 +96,29 @@
       -99.53587404832054
     ]
   ],
-  "motion_bearing": 40.2,
+  "motion_bearing": 40.3,
   "pressure": {
-    "now_msl": 1020.5,
-    "now_surface": 815.7,
+    "now_msl": 1020.6,
+    "now_surface": 815.6,
     "fuente": "sensor local",
     "sensor": {
-      "muestras": 772,
+      "muestras": 787,
       "edad_min": 0.2,
       "cadencia_s": 60,
-      "horas": 28.5,
-      "factor": 1.251,
-      "amplitud_diaria": 2.5,
+      "horas": 28.8,
+      "factor": 1.2513,
+      "amplitud_diaria": 2.49,
       "ventanas": [
-        "change_1h",
         "change_3h"
       ]
     },
-    "change_1h": 0.3,
-    "change_3h": -1.0,
+    "change_1h": 0.0,
+    "change_3h": -0.7,
     "change_6h": -2.3,
     "change_24h": -0.4,
     "forecast_drop": 6.7,
     "forecast_drop_at": "Sat 28, 19:00",
-    "forecast_drop_in_h": 18.0,
+    "forecast_drop_in_h": 17.7,
     "level": "alto",
     "trend": "bajando",
     "series": [
@@ -626,7 +625,7 @@
   },
   "temperatura": {
     "ahora": 9.1,
-    "sensacion": 7.3,
+    "sensacion": 7.2,
     "humedad": 92,
     "maxima": 17.6,
     "minima": 7.5,
@@ -790,7 +789,7 @@
     "dist_km": null,
     "dist_min_hora_km": null
   },
-  "duracion_s": 17.4,
+  "duracion_s": 19.2,
   "degradado": false,
   "muestreo": null,
   "performance": {
@@ -817,7 +816,7 @@
     },
     "60": {
       "n": 2012,
-      "brier": 0.0283,
+      "brier": 0.0284,
       "skill_vs_climatologia": 0.667,
       "acierto_binario": 0.968,
       "frecuencia_lluvia": 0.094
